@@ -1,4 +1,4 @@
-package org.openplacereviews.opendb.api;
+package org.openplacereviews.db.api;
 
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.springframework.stereotype.Controller;

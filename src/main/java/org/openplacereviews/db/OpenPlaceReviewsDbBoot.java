@@ -1,14 +1,15 @@
-package org.openplacereviews.opendb;
+package org.openplacereviews.db;
 
 
+import org.openplacereviews.opendb.OpenDBServer;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class OpenDbBoot extends OpenDBServer {
+public class OpenPlaceReviewsDbBoot extends OpenDBServer {
 
 	public static void main(String[] args) {
 		System.setProperty("spring.devtools.restart.enabled", "false");
-		SpringApplication.run(OpenDbBoot.class, args);
+		SpringApplication.run(OpenPlaceReviewsDbBoot.class, args);
 	}
 }
