@@ -1,0 +1,53 @@
+buildscript {
+    buildscript {
+        repositories {
+            jcenter()
+            mavenCentral()
+            maven { url "https://plugins.gradle.org/m2/" }
+            maven { url 'https://jitpack.io' }
+        }
+        dependencies {
+            classpath("org.springframework.boot:spring-boot-gradle-plugin:2.0.1.RELEASE")
+        }
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: "io.spring.dependency-management"
+apply plugin: 'antlr'
+
+group 'org.openplacereviews'
+version '1.0'
+
+dependencyManagement {
+    imports {
+        mavenBom 'io.spring.platform:platform-bom:Cairo-RELEASE'
+    }
+}
+
+bootJar {
+    launchScript()
+    version =  version
+    mainClassName = 'org.openplacereviews.opendb.OpenDbBoot'
+}
+
+dependencies {
+    implementation "org.openplacereviews:opendb-core:1.0"
+    implementation "org.springframework.boot:spring-boot-starter-web"
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    implementation "org.springframework.boot:spring-boot-starter-security"
+    implementation "org.springframework.boot:spring-boot-starter-thymeleaf"
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+    implementation "org.springframework.boot:spring-boot-starter-data-redis"
+    // make optional for release run
+    implementation "org.springframework.boot:spring-boot-devtools"
+}
+
+repositories {
+    mavenCentral()
+    jcenter()
+    google()
+}
