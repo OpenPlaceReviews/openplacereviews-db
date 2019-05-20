@@ -31,7 +31,7 @@ dependencyManagement {
 bootJar {
     launchScript()
     version =  version
-    mainClassName = 'org.openplacereviews.opendb.OpenDbBoot'
+    mainClassName = 'org.openplacereviews.db.OpenPlaceReviewsDbBoot'
 }
 
 dependencies {
