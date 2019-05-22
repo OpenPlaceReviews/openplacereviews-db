@@ -3,6 +3,7 @@ buildscript {
         repositories {
             jcenter()
             mavenCentral()
+            mavenLocal()
             maven { url "https://plugins.gradle.org/m2/" }
             maven { url 'https://jitpack.io' }
         }
@@ -12,44 +13,55 @@ buildscript {
     }
 }
 
-apply plugin: 'java'
-apply plugin: 'eclipse'
-apply plugin: 'idea'
-apply plugin: 'org.springframework.boot'
-apply plugin: "io.spring.dependency-management"
-apply plugin: 'antlr'
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'eclipse'
+    apply plugin: 'idea'
+    apply plugin: "io.spring.dependency-management"
 
-group 'org.openplacereviews'
-version '1.0'
+    group 'org.openplacereviews.db'
+    version '1.0'
+    sourceCompatibility = 1.8
 
-dependencyManagement {
-    imports {
-        mavenBom 'io.spring.platform:platform-bom:Cairo-RELEASE'
+    dependencyManagement {
+        imports {
+            mavenBom 'io.spring.platform:platform-bom:Cairo-RELEASE'
+        }
+    }
+
+    test {
+        reports {
+            junitXml.enabled = true
+            html.enabled = false
+        }
+    }
+
+    task fatJar(type: Jar) {
+
+        manifest.from jar.manifest
+        dependsOn configurations.runtimeClasspath
+        if(project.hasProperty('mainClassAttribute')) {
+            manifest.attributes 'Main-Class': project.getProperty('mainClassAttribute');
+        }
+        archiveName "${project.name}.jar"
+        from {
+            configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+        }
+                {
+                    exclude "META-INF/*.SF"
+                    exclude "META-INF/*.DSA"
+                    exclude "META-INF/*.RSA"
+                }
+        with jar
+    }
+
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+        google()
+        maven { url 'https://jitpack.io' }
     }
 }
 
-bootJar {
-    launchScript()
-    version =  version
-    mainClassName = 'org.openplacereviews.db.OpenPlaceReviewsDbBoot'
-}
-
-dependencies {
-    implementation "org.openplacereviews:opendb-core:1.0"
-    implementation "org.springframework.boot:spring-boot-starter-web"
-    implementation "org.springframework.boot:spring-boot-starter-actuator"
-    implementation "org.springframework.boot:spring-boot-starter-security"
-    implementation "org.springframework.boot:spring-boot-starter-thymeleaf"
-    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
-    implementation "org.springframework.boot:spring-boot-starter-data-redis"
-    // make optional for release run
-    implementation "org.springframework.boot:spring-boot-devtools"
-}
-
-repositories {
-    mavenCentral()
-    jcenter()
-    google()
-    mavenLocal()
-    maven { url 'https://jitpack.io' }
-}

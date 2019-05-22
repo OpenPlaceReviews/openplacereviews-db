@@ -1,7 +1,6 @@
 # Compiled class file
 *.class
-bin
-build
+
 # Log file
 *.log
 
@@ -23,7 +22,24 @@ build
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 
-.project
-.settings
+build/
 .gradle
-.classpath
+*/out
+*/.classpath
+*/.gradle
+*/gradle
+*/.project
+*/.settings
+*/.idea
+*/bin
+bin
+*/build
+/local.properties
+blocks/
+.idea
+docker-compose.yml
+env.sh
+.DS_Store
+.idea
+.coverage
+*.iml
