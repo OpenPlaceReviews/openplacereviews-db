@@ -23,6 +23,10 @@ subprojects {
     version '1.0'
     sourceCompatibility = 1.8
 
+    task allDeps(type: DependencyReportTask) {
+
+    }
+
     dependencyManagement {
         imports {
             mavenBom 'io.spring.platform:platform-bom:Cairo-RELEASE'
@@ -60,6 +64,7 @@ subprojects {
         mavenLocal()
         mavenCentral()
         jcenter()
+        mavenLocal()
         google()
         maven { url 'https://jitpack.io' }
     }

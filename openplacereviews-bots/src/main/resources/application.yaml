@@ -1,0 +1,44 @@
+logging:
+  file: logs/server.log
+  config: classpath:logback-spring.xml
+  pattern.console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){yellow} %-5level [%thread]: %message%n%ex{4}"
+
+spring:
+  datasource:
+    url: jdbc:h2:~/osm/osm_places_db;DB_CLOSE_ON_EXIT=FALSE;mode=PostgreSQL
+    driverClassName: org.h2.Driver
+
+osm:
+  operation:
+    type: user.osm.place
+
+http:
+  connect:
+    timeout: 120000
+  read:
+    timeout: 120000
+url:
+  login: http://localhost:6463/api/auth/admin-login
+  create:
+    block: http://localhost:6463/api/mgmt/create
+  process:
+    operation: http://localhost:6463/api/auth/process-operation
+  check:
+    blockchain:
+      status: http://localhost:6463/api/status
+
+cookie:
+  expiration:
+    time: 300000
+
+places:
+  per:
+    operation: 375
+
+operation:
+  per:
+    block: 8
+
+admin:
+  login: openplacereviews:test_1
+  password: base64:PKCS#8:MD4CAQAwEAYHKoZIzj0CAQYFK4EEAAoEJzAlAgEBBCAOpUDyGrTPRPDQRCIRXysxC6gCgSTiNQ5nVEjhvsFITA==

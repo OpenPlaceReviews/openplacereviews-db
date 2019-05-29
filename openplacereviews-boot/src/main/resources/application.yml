@@ -32,6 +32,7 @@ opendb:
       obj_logins: { "types": ["sys.login", "sys.signup"], "keysize":2 }
       obj_grants: { "types" : ["sys.grant"], "keysize":2 }
       obj_system: { "types": ["sys.validate", "sys.operation", "sys.role"], "keysize":1 }
+
   files-backup:
     directory: ${FILE_BLOCKS_DIR:blocks}
   block-create:

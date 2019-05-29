@@ -1,16 +1,27 @@
-plugins {
-    id 'java'
-}
-
+apply plugin: 'org.springframework.boot'
 group 'org.openplacereviews'
 version '1.0'
 
 sourceCompatibility = 1.8
 
-repositories {
-    mavenCentral()
+bootJar {
+    launchScript()
+    version =  version
+    mainClassName = 'org.openplacereviews.db.Application'
 }
-
 dependencies {
+    implementation project(':openplacereviews-core')
+    implementation("org.springframework:spring-jdbc")
+    implementation group: 'net.sf.kxml', name: 'kxml2', version: '2.3.0'
+    implementation group: 'org.springframework', name: 'spring-web'
+    implementation group: 'org.springframework.boot', name: 'spring-boot-devtools'
+    implementation group: 'org.springframework.boot', name: 'spring-boot-starter-jdbc'
+    implementation group: 'com.h2database', name: 'h2'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind'
+
     testCompile group: 'junit', name: 'junit', version: '4.12'
+
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.8'
+
+    annotationProcessor 'org.projectlombok:lombok:1.18.8'
 }
