@@ -1,7 +1,6 @@
 package org.openplacereviews.db.publisher;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.db.dto.OsmCoordinatePlacesDto;
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * This class responsible for publish {@see OsmCoordinatePlace} to open-place-db using rest api.
@@ -50,10 +50,15 @@ public class OsmCoordinatePlacePublisher implements OsmPublisher {
 			try {
 				List<OsmCoordinatePlace> places = osmParser.parseNextCoordinatePalaces(placesPerOperation);
 
-
 				if (places == null || places.isEmpty())
 					break;
 
+				if (dbPlacesService.areSomeExistInDb(places)) {
+					//Has place already deployed.
+					places = places.stream()
+								   .filter(place -> !dbPlacesService.isDeployed(place))
+								   .collect(Collectors.toList());
+				}
 				publish(places);
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -64,6 +69,9 @@ public class OsmCoordinatePlacePublisher implements OsmPublisher {
 	}
 
 	protected void publish(List<OsmCoordinatePlace> places) throws JsonProcessingException {
+		if (places.isEmpty())
+			return;
+
 		OsmCoordinatePlacesDto osmCoordinatePlacesDto = new OsmCoordinatePlacesDto(osmOpType, places);
 		try {
 			restClient.postOsmCoordinatePlace(osmCoordinatePlacesDto);

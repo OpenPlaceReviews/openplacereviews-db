@@ -17,15 +17,9 @@ http:
     timeout: 120000
   read:
     timeout: 120000
+
 url:
-  login: http://localhost:6463/api/auth/admin-login
-  create:
-    block: http://localhost:6463/api/mgmt/create
-  process:
-    operation: http://localhost:6463/api/auth/process-operation
-  check:
-    blockchain:
-      status: http://localhost:6463/api/status
+  api: http://localhost:6463/api
 
 cookie:
   expiration:
@@ -33,11 +27,11 @@ cookie:
 
 places:
   per:
-    operation: 375
+    operation: 250
 
 operation:
   per:
-    block: 8
+    block: 16
 
 admin:
   login: openplacereviews:test_1

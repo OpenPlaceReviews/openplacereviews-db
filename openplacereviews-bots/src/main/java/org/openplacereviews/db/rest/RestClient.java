@@ -3,7 +3,6 @@ package org.openplacereviews.db.rest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.openplacereviews.db.dto.BlockChainStatusDto;
 import org.openplacereviews.db.dto.OsmCoordinatePlacesDto;
 import org.openplacereviews.db.exception.BadCredentialsException;
 import org.openplacereviews.db.publisher.OsmCoordinatePlacePublisher;
@@ -15,6 +14,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.List;
 
@@ -31,17 +31,8 @@ public class RestClient {
 	@Autowired
 	private RestTemplate restTemplate;
 
-	@Value("${url.login}")
-	private String loginUrl;
-
-	@Value("${url.process.operation}")
-	private String processOpUrl;
-
-	@Value("${url.create.block}")
-	private String createBlockUri;
-
-	@Value("${url.check.blockchain.status}")
-	private String checkBlockChainStatus;
+	@Value("${url.api}")
+	private String openDbUrl;
 
 	@Value("${admin.login}")
 	private String login;
@@ -55,10 +46,22 @@ public class RestClient {
 	@Autowired
 	private ObjectMapper mapper;
 
+	private String loginUrl;
+
+	private String processOpUrl;
+
+	private String createBlockUri;
+
 	private String authCookie;
 
 	private long cookieUpdatedTime;
 
+	@PostConstruct
+	private void postConstructor() {
+		this.loginUrl = openDbUrl + "/auth/admin-login";
+		this.processOpUrl = openDbUrl + "/auth/process-operation";
+		this.createBlockUri = openDbUrl + "/mgmt/create";
+	}
 
 	protected void login() {
 		HttpHeaders headers = new HttpHeaders();
@@ -86,7 +89,8 @@ public class RestClient {
 	}
 
 	public void postOsmCoordinatePlace(OsmCoordinatePlacesDto osmCoordinatePlaceDto) throws IOException {
-		updatedCookieIfNeed();
+		if (authCookie == null)
+			login();
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.set(HttpHeaders.COOKIE, authCookie);
@@ -96,9 +100,6 @@ public class RestClient {
 
 		HttpEntity addOsmOpRequest = new HttpEntity(body, headers);
 
-//		if (!isBlockChainUnlocked()) {
-//			waitForReadyStatus();
-//		}
 		ResponseEntity<String> responseEntity =
 				restTemplate.postForEntity(processOpUrl + "?addToQueue=true", addOsmOpRequest, String.class);
 		if (responseEntity.getStatusCode() != HttpStatus.OK) {
@@ -118,14 +119,6 @@ public class RestClient {
 		LOGGER.info("Block created: " + responseEntity1.getBody());
 	}
 
-//	public boolean isBlockChainUnlocked() throws IOException {
-//		String str1 =
-//				restTemplate.getForEntity(checkBlockChainStatus, String.class).getBody();
-//		BlockChainStatusDto statusDto = mapper.readValue(str1, BlockChainStatusDto.class);
-//
-//		return statusDto.getStatus().startsWith("READY");
-//	}
-
 	/**
 	 * Updated login cookie. If authCookie is null or when it expired.
 	 */
@@ -140,14 +133,4 @@ public class RestClient {
 		}
 	}
 
-//	private void waitForReadyStatus() throws IOException {
-//		while (!isBlockChainUnlocked()) {
-//			try {
-//				System.out.println("wait");
-//				Thread.sleep(1000);
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-//		}
-//	}
 }

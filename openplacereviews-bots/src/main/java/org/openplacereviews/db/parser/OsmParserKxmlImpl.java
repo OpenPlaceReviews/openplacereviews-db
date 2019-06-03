@@ -10,14 +10,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Reader;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 public class OsmParserKxmlImpl extends OsmParser {
 
@@ -50,22 +45,25 @@ public class OsmParserKxmlImpl extends OsmParser {
 					mapNodeElement(osmCoordinatePlace);
 					result.add(osmCoordinatePlace);
 					counter += 1;
-				} else if (elementName.equals("tag")) {
-					OsmTag osmTag = new OsmTag();
-					mapTagElement(osmTag);
-					osmTags.add(osmTag);
+				} else
+					if (elementName.equals("tag")) {
+						OsmTag osmTag = new OsmTag();
+						mapTagElement(osmTag);
+						osmTags.add(osmTag);
 
-				}
-			} else if (event == XmlPullParser.END_TAG) {
-				String elementName = parser.getName();
-				if (elementName.equals("node")) {
-					if (limit == counter) {
+					}
+			} else
+				if (event == XmlPullParser.END_TAG) {
+					String elementName = parser.getName();
+					if (elementName.equals("node")) {
+						if (limit == counter) {
+							return result;
+						}
+					}
+				} else
+					if (event == XmlPullParser.END_DOCUMENT) {
 						return result;
 					}
-				}
-			} else if (event == XmlPullParser.END_DOCUMENT) {
-				return result;
-			}
 		}
 	}
 
@@ -74,7 +72,7 @@ public class OsmParserKxmlImpl extends OsmParser {
 		Double lat = Double.valueOf(getAttributeValue("lat"));
 		Double lon = Double.valueOf(getAttributeValue("lon"));
 
-		int timestamp = (int)Instant.parse(getAttributeValue("timestamp")).getEpochSecond();
+		int timestamp = (int) Instant.parse(getAttributeValue("timestamp")).getEpochSecond();
 
 		osmCoordinatePlace.setOsmId(new OsmId(id, timestamp));
 		osmCoordinatePlace.setLat(lat);
