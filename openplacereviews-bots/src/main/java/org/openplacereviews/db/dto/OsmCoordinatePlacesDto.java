@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 public class OsmCoordinatePlacesDto {
 	private String type;
-	@JsonProperty("new")
+	@JsonProperty("create")
 	private List<OsmCoordinatePlaceDto> osmCoordinatePlacesDto;
 
 	public OsmCoordinatePlacesDto(String type, List<OsmCoordinatePlace> osmCoordinatePlaces) {

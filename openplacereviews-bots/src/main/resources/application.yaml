@@ -18,6 +18,10 @@ http:
   read:
     timeout: 120000
 
+mode:
+  unsafe:
+    import: true
+
 url:
   api: http://localhost:6463/api
 
