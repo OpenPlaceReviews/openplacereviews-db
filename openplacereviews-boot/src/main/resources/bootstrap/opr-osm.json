@@ -1,0 +1,16 @@
+[
+	{
+		"type" : "sys.operation",
+		"create": [{
+			"id" : ["osm.place"],
+			"comment" : "Operation to hold osm places",
+			"version" : 0,
+			"arity" : 0,
+			"fields": {
+				"id": "openplacereview id",
+				"osmId": "id of osm place",
+				"tags": "place tags"
+			}
+		}]
+	}
+]
