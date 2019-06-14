@@ -1,11 +1,5 @@
 package org.openplacereviews.db.parser;
 
-import org.openplacereviews.db.model.OsmCoordinatePlace;
-import org.openplacereviews.db.model.OsmId;
-import org.openplacereviews.db.model.OsmTag;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -13,6 +7,13 @@ import java.io.Reader;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.openplacereviews.db.model.OsmCoordinatePlace;
+import org.openplacereviews.db.model.OsmId;
+import org.openplacereviews.db.model.OsmPlace;
+import org.openplacereviews.db.model.OsmTag;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
 
 public class OsmParserKxmlImpl extends OsmParser {
 
@@ -25,11 +26,11 @@ public class OsmParserKxmlImpl extends OsmParser {
 	}
 
 	@Override
-	public List<OsmCoordinatePlace> parseNextCoordinatePalaces(int limit)
+	public List<OsmPlace> parseNextCoordinatePalaces(int limit)
 			throws IOException, XmlPullParserException {
 		int counter = 0;
-		List<OsmCoordinatePlace> result = new ArrayList<>(limit);
-		OsmCoordinatePlace osmCoordinatePlace = null;
+		List<OsmPlace> result = new ArrayList<>(limit);
+		OsmPlace osmCoordinatePlace = null;
 		List<OsmTag> osmTags = null;
 		while (true) {
 			int event = parser.next();
@@ -38,7 +39,7 @@ public class OsmParserKxmlImpl extends OsmParser {
 				String elementName = parser.getName();
 				if (elementName.equals("node")) {
 					//Init osm place DTO
-					osmCoordinatePlace = new OsmCoordinatePlace();
+					osmCoordinatePlace = new OsmPlace();
 					osmTags = new ArrayList<>();
 					osmCoordinatePlace.setTags(osmTags);
 
@@ -67,7 +68,7 @@ public class OsmParserKxmlImpl extends OsmParser {
 		}
 	}
 
-	protected void mapNodeElement(OsmCoordinatePlace osmCoordinatePlace) {
+	protected void mapNodeElement(OsmPlace osmCoordinatePlace) {
 		String id = getAttributeValue("id");
 		Double lat = Double.valueOf(getAttributeValue("lat"));
 		Double lon = Double.valueOf(getAttributeValue("lon"));

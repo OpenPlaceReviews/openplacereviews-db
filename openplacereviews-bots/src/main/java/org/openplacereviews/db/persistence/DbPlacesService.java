@@ -30,7 +30,7 @@ public class DbPlacesService {
 	 */
 	public void insertPlaces(List<OsmCoordinatePlace> places, boolean deployed) {
 		for (OsmCoordinatePlace place : places) {
-			String osmId = place.getOsmId().getId();
+			String osmId = place.getOsmId().id;
 			Integer timestamp = place.getOsmId().getTimestamp();
 			jdbcTemplate.execute("MERGE INTO place (id, timestamp, deployed) " +
 					" KEY(id) " +

@@ -1,12 +1,17 @@
 package org.openplacereviews.db.parser;
 
-import org.kxml2.io.KXmlParser;
-import org.openplacereviews.db.model.OsmCoordinatePlace;
-import org.xmlpull.v1.XmlPullParserException;
-
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+
+import org.kxml2.io.KXmlParser;
+import org.openplacereviews.db.model.OsmPlace;
+import org.xmlpull.v1.XmlPullParserException;
 
 public abstract class OsmParser {
 
@@ -30,6 +35,6 @@ public abstract class OsmParser {
 	 * @param limit
 	 * @return
 	 */
-	public abstract List<OsmCoordinatePlace> parseNextCoordinatePalaces(int limit)
+	public abstract List<OsmPlace> parseNextCoordinatePalaces(int limit)
 			throws IOException, XmlPullParserException;
 }
