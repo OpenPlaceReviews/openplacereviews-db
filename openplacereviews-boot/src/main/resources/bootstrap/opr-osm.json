@@ -2,7 +2,7 @@
 	{
 		"type" : "sys.operation",
 		"create": [{
-			"id" : ["osm.place"],
+			"id" : ["opr.place"],
 			"comment" : "Operation to hold osm places",
 			"version" : 0,
 			"arity" : 0,
