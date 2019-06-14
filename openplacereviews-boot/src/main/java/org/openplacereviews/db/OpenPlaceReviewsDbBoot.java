@@ -9,6 +9,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
+import java.util.Arrays;
+import java.util.List;
+
 @SpringBootApplication
 @ComponentScan("org.openplacereviews")
 public class OpenPlaceReviewsDbBoot extends OpenDBServer {
@@ -23,7 +26,10 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer {
 
 	@Override
 	public void preStartApplication() {
-		blocksManager.addToBootstrap("opr-osm");
+		List<String> bootstrapList =
+				Arrays.asList("opr-0-test-user", BlocksManager.BOOT_STD_OPS_DEFINTIONS, BlocksManager.BOOT_STD_ROLES,
+						BlocksManager.BOOT_OPR_TEST_GRANT, BlocksManager.BOOT_STD_VALIDATION, "opr-osm");
+		blocksManager.setBootstrapList(bootstrapList);
 	}
 
 }
