@@ -1,6 +1,6 @@
 package org.openplacereviews.db.persistence;
 
-import org.openplacereviews.db.model.OsmCoordinatePlace;
+import org.openplacereviews.osm.model.OsmCoordinatePlace;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;

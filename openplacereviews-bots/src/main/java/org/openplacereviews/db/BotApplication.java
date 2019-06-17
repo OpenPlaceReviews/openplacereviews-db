@@ -14,14 +14,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.Date;
 
 @SpringBootApplication
-public class Application implements ApplicationRunner {
-	protected static final Log LOGGER = LogFactory.getLog(Application.class);
+public class BotApplication implements ApplicationRunner {
+	protected static final Log LOGGER = LogFactory.getLog(BotApplication.class);
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
 	public static void main(String[] args) {
-		SpringApplication app = new SpringApplication(Application.class);
+		SpringApplication app = new SpringApplication(BotApplication.class);
 		ConfigurableApplicationContext context = app.run(args);
 
 		PublisherController publisherController =

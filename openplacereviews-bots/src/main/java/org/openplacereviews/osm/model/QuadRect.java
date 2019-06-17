@@ -1,4 +1,4 @@
-package org.openplacereviews.db.model;
+package org.openplacereviews.osm.model;
 
 public class QuadRect {
 	public double left;

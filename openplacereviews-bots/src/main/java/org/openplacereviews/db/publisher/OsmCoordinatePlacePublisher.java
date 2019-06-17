@@ -1,20 +1,19 @@
 package org.openplacereviews.db.publisher;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.openplacereviews.db.dto.OsmCoordinatePlacesDto;
-import org.openplacereviews.db.model.OsmCoordinatePlace;
-import org.openplacereviews.db.parser.OsmParser;
 import org.openplacereviews.db.persistence.DbPlacesService;
 import org.openplacereviews.db.rest.RestClient;
+import org.openplacereviews.osm.OsmParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 /**
  * This class responsible for publish {@see OsmCoordinatePlace} to open-place-db using rest api.

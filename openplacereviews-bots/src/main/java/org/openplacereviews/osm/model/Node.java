@@ -1,4 +1,4 @@
-package org.openplacereviews.db.model;
+package org.openplacereviews.osm.model;
 
 import java.io.Serializable;
 import java.util.Map;

@@ -2,10 +2,9 @@ package org.openplacereviews.db.publisher.controller;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.openplacereviews.db.parser.OsmParser;
-import org.openplacereviews.db.parser.OsmParserKxmlImpl;
 import org.openplacereviews.db.persistence.DbPlacesService;
 import org.openplacereviews.db.publisher.OsmPublisher;
+import org.openplacereviews.osm.OsmParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,12 +42,12 @@ public class UntilSuccessPublisherController implements PublisherController {
 	}
 
 	/**
-	 * Create {@link OsmParserKxmlImpl} using sourceXmlFilePath, and start publish places.
+	 * Create {@link OsmParser} using sourceXmlFilePath, and start publish places.
 	 */
 	private void publish() {
 		OsmParser osmParser = null;
 		try {
-			osmParser = new OsmParserKxmlImpl(new File(sourceXmlFilePath));
+			osmParser = new OsmParser(new File(sourceXmlFilePath));
 		} catch (FileNotFoundException | XmlPullParserException e) {
 			LOGGER.error(e.getMessage());
 			System.exit(-1);

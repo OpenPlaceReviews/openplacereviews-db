@@ -1,4 +1,4 @@
-package org.openplacereviews.db.model;
+package org.openplacereviews.osm.model;
 
 
 import java.util.ArrayList;
@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import org.openplacereviews.db.model.Relation.RelationMember;
+import org.openplacereviews.osm.model.Relation.RelationMember;
 
 public class OsmMapUtils {
 	public static final double MIN_LATITUDE = -85.0511;

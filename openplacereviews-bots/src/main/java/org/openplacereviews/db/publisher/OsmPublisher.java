@@ -1,6 +1,6 @@
 package org.openplacereviews.db.publisher;
 
-import org.openplacereviews.db.parser.OsmParser;
+import org.openplacereviews.osm.OsmParser;
 
 public interface OsmPublisher {
 	/**
