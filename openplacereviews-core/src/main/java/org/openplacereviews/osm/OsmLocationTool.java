@@ -1,4 +1,4 @@
-package org.openplacereviews.db.tool;
+package org.openplacereviews.osm;
 
 import com.google.openlocationcode.OpenLocationCode;
 
