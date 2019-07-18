@@ -40,6 +40,12 @@ subprojects {
         }
     }
 
+    eclipse {
+        classpath {
+            downloadSources = true
+        }
+    }
+
     task fatJar(type: Jar) {
 
         manifest.from jar.manifest

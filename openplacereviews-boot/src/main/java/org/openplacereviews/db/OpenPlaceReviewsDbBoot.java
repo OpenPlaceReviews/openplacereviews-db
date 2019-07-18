@@ -2,8 +2,10 @@ package org.openplacereviews.db;
 
 
 import org.openplacereviews.opendb.OpenDBServer;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
@@ -15,4 +17,9 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer {
 		SpringApplication.run(OpenPlaceReviewsDbBoot.class, args);
 	}
 
+	@Override
+	public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
+		CommandLineRunner cmd = super.commandLineRunner(ctx);
+		return cmd;
+	}
 }
