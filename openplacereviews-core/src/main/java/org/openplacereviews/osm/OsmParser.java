@@ -79,7 +79,7 @@ public class OsmParser {
 			} else if (event == XmlPullParser.END_TAG) {
 				// here we could close the tag
 				String elementName = parser.getName();
-				if (elementName.equals(EntityType.NODE.toString()) || elementName.equals(EntityType.WAY.toString()) || elementName.equals(EntityType.RELATION.toString())) {
+				if (elementName.equals(EntityType.NODE.getName()) || elementName.equals(EntityType.WAY.getName()) || elementName.equals(EntityType.RELATION.getName())) {
 					results.add(e);
 					e = null;
 					if (limit == counter++) {
