@@ -26,6 +26,26 @@ public abstract class Entity {
 			}
 			return null;
 		}
+
+		public String getName() {
+			switch (this) {
+				case NODE: {
+					return NODE.name().toLowerCase();
+				}
+				case RELATION: {
+					return RELATION.name().toLowerCase();
+				}
+				case WAY: {
+					return WAY.name().toLowerCase();
+				}
+				case WAY_BOUNDARY: {
+					return WAY_BOUNDARY.name().toLowerCase();
+				}
+				default: {
+					return null;
+				}
+			}
+		}
 	}
 
 	public static class EntityId {
@@ -97,6 +117,14 @@ public abstract class Entity {
 
 	}
 
+	public static final String ATTR_ID = "id";
+	public static final String ATTR_LATITUDE = "lat";
+	public static final String ATTR_LONGITUDE = "lon";
+	public static final String ATTR_TAG = "tag";
+	public static final String ATTR_TAG_K = "k";
+	public static final String ATTR_TAG_V = "v";
+	public static final String ATTR_REF = "ref";
+
 	// lazy initializing
 	private Map<String, String> tags = null;
 	private Set<String> changedTags;
@@ -106,6 +134,7 @@ public abstract class Entity {
 	private int version;
 	private double latitude;
 	private double longitude;
+	private EntityInfo entityInfo = null;
 	public static final int MODIFY_UNKNOWN = 0;
 	public static final int MODIFY_DELETED = -1;
 	public static final int MODIFY_MODIFIED = 1;
@@ -212,6 +241,14 @@ public abstract class Entity {
 			}
 		}
 		return result;
+	}
+
+	public EntityInfo getEntityInfo() {
+		return entityInfo;
+	}
+
+	public void setEntityInfo(EntityInfo entityInfo) {
+		this.entityInfo = entityInfo;
 	}
 
 	public int getVersion() {

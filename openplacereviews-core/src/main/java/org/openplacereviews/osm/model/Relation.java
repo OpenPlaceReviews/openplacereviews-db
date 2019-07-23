@@ -7,7 +7,11 @@ import java.util.List;
 import java.util.Map;
 
 public class Relation extends Entity {
-	
+
+	public static final String ATTR_ROLE = "role";
+	public static final String ATTR_TYPE = "type";
+	public static final String ATTR_MEMBER = "member";
+
 	public static class RelationMember {
 		private EntityId entityId;
 		private Entity entity;

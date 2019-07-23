@@ -11,6 +11,8 @@ import gnu.trove.list.array.TLongArrayList;
 
 public class Way extends Entity {
 
+	public static final String ATTR_ND = "nd";
+
 	// lazy loading
 	private TLongArrayList nodeIds = null;
 	private List<Node> nodes = null;

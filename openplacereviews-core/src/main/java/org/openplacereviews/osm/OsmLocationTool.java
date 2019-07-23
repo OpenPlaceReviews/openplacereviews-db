@@ -1,6 +1,7 @@
 package org.openplacereviews.osm;
 
 import com.google.openlocationcode.OpenLocationCode;
+import org.openplacereviews.osm.model.LatLon;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -46,6 +47,12 @@ public class OsmLocationTool {
 		return Integer.parseInt(id.substring(CODE_LENGTH), 16);
 	}
 
+	public static String generateStrId(LatLon latLon) {
+		if (latLon == null) {
+			return null;
+		}
+		return generateStrId(latLon.getLatitude(), latLon.getLongitude());
+	}
 	/**
 	 * Generate osm id from {@code latitude} and {@code longitude}</br>
 	 * and random int value.
