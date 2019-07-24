@@ -10,6 +10,16 @@ server:
     max-http-post-size: 4096
     max-threads: 5
 
+osm:
+  parser:
+    places:
+      per:
+        operation: 250
+    operation:
+      type: opr.place
+      per:
+        block: 16
+
 opendb:
   mgmt:
     user: ${OPENDB_LOGIN:openplacereviews:test_1}
