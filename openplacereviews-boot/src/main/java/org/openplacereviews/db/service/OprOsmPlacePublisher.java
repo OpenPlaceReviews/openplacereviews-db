@@ -24,8 +24,17 @@ import java.util.List;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import static org.openplacereviews.opendb.ops.OpObject.F_ID;
+import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
+import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
+import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.model.EntityInfo.*;
+
 @Component
 public class OprOsmPlacePublisher implements ApplicationListener<ApplicationReadyEvent> {
+
+	public static final String ATTR_OSM = "osm";
+	public static final String ATTR_TAGS = "tags";
 
 	@Autowired
 	public BlocksManager blocksManager;
@@ -78,8 +87,7 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 			osmParser = new OsmParser(new File(sourceXmlFilePath));
 		} catch (FileNotFoundException | XmlPullParserException e) {
 			LOGGER.error(e.getMessage());
-			System.exit(-1);
-			return;
+			throw new IllegalArgumentException("Error while creating osm parser");
 		}
 
 		publish(osmParser);
@@ -109,7 +117,7 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		LOGGER.info("Amount of operation transferred data: " + opCounter);
 	}
 
-	protected void publish(List<Entity> places) throws FailedVerificationException, InterruptedException {
+	protected void publish(List<Entity> places) throws FailedVerificationException {
 		if (places.isEmpty())
 			return;
 
@@ -149,17 +157,17 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 			OpObject create = new OpObject();
 			create.setId(OsmLocationTool.generateStrId(e.getLatLon()));
 			TreeMap<String, Object> osmObject = new TreeMap<>();
-			osmObject.put("id", String.valueOf(e.getId()));
-			osmObject.put("type", e.getClass().getSimpleName().toLowerCase());
-			osmObject.put("tags", e.getTags());
-			osmObject.put("lon", e.getLongitude());
-			osmObject.put("lat", e.getLatitude());
+			osmObject.put(F_ID, String.valueOf(e.getId()));
+			osmObject.put(F_TYPE, e.getClass().getSimpleName().toLowerCase());
+			osmObject.put(ATTR_TAGS, e.getTags());
+			osmObject.put(ATTR_LONGITUDE, e.getLongitude());
+			osmObject.put(ATTR_LATITUDE, e.getLatitude());
 
 			if (e.getEntityInfo() != null) {
 				generateEntityInfo(osmObject, e.getEntityInfo());
 			}
 
-			create.putObjectValue("osm", osmObject);
+			create.putObjectValue(ATTR_OSM, osmObject);
 			opOperation.addCreated(create);
 		}
 		String obj = blocksManager.getBlockchain().getRules().getFormatter().opToJson(opOperation);
@@ -169,13 +177,13 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	}
 
 	private void generateEntityInfo(TreeMap<String, Object> osmObject, EntityInfo entityInfo) {
-		osmObject.put("timestamp", entityInfo.getTimestamp());
-		osmObject.put("uid", entityInfo.getUid());
-		osmObject.put("user", entityInfo.getUser());
-		osmObject.put("version", entityInfo.getVersion());
-		osmObject.put("changeset", entityInfo.getChangeset());
-		osmObject.put("visible", entityInfo.getVisible());
-		osmObject.put("action", entityInfo.getAction());
+		osmObject.put(ATTR_TIMESTAMP, entityInfo.getTimestamp());
+		osmObject.put(ATTR_UID, entityInfo.getUid());
+		osmObject.put(ATTR_USER, entityInfo.getUser());
+		osmObject.put(ATTR_VERSION, entityInfo.getVersion());
+		osmObject.put(ATTR_CHANGESET, entityInfo.getChangeset());
+		osmObject.put(ATTR_VISIBLE, entityInfo.getVisible());
+		osmObject.put(ATTR_ACTION, entityInfo.getAction());
 	}
 
 }

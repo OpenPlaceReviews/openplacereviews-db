@@ -12,5 +12,21 @@
 				"tags": "place tags"
 			}
 		}]
+	},
+	{
+		"type" : "sys.operation",
+		"create" : [{
+			"id" : "opr.osm-parser",
+			"comment" : "",
+			"version" : 0,
+			"arity" : 0,
+			"fields" : {
+				"id" : ["mobile-phone"],
+				"parser-version" : 1,
+				"tag-mapping" : {
+					"shop" : "mobile-phone"
+				}
+			}
+		}]
 	}
 ]
