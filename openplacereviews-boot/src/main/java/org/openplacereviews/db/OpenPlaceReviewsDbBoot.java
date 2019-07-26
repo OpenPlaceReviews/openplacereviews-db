@@ -1,6 +1,7 @@
 package org.openplacereviews.db;
 
 
+import org.openplacereviews.db.service.OpTagsManager;
 import org.openplacereviews.db.service.OprOsmPlacePublisher;
 import org.openplacereviews.opendb.OpenDBServer;
 import org.openplacereviews.opendb.service.BlocksManager;
@@ -22,13 +23,10 @@ import java.util.List;
 public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationRunner {
 
 	@Autowired
-	private JdbcTemplate jdbcTemplate;
+	public JdbcTemplate jdbcTemplate;
 
 	@Autowired
 	public BlocksManager blocksManager;
-
-	@Autowired
-	public OprOsmPlacePublisher oprOsmPlacePublisher;
 
 	public static void main(String[] args) {
 		System.setProperty("spring.devtools.restart.enabled", "false");
@@ -57,11 +55,6 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 				LOGGER.error("--file.path argument is required");
 				System.exit(-1);
 			}
-
-			LOGGER.info("Creating table place");
-			jdbcTemplate.execute(
-					"CREATE TABLE IF NOT EXISTS place(id VARCHAR(19) PRIMARY KEY, deployed BOOLEAN DEFAULT FALSE)");
-			jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS pk_index ON place(id)");
 		}
 	}
 

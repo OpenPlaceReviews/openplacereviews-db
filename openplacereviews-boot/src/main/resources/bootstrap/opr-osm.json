@@ -16,7 +16,7 @@
 	{
 		"type" : "sys.operation",
 		"create" : [{
-			"id" : "opr.osm-parser",
+			"id" : ["opr.osm-parser"],
 			"comment" : "",
 			"version" : 0,
 			"arity" : 0,
@@ -24,8 +24,20 @@
 				"id" : ["mobile-phone"],
 				"parser-version" : 1,
 				"tag-mapping" : {
-					"shop" : "mobile-phone"
+					"column" : {
+						"shop": "mobile-phone"
+					}
 				}
+			}
+		}]
+	},
+	{
+		"type" : "opr.osm-parser",
+		"create" : [{
+			"id" : ["mobile-tag"],
+			"parser-version" : 1,
+			"tag-mapping" : {
+				"tags_name": ["osm.tags.mobile-phone"]
 			}
 		}]
 	}

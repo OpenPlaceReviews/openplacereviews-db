@@ -7,6 +7,8 @@ import org.openplacereviews.opendb.util.JsonFormatter;
 import org.openplacereviews.osm.OsmLocationTool;
 import org.openplacereviews.osm.model.Entity;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
@@ -23,12 +25,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-public class DbOprSchemaManager {
+public class DbOprOsmSchemaManager implements ApplicationListener<ApplicationReadyEvent> {
 
 	private static final String TAGS_TABLE = "tags_settings";
 	private static final String PLACE_TABLE = "place";
 
-	private static final Log LOGGER = LogFactory.getLog(DbOprSchemaManager.class);
+	private static final Log LOGGER = LogFactory.getLog(DbOprOsmSchemaManager.class);
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -39,8 +41,9 @@ public class DbOprSchemaManager {
 	@Autowired
 	private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
+	@Override
 	// TODO change creating tables
-	public DbOprSchemaManager() {
+	public void onApplicationEvent(final ApplicationReadyEvent event) {
 		LOGGER.info("Creating table " + TAGS_TABLE);
 
 		jdbcTemplate.execute(
@@ -49,6 +52,9 @@ public class DbOprSchemaManager {
 		jdbcTemplate.execute(
 				"CREATE TABLE IF NOT EXISTS " + PLACE_TABLE + "(id VARCHAR(19) PRIMARY KEY, deployed BOOLEAN DEFAULT FALSE)");
 		jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS pk_index ON " + PLACE_TABLE +"(id)");
+	}
+
+	public DbOprOsmSchemaManager() {
 	}
 
 	public void addNewTagInfo(Map<String, Object> tagInfo) {

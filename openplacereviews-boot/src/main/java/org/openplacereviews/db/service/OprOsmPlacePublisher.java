@@ -40,7 +40,7 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	public BlocksManager blocksManager;
 
 	@Autowired
-	private DbPlacesService dbPlacesService;
+	private DbOprOsmSchemaManager dbSchemaManager;
 
 	protected static final Log LOGGER = LogFactory.getLog(OprOsmPlacePublisher.class);
 
@@ -75,7 +75,7 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		if (runImport.equals("true")) {
 			publish();
 
-			while (dbPlacesService.countUndeployedPlaces() > 0) {
+			while (dbSchemaManager.countUndeployedPlaces() > 0) {
 				publish();
 			}
 		}
@@ -102,10 +102,10 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 				if (places == null || places.isEmpty())
 					break;
 
-				if (dbPlacesService.areSomeExistInDb(places)) {
+				if (dbSchemaManager.areSomeExistInDb(places)) {
 					//Has place already deployed.
 					places = places.stream()
-							.filter(place -> !dbPlacesService.isDeployed(place))
+							.filter(place -> !dbSchemaManager.isDeployed(place))
 							.collect(Collectors.toList());
 				}
 				publish(places);
@@ -125,11 +125,11 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		try {
 			blocksManager.addOperation(osmCoordinatePlacesDto);
 			opCounter += 1;
-			dbPlacesService.insertPlaces(places, true);
+			dbSchemaManager.insertPlaces(places, true);
 		} catch (Exception e) {
 			LOGGER.error("Error occurred while posting places: " + e.getMessage());
 			LOGGER.info("Amount of pack transferred data: " + opCounter);
-			dbPlacesService.insertPlaces(places, false);
+			dbSchemaManager.insertPlaces(places, false);
 		}
 
 		try {
