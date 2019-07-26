@@ -21,12 +21,8 @@
 			"version" : 0,
 			"arity" : 0,
 			"fields" : {
-				"id" : ["mobile-phone"],
-				"parser-version" : 1,
 				"tag-mapping" : {
-					"column" : {
 						"shop": "mobile-phone"
-					}
 				}
 			}
 		}]

@@ -1,8 +1,5 @@
 package org.openplacereviews.db;
 
-
-import org.openplacereviews.db.service.OpTagsManager;
-import org.openplacereviews.db.service.OprOsmPlacePublisher;
 import org.openplacereviews.opendb.OpenDBServer;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.springframework.beans.factory.annotation.Autowired;
