@@ -47,11 +47,11 @@ public class OsmLocationTool {
 		return Integer.parseInt(id.substring(CODE_LENGTH), 16);
 	}
 
-	public static String generateStrId(LatLon latLon) {
+	public static String generateStrId(LatLon latLon, Long id) {
 		if (latLon == null) {
 			return null;
 		}
-		return generateStrId(latLon.getLatitude(), latLon.getLongitude());
+		return generateStrId(latLon.getLatitude(), latLon.getLongitude(), id);
 	}
 	/**
 	 * Generate osm id from {@code latitude} and {@code longitude}</br>
@@ -60,11 +60,11 @@ public class OsmLocationTool {
 	 * @param longitude
 	 * @return
 	 */
-	public static String generateStrId(double latitude, double longitude) {
+	public static String generateStrId(double latitude, double longitude, Long id) {
 		String code = encode(latitude, longitude);
-		Integer suffix = new Random().nextInt(Integer.MAX_VALUE);
+		//Integer suffix = new Random().nextInt(Integer.MAX_VALUE);
 
-		return code + BigInteger.valueOf(suffix).toString(16);
+		return code + BigInteger.valueOf(id).toString(16);
 	}
 
 	/**

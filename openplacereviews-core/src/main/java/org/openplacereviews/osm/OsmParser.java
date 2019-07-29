@@ -14,6 +14,7 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.openplacereviews.osm.model.DiffEntity.*;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
@@ -38,6 +39,72 @@ public class OsmParser {
 
 	public OsmParser(File file) throws IOException, XmlPullParserException {
 		this(new FileReader(file));
+	}
+
+	public List<DiffEntity> parseNextDiffCoordinatePlace(int limit) throws IOException, XmlPullParserException {
+		int counter = 0;
+		int event;
+		DiffEntity e = null;
+		String actionSubTag = "";
+		String actionType = "";
+		List<DiffEntity> results = new ArrayList<>();
+		while ((event = parser.next()) != XmlPullParser.END_DOCUMENT) {
+			if (event == XmlPullParser.START_TAG) {
+				String elementName = parser.getName();
+				long id = OUtils.parseLongSilently(getAttributeValue(ATTR_ID), -1);
+				if (TAG_ACTION.equals(elementName)) {
+					actionType = getAttributeValue(ATTR_TYPE);
+					if (ATTR_TYPE_MODIFY.equals(actionType)) {
+						e = new DiffEntity(DiffEntity.DiffEntityType.MODIFY);
+					} else if (ATTR_TYPE_CREATE.equals(actionType)) {
+						e = new DiffEntity(DiffEntity.DiffEntityType.CREATE);
+					} else if (ATTR_TYPE_DELETE.equals(actionType)) {
+						e = new DiffEntity(DiffEntity.DiffEntityType.DELETE);
+					}
+				} else if (TAG_OLD.equals(elementName)) {
+					actionSubTag = TAG_OLD;
+				} else if (TAG_NEW.equals(elementName)) {
+					actionSubTag = TAG_NEW;
+				} else if (EntityType.NODE.getName().equals(elementName)) {
+					double lat = Double.valueOf(getAttributeValue(ATTR_LATITUDE));
+					double lon = Double.valueOf(getAttributeValue(ATTR_LONGITUDE));
+					Entity entity = new Node(lat, lon, id);
+					EntityInfo currentParsedEntity = new EntityInfo()
+							.setVersion(getAttributeValue(ATTR_VERSION))
+							.setTimestamp(getAttributeValue(ATTR_TIMESTAMP))
+							.setChangeset(getAttributeValue(ATTR_CHANGESET))
+							.setUid(getAttributeValue(ATTR_UID))
+							.setUser(getAttributeValue(ATTR_USER))
+							.setVisible(getAttributeValue(ATTR_VISIBLE))
+							.setAction(getAttributeValue(ATTR_ACTION));
+					entity.setEntityInfo(currentParsedEntity);
+					if (TAG_OLD.equals(actionSubTag)) {
+						e.setOldNode(entity);
+					} else if (TAG_NEW.equals(actionSubTag) || actionType.equals(ATTR_TYPE_CREATE)) {
+						e.setNewNode(entity);
+					}
+				} else if (elementName.equals(ATTR_TAG)) {
+					String k = getAttributeValue(ATTR_TAG_K);
+					String v = getAttributeValue(ATTR_TAG_V);
+					if (TAG_OLD.equals(actionSubTag)) {
+						e.getOldNode().putTag(k, v);
+					} else if (TAG_NEW.equals(actionSubTag) || actionType.equals(ATTR_TYPE_CREATE)) {
+						e.getNewNode().putTag(k, v);
+					}
+				}
+			} else if (event == XmlPullParser.END_TAG) {
+				String elementName = parser.getName();
+				if (elementName.equals(TAG_ACTION)) {
+					results.add(e);
+					e = null;
+					actionSubTag = "";
+					if (limit == counter++) {
+						break;
+					}
+				}
+			}
+		}
+		return results;
 	}
 
 	public List<Entity> parseNextCoordinatePlaces(int limit)
