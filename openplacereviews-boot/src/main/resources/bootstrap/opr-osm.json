@@ -16,25 +16,16 @@
 	{
 		"type" : "sys.operation",
 		"create" : [{
-			"id" : ["opr.osm-parser"],
-			"comment" : "",
-			"version" : 0,
-			"arity" : 0,
-			"fields" : {
-				"tag-mapping" : {
-						"shop": "mobile-phone"
+			"id" : ["opr.crawler"],
+			"arity": 0,
+			"sync-states" : [
+				{
+					"date":"",
+					"tags": {
+						"amenity": "(50.3456,30.3671,50.5580,30.8671)",
+						"name": "(50.3456,30.3671,50.5580,30.8671)"
 				}
-			}
-		}]
-	},
-	{
-		"type" : "opr.osm-parser",
-		"create" : [{
-			"id" : ["mobile-tag"],
-			"parser-version" : 1,
-			"tag-mapping" : {
-				"tags_name": ["osm.tags.mobile-phone"]
-			}
+			}]
 		}]
 	}
 ]

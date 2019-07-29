@@ -47,11 +47,7 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	public void run(ApplicationArguments args) {
 		boolean isImport = args.getOptionNames().contains("import");
 		if (isImport && args.getOptionValues("import").get(0).equals("true")) {
-			boolean isFilePath = args.getOptionNames().contains("file.path");
-			if (!isFilePath) {
-				LOGGER.error("--file.path argument is required");
-				System.exit(-1);
-			}
+			
 		}
 	}
 

@@ -17,13 +17,18 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Date;
-import java.util.List;
-import java.util.TreeMap;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_OPERATION;
 import static org.openplacereviews.opendb.ops.OpObject.F_ID;
 import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
@@ -35,6 +40,9 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 
 	public static final String ATTR_OSM = "osm";
 	public static final String ATTR_TAGS = "tags";
+	public static final String F_SYNC_STATES = "sync-states";
+	public static final String F_DATE = "date";
+	public static final String OP_OPR_CRAWLER = "opr.crawler";
 
 	@Autowired
 	public BlocksManager blocksManager;
@@ -47,8 +55,11 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	@Value("${import}")
 	private String runImport;
 
-	@Value("${file.path}")
-	protected String sourceXmlFilePath;
+	@Value("${osm.parser.timestamp}")
+	protected String timestamp;
+
+	@Value("${osm.parser.overpass.url}")
+	protected String overpassURL;
 
 	@Value("${osm.parser.operation.type}")
 	private String osmOpType;
@@ -68,13 +79,13 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		if (blocksManager.getBlockchain().getParent().isNullBlock()) {
 			try {
 				blocksManager.bootstrap(blocksManager.getServerUser(), blocksManager.getServerLoginKeyPair());
+				blocksManager.createBlock();
 			} catch (FailedVerificationException e) {
 				throw new IllegalStateException("Nullable blockchain was not created");
 			}
 		}
 		if (runImport.equals("true")) {
 			publish();
-
 			while (dbSchemaManager.countUndeployedPlaces() > 0) {
 				publish();
 			}
@@ -82,15 +93,32 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	}
 
 	protected void publish() {
-		OsmParser osmParser = null;
-		try {
-			osmParser = new OsmParser(new File(sourceXmlFilePath));
-		} catch (FileNotFoundException | XmlPullParserException e) {
-			LOGGER.error(e.getMessage());
-			throw new IllegalArgumentException("Error while creating osm parser");
-		}
+		if (!checkSyncStateActive(timestamp)) {
+			OsmParser osmParser = null;
+			Reader reader;
+			try {
+				reader = retrieveFile(timestamp);
+				osmParser = new OsmParser(reader);
+			} catch (XmlPullParserException | IOException e) {
+				LOGGER.error(e.getMessage());
+				throw new IllegalArgumentException("Error while creating osm parser");
+			}
 
-		publish(osmParser);
+			publish(osmParser);
+			try {
+				blocksManager.addOperation(generateEditOpForOpOprCrawler(timestamp));
+			} catch (FailedVerificationException e) {
+				LOGGER.error(e.getMessage());
+				throw new IllegalArgumentException("Error while updating op opr.crawler");
+			}
+
+			try {
+				reader.close();
+			} catch (IOException e) {
+				LOGGER.error(e.getMessage());
+				throw new IllegalArgumentException("Cannot to close stream");
+			}
+		}
 	}
 
 	protected void publish(OsmParser osmParser) {
@@ -184,6 +212,74 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		osmObject.put(ATTR_CHANGESET, entityInfo.getChangeset());
 		osmObject.put(ATTR_VISIBLE, entityInfo.getVisible());
 		osmObject.put(ATTR_ACTION, entityInfo.getAction());
+	}
+
+	private boolean checkSyncStateActive(String timestamp) {
+		Map<String, Object> syncStates = getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0);
+
+		if (syncStates.get(F_DATE).equals(timestamp)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private Reader retrieveFile(String timestamp) throws IOException {
+		String request;
+		if (getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0).get(F_DATE).equals("")) {
+			request = "[out:xml][timeout:25][date:\"" + timestamp + "\"];";
+		} else {
+			request = "[out:xml][timeout:25][diff:\"" + getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0).get(F_DATE) + "\",\"" + timestamp + "\"];";
+		}
+
+		List<Map<String, Object>> mapList = getOpOprCrawler().getListStringObjMap(F_SYNC_STATES);
+		Map<String, String> states = (Map<String, String>) ((Map<String, Object>) mapList.get(0)).get(ATTR_TAGS);
+		StringBuilder tags = new StringBuilder();
+		for (Map.Entry<String, String> e : states.entrySet()) {
+			tags.append("node[").append(e.getKey()).append("]").append(e.getValue()).append(";");
+		}
+
+		request += "("+ tags +
+					"); " +
+				"out body;" +
+				">;" +
+				"out geom meta;";
+
+		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
+		request = overpassURL+ "?data=" + request;
+
+		URL url = new URL(request);
+		HttpURLConnection con = (HttpURLConnection) url.openConnection();
+
+		int responseCode = con.getResponseCode();
+		System.out.println("Sending 'GET' request to URL : " + url);
+		System.out.println("Response Code : " + responseCode);
+
+		return new BufferedReader(
+				new InputStreamReader(con.getInputStream()));
+
+	}
+
+	private OpObject getOpOprCrawler() {
+		return blocksManager.getBlockchain().getObjectByName(OP_OPERATION, OP_OPR_CRAWLER);
+	}
+
+	private OpOperation generateEditOpForOpOprCrawler(String timestamp) throws FailedVerificationException {
+		OpOperation opOperation = new OpOperation();
+		opOperation.setType(OP_OPERATION);
+		opOperation.setSignedBy(blocksManager.getServerUser());
+		OpObject editObject = new OpObject();
+		editObject.setId(getOpOprCrawler().getId().get(0));
+		TreeMap<String, Object> changeDate = new TreeMap<>();
+		TreeMap<String, String> setDate = new TreeMap<>();
+		setDate.put("set", timestamp);
+		changeDate.put(F_SYNC_STATES + "[0]." + F_DATE, setDate);
+		editObject.putObjectValue("change", changeDate);
+		editObject.putObjectValue("current", Collections.EMPTY_MAP);
+		opOperation.putObjectValue("edit", Arrays.asList(editObject));
+		blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
+
+		return opOperation;
 	}
 
 }
