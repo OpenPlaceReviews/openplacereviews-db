@@ -1,21 +1,26 @@
 package org.openplacereviews.osm;
 
+import org.kxml2.io.KXmlParser;
+import org.openplacereviews.opendb.util.OUtils;
+import org.openplacereviews.osm.model.*;
+import org.openplacereviews.osm.model.Entity.*;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.kxml2.io.KXmlParser;
-import org.openplacereviews.opendb.util.OUtils;
-import org.openplacereviews.osm.model.*;
-import org.openplacereviews.osm.model.Entity.EntityType;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
-
-import static org.openplacereviews.osm.model.Entity.*;
+import static org.openplacereviews.osm.model.Entity.ATTR_ID;
+import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
+import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.model.Entity.ATTR_REF;
+import static org.openplacereviews.osm.model.Entity.ATTR_TAG;
+import static org.openplacereviews.osm.model.Entity.ATTR_TAG_K;
+import static org.openplacereviews.osm.model.Entity.ATTR_TAG_V;
 import static org.openplacereviews.osm.model.EntityInfo.*;
 import static org.openplacereviews.osm.model.Relation.*;
 import static org.openplacereviews.osm.model.Way.ATTR_ND;
@@ -31,7 +36,7 @@ public class OsmParser {
 		parser.setInput(reader);
 	}
 
-	public OsmParser(File file) throws FileNotFoundException, XmlPullParserException {
+	public OsmParser(File file) throws IOException, XmlPullParserException {
 		this(new FileReader(file));
 	}
 
