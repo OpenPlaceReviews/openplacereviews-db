@@ -15,7 +15,7 @@ osm:
     overpass:
       url: https://overpass-api.de/api/interpreter
       timestamp: http://builder.osmand.net:8083/api/timestamp
-    timestamp: 2019-06-01T00:00:00Z
+    timestamp: 2019-06-08T00:00:00Z
 
     places:
       per:
@@ -37,7 +37,7 @@ opendb:
   db:
     store-history: ${OPENDB_STORE_HISTORY:true}
     compactCoefficient: ${OPENDB_DB_CF:1.0}
-    dbSuperblockSize: ${OPENDB_DB_BLOCK_SZ:1}
+    dbSuperblockSize: ${OPENDB_DB_BLOCK_SZ:32}
   storage:
     ipfs.node:
       host: ${IPFS_HOST:}
