@@ -4,7 +4,7 @@
     "create" : [{
       "id" : ["opr.crawler"],
       "arity": 0,
-      "overpassURL": "https://overpass-api.de/api/interpreter",
+      "overpassURL": "http://builder.osmand.net:8083/api/interpreter",
       "timestampURL": "http://builder.osmand.net:8083/api/timestamp",
       "osmOpType": "opr.place",
       "sync-states" : [

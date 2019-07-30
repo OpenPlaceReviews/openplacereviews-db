@@ -1,5 +1,6 @@
 package org.openplacereviews.db.service;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockChain;
@@ -66,26 +67,17 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	@Value("${import}")
 	private String runImport;
 
-	@Value("${osm.parser.timestamp}")
-	protected String timestamp;
-
-	@Value("${osm.parser.overpass.url}")
-	protected String overpassURL;
-
-	@Value("${osm.parser.overpass.timestamp}")
-	protected String overpassTimestampURL;
-
-	@Value("${opr.type}")
-	private String osmOpType;
-
 	@Value("${opr.limits.places_per_operation}")
 	private Integer placesPerOperation;
 
 	@Value("${opr.limits.operations_per_block}")
 	private Integer operationsPerBlock;
 
+	private String osmOpType;
+	private String timestamp;
+	private String overpassURL;
+	private String overpassTimestampURL;
 	private volatile long opCounter;
-
 	private volatile long appStartedMs;
 
 	@Override
@@ -99,7 +91,20 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 			}
 		}
 		if (runImport.equals("true")) {
+			init();
 			publish();
+		}
+	}
+
+	protected void init() {
+		OpObject crawler = getOpOprCrawler();
+		osmOpType = crawler.getStringValue("osmOpType");
+		overpassURL = crawler.getStringValue("overpassURL");
+		overpassTimestampURL = crawler.getStringValue("timestampURL");
+		try {
+			timestamp = getTimestamp();
+		} catch (IOException e) {
+			LOGGER.error("Error while getting timestamp", e);
 		}
 	}
 
@@ -430,11 +435,10 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		HttpURLConnection con = (HttpURLConnection) url.openConnection();
 
 		int responseCode = con.getResponseCode();
-		System.out.println("Sending 'GET' request to URL : " + url);
-		System.out.println("Response Code : " + responseCode);
+		LOGGER.info("Sending 'GET' request to URL : " + url);
+		LOGGER.info("Response Code : " + responseCode);
 
-		System.out.println(con.getInputStream().toString());
-		return con.getInputStream().toString();
+		return IOUtils.toString(con.getInputStream(), StandardCharsets.UTF_8);
 	}
 
 }
