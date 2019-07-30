@@ -18,16 +18,7 @@ opr:
 
 osm:
   parser:
-    overpass:
-      url: http://builder.osmand.net:8083/api/interpreter
-      timestamp: http://builder.osmand.net:8083/api/timestamp
     timestamp: 2019-06-08T00:00:00Z
-
-    operation:
-      type: opr.place
-      osm-parser: opr.osm-parser
-      per:
-        block: 16
 
 opendb:
   mgmt:
