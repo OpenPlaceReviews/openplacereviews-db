@@ -41,13 +41,15 @@ public class OsmParser {
 		this(new FileReader(file));
 	}
 
-	public List<DiffEntity> parseNextDiffCoordinatePlace(int limit) throws IOException, XmlPullParserException {
+	public List<Object> parseNextCoordinatePlaces(int limit, boolean parseDiff)
+			throws IOException, XmlPullParserException {
 		int counter = 0;
-		int event;
-		DiffEntity e = null;
+		int event ;
+		Entity entity = null;
+		DiffEntity diffEntity = null;
 		String actionSubTag = "";
 		String actionType = "";
-		List<DiffEntity> results = new ArrayList<>();
+		List<Object> results = new ArrayList<>();
 		while ((event = parser.next()) != XmlPullParser.END_DOCUMENT) {
 			if (event == XmlPullParser.START_TAG) {
 				String elementName = parser.getName();
@@ -55,20 +57,21 @@ public class OsmParser {
 				if (TAG_ACTION.equals(elementName)) {
 					actionType = getAttributeValue(ATTR_TYPE);
 					if (ATTR_TYPE_MODIFY.equals(actionType)) {
-						e = new DiffEntity(DiffEntity.DiffEntityType.MODIFY);
+						diffEntity = new DiffEntity(DiffEntity.DiffEntityType.MODIFY);
 					} else if (ATTR_TYPE_CREATE.equals(actionType)) {
-						e = new DiffEntity(DiffEntity.DiffEntityType.CREATE);
+						diffEntity = new DiffEntity(DiffEntity.DiffEntityType.CREATE);
 					} else if (ATTR_TYPE_DELETE.equals(actionType)) {
-						e = new DiffEntity(DiffEntity.DiffEntityType.DELETE);
+						diffEntity = new DiffEntity(DiffEntity.DiffEntityType.DELETE);
 					}
 				} else if (TAG_OLD.equals(elementName)) {
 					actionSubTag = TAG_OLD;
 				} else if (TAG_NEW.equals(elementName)) {
 					actionSubTag = TAG_NEW;
-				} else if (EntityType.NODE.getName().equals(elementName)) {
+				}
+				if (elementName.equals(EntityType.NODE.getName())) {
 					double lat = Double.valueOf(getAttributeValue(ATTR_LATITUDE));
 					double lon = Double.valueOf(getAttributeValue(ATTR_LONGITUDE));
-					Entity entity = new Node(lat, lon, id);
+					entity = new Node(lat, lon, id);
 					EntityInfo currentParsedEntity = new EntityInfo()
 							.setVersion(getAttributeValue(ATTR_VERSION))
 							.setTimestamp(getAttributeValue(ATTR_TIMESTAMP))
@@ -78,81 +81,49 @@ public class OsmParser {
 							.setVisible(getAttributeValue(ATTR_VISIBLE))
 							.setAction(getAttributeValue(ATTR_ACTION));
 					entity.setEntityInfo(currentParsedEntity);
-					if (TAG_OLD.equals(actionSubTag)) {
-						e.setOldNode(entity);
-					} else if (TAG_NEW.equals(actionSubTag) || actionType.equals(ATTR_TYPE_CREATE)) {
-						e.setNewNode(entity);
+					if (parseDiff && TAG_OLD.equals(actionSubTag)) {
+						diffEntity.setOldNode(entity);
+					} else if (parseDiff && (TAG_NEW.equals(actionSubTag) || actionType.equals(ATTR_TYPE_CREATE))) {
+						diffEntity.setNewNode(entity);
 					}
-				} else if (elementName.equals(ATTR_TAG)) {
-					String k = getAttributeValue(ATTR_TAG_K);
-					String v = getAttributeValue(ATTR_TAG_V);
-					if (TAG_OLD.equals(actionSubTag)) {
-						e.getOldNode().putTag(k, v);
-					} else if (TAG_NEW.equals(actionSubTag) || actionType.equals(ATTR_TYPE_CREATE)) {
-						e.getNewNode().putTag(k, v);
-					}
-				}
-			} else if (event == XmlPullParser.END_TAG) {
-				String elementName = parser.getName();
-				if (elementName.equals(TAG_ACTION)) {
-					results.add(e);
-					e = null;
-					actionSubTag = "";
-					if (limit == counter++) {
-						break;
-					}
-				}
-			}
-		}
-		return results;
-	}
-
-	public List<Entity> parseNextCoordinatePlaces(int limit)
-			throws IOException, XmlPullParserException {
-		int counter = 0;
-		int event ;
-		Entity e = null;
-		List<Entity> results = new ArrayList<Entity>();
-		while ((event = parser.next()) != XmlPullParser.END_DOCUMENT) {
-			if (event == XmlPullParser.START_TAG) {
-				String elementName = parser.getName();
-				long id = OUtils.parseLongSilently(getAttributeValue(ATTR_ID), -1);
-				if (elementName.equals(EntityType.NODE.getName())) {
-					double lat = Double.valueOf(getAttributeValue(ATTR_LATITUDE));
-					double lon = Double.valueOf(getAttributeValue(ATTR_LONGITUDE));
-					e = new Node(lat, lon, id);
-					EntityInfo currentParsedEntity = new EntityInfo()
-							.setVersion(getAttributeValue(ATTR_VERSION))
-							.setTimestamp(getAttributeValue(ATTR_TIMESTAMP))
-							.setChangeset(getAttributeValue(ATTR_CHANGESET))
-							.setUid(getAttributeValue(ATTR_UID))
-							.setUser(getAttributeValue(ATTR_USER))
-							.setVisible(getAttributeValue(ATTR_VISIBLE))
-							.setAction(getAttributeValue(ATTR_ACTION));
-					e.setEntityInfo(currentParsedEntity);
 				} else if (elementName.equals(EntityType.WAY.getName())) {
-					e = new Way(id);
+					entity = new Way(id);
 				} else if (elementName.equals(EntityType.RELATION.getName())) {
-					e = new Relation(id);
+					entity = new Relation(id);
 				} else if (elementName.equals(ATTR_MEMBER)) {
-					e = new Relation(id);
+					entity = new Relation(id);
 					long ref = OUtils.parseLongSilently(getAttributeValue(ATTR_REF), -1);
 					String tp = getAttributeValue(ATTR_TYPE);
 					String role = getAttributeValue(ATTR_ROLE);
-					((Relation)e).addMember(ref, EntityType.valueOf(tp.toUpperCase()), role);
+					((Relation)entity).addMember(ref, EntityType.valueOf(tp.toUpperCase()), role);
 				} else if (elementName.equals(ATTR_ND)) {
-					((Way) e).addNode(OUtils.parseLongSilently(getAttributeValue(ATTR_REF), -1));
+					((Way) entity).addNode(OUtils.parseLongSilently(getAttributeValue(ATTR_REF), -1));
 				} else if (elementName.equals(ATTR_TAG)) {
 					String k = getAttributeValue(ATTR_TAG_K);
 					String v = getAttributeValue(ATTR_TAG_V);
-					e.putTag(k, v);
+					if (!parseDiff) {
+						entity.putTag(k, v);
+					} else {
+						if (TAG_OLD.equals(actionSubTag)) {
+							diffEntity.getOldNode().putTag(k, v);
+						} else if (TAG_NEW.equals(actionSubTag) || actionType.equals(ATTR_TYPE_CREATE)) {
+							diffEntity.getNewNode().putTag(k, v);
+						}
+					}
 				}
 			} else if (event == XmlPullParser.END_TAG) {
 				// here we could close the tag
 				String elementName = parser.getName();
-				if (elementName.equals(EntityType.NODE.getName()) || elementName.equals(EntityType.WAY.getName()) || elementName.equals(EntityType.RELATION.getName())) {
-					results.add(e);
-					e = null;
+				if (parseDiff && elementName.equals(TAG_ACTION)) {
+					results.add(diffEntity);
+					diffEntity = null;
+					actionSubTag = "";
+					if (limit == counter++) {
+						break;
+					}
+				} else if (!parseDiff && (elementName.equals(EntityType.NODE.getName()) || elementName.equals(EntityType.WAY.getName()) || elementName.equals(EntityType.RELATION.getName()))) {
+					results.add(entity);
+					entity = null;
 					if (limit == counter++) {
 						break;
 					}

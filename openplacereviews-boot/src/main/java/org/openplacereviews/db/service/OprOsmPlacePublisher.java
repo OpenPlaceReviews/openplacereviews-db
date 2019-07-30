@@ -2,6 +2,7 @@ package org.openplacereviews.db.service;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.BlocksManager;
@@ -19,17 +20,20 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.zip.GZIPInputStream;
 
+import static org.openplacereviews.db.service.OprOsmPlacePublisher.SyncStatus.DIFF;
+import static org.openplacereviews.db.service.OprOsmPlacePublisher.SyncStatus.NEW;
+import static org.openplacereviews.db.service.OprOsmPlacePublisher.SyncStatus.SYNC;
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_OPERATION;
+import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
+import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.ops.OpObject.F_ID;
 import static org.openplacereviews.opendb.ops.OpOperation.F_DELETE;
 import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
@@ -42,8 +46,13 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 
 	public static final String ATTR_OSM = "osm";
 	public static final String ATTR_TAGS = "tags";
+	public static final String ATTR_SET = "set";
+	public static final String ATTR_OSM_TAGS = "osm.tags.";
+
 	public static final String F_SYNC_STATES = "sync-states";
 	public static final String F_DATE = "date";
+	public static final String F_DIFF = "diff";
+
 	public static final String OP_OPR_CRAWLER = "opr.crawler";
 
 	@Autowired
@@ -66,14 +75,14 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	@Value("${osm.parser.overpass.timestamp}")
 	protected String overpassTimestampURL;
 
-	@Value("${osm.parser.operation.type}")
+	@Value("${opr.type}")
 	private String osmOpType;
 
-	@Value("${osm.parser.places.per.operation}")
+	@Value("${opr.limits.places_per_operation}")
 	private Integer placesPerOperation;
 
-	@Value("${osm.parser.operation.per.block}")
-	private Integer operationPerBlock;
+	@Value("${opr.limits.operations_per_block}")
+	private Integer operationsPerBlock;
 
 	private volatile long opCounter;
 
@@ -86,7 +95,7 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 				blocksManager.bootstrap(blocksManager.getServerUser(), blocksManager.getServerLoginKeyPair());
 				blocksManager.createBlock();
 			} catch (FailedVerificationException e) {
-				throw new IllegalStateException("Nullable blockchain was not created");
+				throw new IllegalStateException("Nullable blockchain was not created", e);
 			}
 		}
 		if (runImport.equals("true")) {
@@ -95,8 +104,8 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	}
 
 	protected void publish() {
-		String statusSync = getSyncStatus(timestamp);
-		if (statusSync.equals("diff") || statusSync.equals("new")) {
+		SyncStatus statusSync = getSyncStatus(timestamp);
+		if (statusSync.equals(DIFF) || statusSync.equals(NEW)) {
 			OsmParser osmParser;
 			Reader reader;
 			try {
@@ -104,7 +113,7 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 				osmParser = new OsmParser(reader);
 			} catch (XmlPullParserException | IOException e) {
 				LOGGER.error(e.getMessage());
-				throw new IllegalArgumentException("Error while creating osm parser");
+				throw new IllegalArgumentException("Error while creating osm parser", e);
 			}
 
 			publish(osmParser, statusSync);
@@ -112,37 +121,64 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 				blocksManager.addOperation(generateEditOpForOpOprCrawler(timestamp));
 			} catch (FailedVerificationException e) {
 				LOGGER.error(e.getMessage());
-				throw new IllegalArgumentException("Error while updating op opr.crawler");
+				throw new IllegalArgumentException("Error while updating op opr.crawler", e);
 			}
 
 			try {
 				reader.close();
 			} catch (IOException e) {
 				LOGGER.error(e.getMessage());
-				throw new IllegalArgumentException("Cannot to close stream");
+				throw new IllegalArgumentException("Cannot to close stream", e);
 			}
 		}
 	}
 
-	protected void publish(OsmParser osmParser, String statusSync) {
+	protected void publish(OsmParser osmParser, SyncStatus statusSync) {
 		appStartedMs = System.currentTimeMillis();
-		//List<String> osmPlaceHeaders = blocksManager.getBlockchain().getObjects();
+		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
+		blocksManager.getBlockchain().getObjectHeaders(osmOpType, objectsSearchRequest);
+		HashSet<List<String>> osmPlaceHeaders = objectsSearchRequest.resultWithHeaders;
 		while (true) {
 			try {
 				Object places;
-				if (statusSync.equals("new")) {
-					places = osmParser.parseNextCoordinatePlaces(placesPerOperation);
+				if (statusSync.equals(NEW)) {
+					places = osmParser.parseNextCoordinatePlaces(placesPerOperation, false);
+
 				} else {
-					places = osmParser.parseNextDiffCoordinatePlace(placesPerOperation);
+					places = osmParser.parseNextCoordinatePlaces(placesPerOperation, true);
 				}
 
 				if (places == null || ((List)places).isEmpty())
 					break;
 
-				// todo filter duplicates for create op!!!
+				List<Object> objectList = (List<Object>) places;
+				List<Object> removeCollection = new LinkedList<>();
+				for (Object o : objectList) {
+					if (o instanceof Entity) {
+						Entity entity = (Entity) o;
+						List<String> strId = Collections.singletonList(OsmLocationTool.generateStrId(entity.getLatLon(), entity.getId()));
+						if (osmPlaceHeaders.contains(strId)) {
+							removeCollection.add(o);
+						} else {
+							osmPlaceHeaders.add(strId);
+						}
+					} else if (o instanceof DiffEntity) {
+						DiffEntity diffEntity = (DiffEntity) o;
+						if (diffEntity.getType().equals(DiffEntity.DiffEntityType.CREATE)) {
+							List<String> strId = Collections.singletonList(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon(), diffEntity.getNewNode().getId()));
+							if (osmPlaceHeaders.contains(strId)) {
+								removeCollection.add(o);
+							} else {
+								osmPlaceHeaders.add(strId);
+							}
+						}
+					}
+				}
+				objectList.removeAll(removeCollection);
+
 				publish(places);
 			} catch (Exception e) {
-				LOGGER.error("Error while publishing");
+				LOGGER.error("Error while publishing", e);
 				break;
 			}
 		}
@@ -154,15 +190,15 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		try {
 			for (OpOperation opOperation : osmCoordinatePlacesDto) {
 				blocksManager.addOperation(opOperation);
+				opCounter += 1;
 			}
-			opCounter += 1;
 		} catch (Exception e) {
 			LOGGER.error("Error occurred while posting places: " + e.getMessage());
 			LOGGER.info("Amount of pack transferred data: " + opCounter);
 		}
 
 		try {
-			boolean createBlock = (opCounter % operationPerBlock == 0);
+			boolean createBlock = (opCounter % operationsPerBlock == 0);
 			if (createBlock) {
 				blocksManager.createBlock();
 				LOGGER.info("Op saved: " + opCounter + " date: " + new Date());
@@ -186,106 +222,36 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 
 		for (Object e : places) {
 			if (e instanceof Entity) {
-
 				Entity obj = (Entity) e;
-				OpObject create = new OpObject();
-				create.setId(OsmLocationTool.generateStrId(obj.getLatLon(), obj.getId()));
-				TreeMap<String, Object> osmObject = new TreeMap<>();
-				osmObject.put(F_ID, String.valueOf(obj.getId()));
-				osmObject.put(F_TYPE, obj.getClass().getSimpleName().toLowerCase());
-				osmObject.put(ATTR_TAGS, obj.getTags());
-				osmObject.put(ATTR_LONGITUDE, obj.getLongitude());
-				osmObject.put(ATTR_LATITUDE, obj.getLatitude());
-
-				if (obj.getEntityInfo() != null) {
-					generateEntityInfo(osmObject, obj.getEntityInfo());
-				}
-
-				create.putObjectValue(ATTR_OSM, osmObject);
 				createOperation = initOpOperation(createOperation);
-				createOperation.addCreated(create);
+				createOperation.addCreated(generateCreateOpObject(obj));
 			} else if (e instanceof DiffEntity) {
 				DiffEntity diffEntity = (DiffEntity) e;
 				if (diffEntity.getType().equals(DiffEntity.DiffEntityType.DELETE)) {
 					deleteOperation = initOpOperation(deleteOperation);
-					List<String> objId = Arrays.asList(OsmLocationTool.generateStrId(diffEntity.getOldNode().getLatLon(), diffEntity.getOldNode().getId()));
-					deleteOperation.putObjectValue(F_DELETE, Arrays.asList(objId));
+					List<List<String>> deletedObjs = deleteOperation.getDeleted();
+					if (deletedObjs.isEmpty()) {
+						deletedObjs = new ArrayList<>();
+					}
+					deleteOperation.putObjectValue(F_DELETE, generateDeleteOpObject(deletedObjs, diffEntity.getOldNode()));
 				} else if (diffEntity.getType().equals(DiffEntity.DiffEntityType.CREATE)) {
-					OpObject create = new OpObject();
-					if (diffEntity.getNewNode() == null) {
-						System.out.println(diffEntity);
-					}
-					if (diffEntity.getNewNode().getLatLon() == null) {
-						System.out.println(diffEntity);
-					}
-					create.setId(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon(), diffEntity.getNewNode().getId()));
-					TreeMap<String, Object> osmObject = new TreeMap<>();
-					osmObject.put(F_ID, String.valueOf(diffEntity.getNewNode().getId()));
-					osmObject.put(F_TYPE, diffEntity.getNewNode().getClass().getSimpleName().toLowerCase());
-					osmObject.put(ATTR_TAGS, diffEntity.getNewNode().getTags());
-					osmObject.put(ATTR_LONGITUDE, diffEntity.getNewNode().getLongitude());
-					osmObject.put(ATTR_LATITUDE, diffEntity.getNewNode().getLatitude());
-
-					if (diffEntity.getNewNode().getEntityInfo() != null) {
-						generateEntityInfo(osmObject, diffEntity.getNewNode().getEntityInfo());
-					}
-
-					create.putObjectValue(ATTR_OSM, osmObject);
 					createOperation = initOpOperation(createOperation);
-					createOperation.addCreated(create);
+					createOperation.addCreated(generateCreateOpObject(diffEntity.getNewNode()));
 				} else if (diffEntity.getType().equals(DiffEntity.DiffEntityType.MODIFY)) {
 					OpObject edit = new OpObject();
 					if (diffEntity.getNewNode().getLatLon().equals(diffEntity.getOldNode().getLatLon())) {
-						edit.setId(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon(), diffEntity.getNewNode().getId()));
-						TreeMap<String, Object> changeTagMap = new TreeMap<>();
-						TreeMap<String, String> currentTagMAp = new TreeMap<>();
-						Map<String, String> tempTags = diffEntity.getOldNode().getTags();
-						for (Map.Entry<String, String> newEntry : diffEntity.getNewNode().getTags().entrySet()) {
-							if (tempTags.containsKey(newEntry.getKey())) {
-								if (!newEntry.getValue().equals(tempTags.get(newEntry.getKey()))) {
-									TreeMap<String, String> setValue = new TreeMap<>();
-									setValue.put("set", newEntry.getValue());
-									changeTagMap.put("osm.tags." + newEntry.getKey(), setValue);
-									currentTagMAp.put("osm.tags." + newEntry.getKey(), tempTags.get(newEntry.getKey()));
-								}
-							} else {
-								TreeMap<String, String> setValue = new TreeMap<>();
-								setValue.put("set", newEntry.getValue());
-								changeTagMap.put("osm.tags." + newEntry.getKey(), setValue);
-							}
-						}
-						tempTags = diffEntity.getNewNode().getTags();
-						for (Map.Entry<String, String> oldEntry : diffEntity.getOldNode().getTags().entrySet()) {
-							if (!tempTags.containsKey(oldEntry.getKey())) {
-								changeTagMap.put("osm.tags." + oldEntry.getKey(), F_DELETE);
-								currentTagMAp.put("osm.tags." + oldEntry.getKey(), oldEntry.getValue());
-							}
-						}
-
-						edit.putObjectValue("change", changeTagMap);
-						edit.putObjectValue("current", currentTagMAp);
 						editOperation = initOpOperation(editOperation);
-						editOperation.addEdited(edit);
+						editOperation.addEdited(generateEditOpObject(edit, diffEntity));
 					} else {
-						List<String> objId = Arrays.asList(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon(), diffEntity.getNewNode().getId()));
 						deleteOperation = initOpOperation(deleteOperation);
-						deleteOperation.putObjectValue(F_DELETE,  Arrays.asList(objId));
-						OpObject create = new OpObject();
-						create.setId(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon(), diffEntity.getNewNode().getId()));
-						TreeMap<String, Object> osmObject = new TreeMap<>();
-						osmObject.put(F_ID, String.valueOf(diffEntity.getNewNode().getId()));
-						osmObject.put(F_TYPE, diffEntity.getNewNode().getClass().getSimpleName().toLowerCase());
-						osmObject.put(ATTR_TAGS, diffEntity.getNewNode().getTags());
-						osmObject.put(ATTR_LONGITUDE, diffEntity.getNewNode().getLongitude());
-						osmObject.put(ATTR_LATITUDE, diffEntity.getNewNode().getLatitude());
-
-						if (diffEntity.getNewNode().getEntityInfo() != null) {
-							generateEntityInfo(osmObject, diffEntity.getNewNode().getEntityInfo());
+						List<List<String>> deletedObjs = deleteOperation.getDeleted();
+						if (deletedObjs.isEmpty()) {
+							deletedObjs = new ArrayList<>();
 						}
-						create.putObjectValue(ATTR_OSM, osmObject);
+						deleteOperation.putObjectValue(F_DELETE, generateDeleteOpObject(deletedObjs, diffEntity.getOldNode()));
 
 						createOperation = initOpOperation(createOperation);
-						createOperation.addCreated(create);
+						createOperation.addCreated(generateCreateOpObject(diffEntity.getNewNode()));
 					}
 				}
 			}
@@ -296,6 +262,62 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		generateHashAndSign(opOperations, editOperation);
 
 		return opOperations;
+	}
+
+	private List<List<String>> generateDeleteOpObject(List<List<String>> deletedObjs, Entity entity) {
+		deletedObjs.add(Collections.singletonList(OsmLocationTool.generateStrId(entity.getLatLon(), entity.getId())));
+		return deletedObjs;
+	}
+
+	private OpObject generateCreateOpObject(Entity entity) {
+		OpObject create = new OpObject();
+		create.setId(OsmLocationTool.generateStrId(entity.getLatLon(), entity.getId()));
+		TreeMap<String, Object> osmObject = new TreeMap<>();
+		osmObject.put(F_ID, String.valueOf(entity.getId()));
+		osmObject.put(F_TYPE, entity.getClass().getSimpleName().toLowerCase());
+		osmObject.put(ATTR_TAGS, entity.getTags());
+		osmObject.put(ATTR_LONGITUDE, entity.getLongitude());
+		osmObject.put(ATTR_LATITUDE, entity.getLatitude());
+
+		if (entity.getEntityInfo() != null) {
+			generateEntityInfo(osmObject, entity.getEntityInfo());
+		}
+
+		create.putObjectValue(ATTR_OSM, osmObject);
+		return create;
+	}
+
+	private OpObject generateEditOpObject(OpObject edit, DiffEntity diffEntity) {
+		edit.setId(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon(), diffEntity.getNewNode().getId()));
+		TreeMap<String, Object> changeTagMap = new TreeMap<>();
+		TreeMap<String, String> currentTagMAp = new TreeMap<>();
+		Map<String, String> tempTags = diffEntity.getOldNode().getTags();
+		for (Map.Entry<String, String> newEntry : diffEntity.getNewNode().getTags().entrySet()) {
+			if (tempTags.containsKey(newEntry.getKey())) {
+				if (!newEntry.getValue().equals(tempTags.get(newEntry.getKey()))) {
+					TreeMap<String, String> setValue = new TreeMap<>();
+					setValue.put(ATTR_SET, newEntry.getValue());
+					changeTagMap.put(ATTR_OSM_TAGS + newEntry.getKey(), setValue);
+					currentTagMAp.put(ATTR_OSM_TAGS + newEntry.getKey(), tempTags.get(newEntry.getKey()));
+				}
+			} else {
+				TreeMap<String, String> setValue = new TreeMap<>();
+				setValue.put(ATTR_SET, newEntry.getValue());
+				changeTagMap.put(ATTR_OSM_TAGS + newEntry.getKey(), setValue);
+			}
+		}
+		tempTags = diffEntity.getNewNode().getTags();
+		for (Map.Entry<String, String> oldEntry : diffEntity.getOldNode().getTags().entrySet()) {
+			if (!tempTags.containsKey(oldEntry.getKey())) {
+				changeTagMap.put(ATTR_OSM_TAGS + oldEntry.getKey(), F_DELETE);
+				currentTagMAp.put(ATTR_OSM_TAGS + oldEntry.getKey(), oldEntry.getValue());
+			}
+		}
+
+		edit.putObjectValue(F_CHANGE, changeTagMap);
+		edit.putObjectValue(F_CURRENT, currentTagMAp);
+
+		return edit;
 	}
 
 	private OpOperation initOpOperation(OpOperation opOperation) {
@@ -327,53 +349,52 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	}
 
 	// TODO add sync status for DB!!!!!
-	private String getSyncStatus(String timestamp) {
+	public enum SyncStatus {
+		SYNC,
+		NEW,
+		DIFF
+	}
+
+	private SyncStatus getSyncStatus(String timestamp) {
 		Map<String, Object> syncStates = getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0);
 
 		if (syncStates.get(F_DATE).equals(timestamp)) {
-			return "sync";
+			return SYNC;
 		}
 
 		if (syncStates.get(F_DATE).equals("")) {
-			return "new";
+			return NEW;
 		}
 
-		return "diff";
+		return DIFF;
 	}
 
 	private Reader retrieveFile(String timestamp) throws IOException {
+		String subRequest = "[out:xml][timeout:25][%s:\"%s\"];(%s); out body; >; out geom meta;";
 		String request;
-		if (getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0).get(F_DATE).equals("")) {
-			request = "[out:xml][timeout:25][date:\"" + timestamp + "\"];";
-		} else {
-			request = "[out:xml][timeout:25][diff:\"" + getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0).get(F_DATE) + "\",\"" + timestamp + "\"];";
-		}
-
 		List<Map<String, Object>> mapList = getOpOprCrawler().getListStringObjMap(F_SYNC_STATES);
 		Map<String, String> states = (Map<String, String>) ((Map<String, Object>) mapList.get(0)).get(ATTR_TAGS);
 		StringBuilder tags = new StringBuilder();
 		for (Map.Entry<String, String> e : states.entrySet()) {
-			tags.append("node[").append(e.getKey()).append("]").append(e.getValue()).append(";");
+			tags.append(e.getKey()).append(e.getValue()).append(";");
 		}
 
-		request += "("+ tags +
-					"); " +
-				"out body;" +
-				">;" +
-				"out geom meta;";
+		if (getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0).get(F_DATE).equals("")) {
+			request = String.format(subRequest, F_DATE, timestamp, tags);
+		} else {
+			request = String.format(subRequest, F_DIFF, getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0).get(F_DATE) + "\",\"" + timestamp, tags);
+		}
 
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
 		request = overpassURL+ "?data=" + request;
 
 		URL url = new URL(request);
 		HttpURLConnection con = (HttpURLConnection) url.openConnection();
+		LOGGER.info("Sending 'GET' request to URL : " + url);
+		LOGGER.info("Response Code : " + con.getResponseCode());
 
-		int responseCode = con.getResponseCode();
-		System.out.println("Sending 'GET' request to URL : " + url);
-		System.out.println("Response Code : " + responseCode);
-
-		return new BufferedReader(
-				new InputStreamReader(con.getInputStream()));
+		GZIPInputStream gzis = new GZIPInputStream(con.getInputStream());
+		return new BufferedReader(new InputStreamReader(gzis));
 
 	}
 
@@ -387,12 +408,17 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		opOperation.setSignedBy(blocksManager.getServerUser());
 		OpObject editObject = new OpObject();
 		editObject.setId(getOpOprCrawler().getId().get(0));
+
 		TreeMap<String, Object> changeDate = new TreeMap<>();
 		TreeMap<String, String> setDate = new TreeMap<>();
-		setDate.put("set", timestamp);
+		setDate.put(ATTR_SET, timestamp);
 		changeDate.put(F_SYNC_STATES + "[0]." + F_DATE, setDate);
-		editObject.putObjectValue("change", changeDate);
-		editObject.putObjectValue("current", Collections.EMPTY_MAP);
+		editObject.putObjectValue(F_CHANGE, changeDate);
+
+		TreeMap<String, String> previousDate = new TreeMap<>();
+		previousDate.put(F_SYNC_STATES + "[0]." + F_DATE, (String) getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0).get(F_DATE));
+		editObject.putObjectValue(F_CURRENT, previousDate);
+
 		opOperation.addEdited(editObject);
 		blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
 
@@ -401,14 +427,13 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 
 	private String getTimestamp() throws IOException {
 		URL url = new URL(overpassTimestampURL);
-
-		//gzip input string
 		HttpURLConnection con = (HttpURLConnection) url.openConnection();
 
 		int responseCode = con.getResponseCode();
 		System.out.println("Sending 'GET' request to URL : " + url);
 		System.out.println("Response Code : " + responseCode);
 
+		System.out.println(con.getInputStream().toString());
 		return con.getInputStream().toString();
 	}
 

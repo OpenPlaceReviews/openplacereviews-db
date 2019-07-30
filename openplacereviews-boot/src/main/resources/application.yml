@@ -10,16 +10,19 @@ server:
     max-http-post-size: 4096
     max-threads: 5
 
+opr:
+  type: opr.place
+  limits:
+    places_per_operation: 250
+    operations_per_block: 16
+
 osm:
   parser:
     overpass:
-      url: https://overpass-api.de/api/interpreter
+      url: http://builder.osmand.net:8083/api/interpreter
       timestamp: http://builder.osmand.net:8083/api/timestamp
     timestamp: 2019-06-08T00:00:00Z
 
-    places:
-      per:
-        operation: 250
     operation:
       type: opr.place
       osm-parser: opr.osm-parser
@@ -37,7 +40,7 @@ opendb:
   db:
     store-history: ${OPENDB_STORE_HISTORY:true}
     compactCoefficient: ${OPENDB_DB_CF:1.0}
-    dbSuperblockSize: ${OPENDB_DB_BLOCK_SZ:32}
+    dbSuperblockSize: ${OPENDB_DB_BLOCK_SZ:3}
   storage:
     ipfs.node:
       host: ${IPFS_HOST:}

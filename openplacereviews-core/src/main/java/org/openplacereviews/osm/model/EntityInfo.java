@@ -20,7 +20,6 @@ public class EntityInfo {
 	private String changeset;
 	private String action;
 	
-	
 	public EntityInfo() {
 	}
 

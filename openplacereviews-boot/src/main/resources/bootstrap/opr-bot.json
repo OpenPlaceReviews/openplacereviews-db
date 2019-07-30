@@ -1,0 +1,20 @@
+[
+  {
+    "type" : "sys.operation",
+    "create" : [{
+      "id" : ["opr.crawler"],
+      "arity": 0,
+      "overpassURL": "https://overpass-api.de/api/interpreter",
+      "timestampURL": "http://builder.osmand.net:8083/api/timestamp",
+      "osmOpType": "opr.place",
+      "sync-states" : [
+        {
+          "date":"",
+          "tags": {
+            "node[\"amenity\"]": "(50.3456,30.3671,50.5580,30.8671)",
+            "node[\"name\"]": "(50.3456,30.3671,50.5580,30.8671)"
+          }
+        }]
+    }]
+  }
+]

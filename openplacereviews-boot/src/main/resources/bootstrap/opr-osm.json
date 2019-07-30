@@ -12,20 +12,5 @@
 				"tags": "place tags"
 			}
 		}]
-	},
-	{
-		"type" : "sys.operation",
-		"create" : [{
-			"id" : ["opr.crawler"],
-			"arity": 0,
-			"sync-states" : [
-				{
-					"date":"",
-					"tags": {
-						"amenity": "(50.3456,30.3671,50.5580,30.8671)",
-						"name": "(50.3456,30.3671,50.5580,30.8671)"
-				}
-			}]
-		}]
 	}
 ]
