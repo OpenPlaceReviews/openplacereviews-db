@@ -1,5 +1,5 @@
 rootProject.name = 'openplacereviews-db'
 include 'openplacereviews-core'
-include 'openplacereviews-boot'
+include 'openplacereviews-boot'd 
 include 'openplacereviews-bot'
 
