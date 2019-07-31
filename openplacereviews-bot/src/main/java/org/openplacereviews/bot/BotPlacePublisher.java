@@ -1,4 +1,4 @@
-package org.openplacereviews.db.service;
+package org.openplacereviews.bot;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
@@ -13,15 +13,12 @@ import org.openplacereviews.osm.OsmParser;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.model.EntityInfo;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
 import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -29,22 +26,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
-import static org.openplacereviews.db.service.OprOsmPlacePublisher.SyncStatus.DIFF;
-import static org.openplacereviews.db.service.OprOsmPlacePublisher.SyncStatus.NEW;
-import static org.openplacereviews.db.service.OprOsmPlacePublisher.SyncStatus.SYNC;
-import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_OPERATION;
-import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
-import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
-import static org.openplacereviews.opendb.ops.OpObject.F_ID;
+import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_TYPE_SYS;
+import static org.openplacereviews.opendb.ops.OpObject.*;
 import static org.openplacereviews.opendb.ops.OpOperation.F_DELETE;
 import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.model.EntityInfo.*;
 
-@Component
-public class OprOsmPlacePublisher implements ApplicationListener<ApplicationReadyEvent> {
+public class BotPlacePublisher {
 
+	protected static final Log LOGGER = LogFactory.getLog(BotPlacePublisher.class);
+
+	public static final String OP_BOT = OP_TYPE_SYS + "bot";
 	public static final String ATTR_OSM = "osm";
 	public static final String ATTR_TAGS = "tags";
 	public static final String ATTR_SET = "set";
@@ -54,46 +48,21 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	public static final String F_DATE = "date";
 	public static final String F_DIFF = "diff";
 
-	public static final String OP_OPR_CRAWLER = "opr.crawler";
-
-	@Autowired
-	public BlocksManager blocksManager;
-
-	@Autowired
-	public JdbcTemplate jdbcTemplate;
-
-	protected static final Log LOGGER = LogFactory.getLog(OprOsmPlacePublisher.class);
-
-	@Value("${import}")
-	private String runImport;
-
-	@Value("${opr.limits.places_per_operation}")
 	private Integer placesPerOperation;
-
-	@Value("${opr.limits.operations_per_block}")
 	private Integer operationsPerBlock;
-
 	private String osmOpType;
 	private String timestamp;
 	private String overpassURL;
 	private String overpassTimestampURL;
+	private BlocksManager blocksManager;
+	private OpObject botObject;
 	private volatile long opCounter;
 	private volatile long appStartedMs;
 
-	@Override
-	public void onApplicationEvent(final ApplicationReadyEvent event) {
-		if (blocksManager.getBlockchain().getParent().isNullBlock()) {
-			try {
-				blocksManager.bootstrap(blocksManager.getServerUser(), blocksManager.getServerLoginKeyPair());
-				blocksManager.createBlock();
-			} catch (FailedVerificationException e) {
-				throw new IllegalStateException("Nullable blockchain was not created", e);
-			}
-		}
-		if (runImport.equals("true")) {
-			init();
-			publish();
-		}
+	public BotPlacePublisher(BlocksManager blocksManager, OpObject botObject) {
+		this.blocksManager = blocksManager;
+		this.botObject = botObject;
+		init();
 	}
 
 	protected void init() {
@@ -101,6 +70,8 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		osmOpType = crawler.getStringValue("osmOpType");
 		overpassURL = crawler.getStringValue("overpassURL");
 		overpassTimestampURL = crawler.getStringValue("timestampURL");
+		placesPerOperation = crawler.getIntValue("places_per_operation", 0);
+		operationsPerBlock = crawler.getIntValue("operations_per_block", 0);
 		try {
 			timestamp = getTimestamp();
 		} catch (IOException e) {
@@ -108,9 +79,9 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		}
 	}
 
-	protected void publish() {
+	public void publish() {
 		SyncStatus statusSync = getSyncStatus(timestamp);
-		if (statusSync.equals(DIFF) || statusSync.equals(NEW)) {
+		if (statusSync.equals(SyncStatus.DIFF) || statusSync.equals(SyncStatus.NEW)) {
 			OsmParser osmParser;
 			Reader reader;
 			try {
@@ -123,7 +94,10 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 
 			publish(osmParser, statusSync);
 			try {
-				blocksManager.addOperation(generateEditOpForOpOprCrawler(timestamp));
+				Thread thread = Thread.currentThread();
+				if (!thread.isInterrupted()) {
+					blocksManager.addOperation(generateEditOpForOpOprCrawler(timestamp));
+				}
 			} catch (FailedVerificationException e) {
 				LOGGER.error(e.getMessage());
 				throw new IllegalArgumentException("Error while updating op opr.crawler", e);
@@ -143,16 +117,15 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
 		blocksManager.getBlockchain().getObjectHeaders(osmOpType, objectsSearchRequest);
 		HashSet<List<String>> osmPlaceHeaders = objectsSearchRequest.resultWithHeaders;
-		while (true) {
+		Thread thread = Thread.currentThread();
+		while (!thread.isInterrupted()) {
 			try {
 				Object places;
-				if (statusSync.equals(NEW)) {
+				if (statusSync.equals(SyncStatus.NEW)) {
 					places = osmParser.parseNextCoordinatePlaces(placesPerOperation, false);
-
 				} else {
 					places = osmParser.parseNextCoordinatePlaces(placesPerOperation, true);
 				}
-
 				if (places == null || ((List)places).isEmpty())
 					break;
 
@@ -203,14 +176,16 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		}
 
 		try {
-			boolean createBlock = (opCounter % operationsPerBlock == 0);
-			if (createBlock) {
-				blocksManager.createBlock();
-				LOGGER.info("Op saved: " + opCounter + " date: " + new Date());
-				LOGGER.info("Places saved: " + (opCounter * placesPerOperation) + " date: " + new Date());
-				long currTimeMs = System.currentTimeMillis();
-				long placesPerSecond = (opCounter * placesPerOperation) / ((currTimeMs - appStartedMs) / 1000);
-				LOGGER.info("Places per second: " + placesPerSecond);
+			if (!blocksManager.getBlockchain().getQueueOperations().isEmpty()) {
+				boolean createBlock = (opCounter % operationsPerBlock == 0);
+				if (createBlock) {
+					blocksManager.createBlock();
+					LOGGER.info("Op saved: " + opCounter + " date: " + new Date());
+					LOGGER.info("Places saved: " + (opCounter * placesPerOperation) + " date: " + new Date());
+					long currTimeMs = System.currentTimeMillis();
+					long placesPerSecond = (opCounter * placesPerOperation) / ((currTimeMs - appStartedMs) / 1000);
+					LOGGER.info("Places per second: " + placesPerSecond);
+				}
 			}
 		} catch (Exception e) {
 			LOGGER.error("Error occurred while creating block: " +e.getMessage());
@@ -364,14 +339,14 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 		Map<String, Object> syncStates = getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0);
 
 		if (syncStates.get(F_DATE).equals(timestamp)) {
-			return SYNC;
+			return SyncStatus.SYNC;
 		}
 
 		if (syncStates.get(F_DATE).equals("")) {
-			return NEW;
+			return SyncStatus.NEW;
 		}
 
-		return DIFF;
+		return SyncStatus.DIFF;
 	}
 
 	private Reader retrieveFile(String timestamp) throws IOException {
@@ -404,12 +379,12 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 	}
 
 	private OpObject getOpOprCrawler() {
-		return blocksManager.getBlockchain().getObjectByName(OP_OPERATION, OP_OPR_CRAWLER);
+		return botObject;
 	}
 
 	private OpOperation generateEditOpForOpOprCrawler(String timestamp) throws FailedVerificationException {
 		OpOperation opOperation = new OpOperation();
-		opOperation.setType(OP_OPERATION);
+		opOperation.setType(OP_BOT);
 		opOperation.setSignedBy(blocksManager.getServerUser());
 		OpObject editObject = new OpObject();
 		editObject.setId(getOpOprCrawler().getId().get(0));
@@ -440,5 +415,4 @@ public class OprOsmPlacePublisher implements ApplicationListener<ApplicationRead
 
 		return IOUtils.toString(con.getInputStream(), StandardCharsets.UTF_8);
 	}
-
 }

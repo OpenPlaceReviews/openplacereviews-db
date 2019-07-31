@@ -16,7 +16,7 @@ bootJar {
 
 dependencies {
     implementation project(':openplacereviews-core')
-    implementation project(':openplacereviews-bots')
+    implementation project(':openplacereviews-bot')
     implementation "org.openplacereviews:opendb-core:1.0"
     implementation "org.springframework.boot:spring-boot-starter-web"
     implementation "org.springframework.boot:spring-boot-starter-actuator"
