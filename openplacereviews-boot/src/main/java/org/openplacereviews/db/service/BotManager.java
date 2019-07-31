@@ -5,6 +5,7 @@ import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -17,6 +18,9 @@ public class BotManager {
 	@Autowired
 	private BlocksManager blocksManager;
 
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
 	private volatile Map<List<String>, Thread> runningBots = new HashMap<>();
 
 	public Set<List<String>> getAllBots() {
@@ -27,8 +31,12 @@ public class BotManager {
 
 	public boolean startBot(String botName) {
 		OpObject botObject = blocksManager.getBlockchain().getObjectByName(OP_BOT, botName);
+		if (botObject == null) {
+			return false;
+		}
+
 		if (!runningBots.containsKey(botObject.getId())) {
-			BotPlacePublisher botPlacePublisher = new BotPlacePublisher(blocksManager, botObject);
+			BotPlacePublisher botPlacePublisher = new BotPlacePublisher(blocksManager, botObject, jdbcTemplate);
 			Thread thread = new Thread(new Runnable() {
 				@Override
 				public void run() {

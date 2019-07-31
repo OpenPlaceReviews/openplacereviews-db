@@ -13,6 +13,9 @@ import org.openplacereviews.osm.OsmParser;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.model.EntityInfo;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.BufferedReader;
@@ -23,6 +26,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.zip.GZIPInputStream;
 
@@ -37,6 +42,8 @@ import static org.openplacereviews.osm.model.EntityInfo.*;
 public class BotPlacePublisher {
 
 	protected static final Log LOGGER = LogFactory.getLog(BotPlacePublisher.class);
+	protected static String SETTINGS_TABLE = "opendb_settings";
+	protected static String SETTINGS_TABLE_SYNC = "db.sync";
 
 	public static final String OP_BOT = OP_TYPE_SYS + "bot";
 	public static final String ATTR_OSM = "osm";
@@ -54,14 +61,17 @@ public class BotPlacePublisher {
 	private String timestamp;
 	private String overpassURL;
 	private String overpassTimestampURL;
-	private BlocksManager blocksManager;
-	private OpObject botObject;
 	private volatile long opCounter;
 	private volatile long appStartedMs;
 
-	public BotPlacePublisher(BlocksManager blocksManager, OpObject botObject) {
+	private BlocksManager blocksManager;
+	private OpObject botObject;
+	private JdbcTemplate jdbcTemplate;
+
+	public BotPlacePublisher(BlocksManager blocksManager, OpObject botObject, JdbcTemplate jdbcTemplate) {
 		this.blocksManager = blocksManager;
 		this.botObject = botObject;
+		this.jdbcTemplate = jdbcTemplate;
 		init();
 	}
 
@@ -72,6 +82,7 @@ public class BotPlacePublisher {
 		overpassTimestampURL = crawler.getStringValue("timestampURL");
 		placesPerOperation = crawler.getIntValue("places_per_operation", 0);
 		operationsPerBlock = crawler.getIntValue("operations_per_block", 0);
+		//timestamp = "2019-06-01T00:00:00Z";
 		try {
 			timestamp = getTimestamp();
 		} catch (IOException e) {
@@ -82,6 +93,7 @@ public class BotPlacePublisher {
 	public void publish() {
 		SyncStatus statusSync = getSyncStatus(timestamp);
 		if (statusSync.equals(SyncStatus.DIFF) || statusSync.equals(SyncStatus.NEW)) {
+			LOGGER.info("Start synchronizing");
 			OsmParser osmParser;
 			Reader reader;
 			try {
@@ -94,9 +106,12 @@ public class BotPlacePublisher {
 
 			publish(osmParser, statusSync);
 			try {
-				Thread thread = Thread.currentThread();
-				if (!thread.isInterrupted()) {
+				if (!Thread.currentThread().isInterrupted()) {
 					blocksManager.addOperation(generateEditOpForOpOprCrawler(timestamp));
+					TreeMap<String, Object> dbSync = new TreeMap<>();
+					dbSync.put(F_DATE, timestamp);
+					dbSync.put(ATTR_TAGS, botObject.getListStringObjMap(F_SYNC_STATES).get(0).get(ATTR_TAGS));
+					saveNewSyncState(dbSync);
 				}
 			} catch (FailedVerificationException e) {
 				LOGGER.error(e.getMessage());
@@ -109,6 +124,15 @@ public class BotPlacePublisher {
 				LOGGER.error(e.getMessage());
 				throw new IllegalArgumentException("Cannot to close stream", e);
 			}
+			LOGGER.info("Synchronization is finished");
+		} else if (statusSync.equals(SyncStatus.DB_NOT_SYNC)) {
+			LOGGER.info("DB is not synchronized!");
+			LOGGER.info("Start db syncing!");
+
+			// TODO
+			LOGGER.info("DB syncing is finished!");
+		} else {
+			LOGGER.info("Blockchain and DB is synchronized");
 		}
 	}
 
@@ -117,8 +141,7 @@ public class BotPlacePublisher {
 		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
 		blocksManager.getBlockchain().getObjectHeaders(osmOpType, objectsSearchRequest);
 		HashSet<List<String>> osmPlaceHeaders = objectsSearchRequest.resultWithHeaders;
-		Thread thread = Thread.currentThread();
-		while (!thread.isInterrupted()) {
+		while (!Thread.currentThread().isInterrupted()) {
 			try {
 				Object places;
 				if (statusSync.equals(SyncStatus.NEW)) {
@@ -328,8 +351,8 @@ public class BotPlacePublisher {
 		osmObject.put(ATTR_ACTION, entityInfo.getAction());
 	}
 
-	// TODO add sync status for DB!!!!!
 	public enum SyncStatus {
+		DB_NOT_SYNC,
 		SYNC,
 		NEW,
 		DIFF
@@ -337,16 +360,26 @@ public class BotPlacePublisher {
 
 	private SyncStatus getSyncStatus(String timestamp) {
 		Map<String, Object> syncStates = getOpOprCrawler().getListStringObjMap(F_SYNC_STATES).get(0);
+		Map<String, Object> dbSyncState = getDBSyncState();
 
-		if (syncStates.get(F_DATE).equals(timestamp)) {
-			return SyncStatus.SYNC;
+		// TODO add check for tags
+		if (dbSyncState == null) {
+			if (syncStates.get(F_DATE).equals("")) {
+				return SyncStatus.NEW;
+			} else {
+				return SyncStatus.DB_NOT_SYNC;
+			}
+		} else {
+			if (!dbSyncState.get(F_DATE).equals(syncStates.get(F_DATE))) {
+				return SyncStatus.DB_NOT_SYNC;
+			} else if (dbSyncState.get(F_DATE).equals(timestamp) && syncStates.get(F_DATE).equals(timestamp)) {
+				return SyncStatus.SYNC;
+			} else if (!syncStates.get(F_DATE).equals(timestamp)) {
+				return SyncStatus.DIFF;
+			}
 		}
 
-		if (syncStates.get(F_DATE).equals("")) {
-			return SyncStatus.NEW;
-		}
-
-		return SyncStatus.DIFF;
+		return SyncStatus.SYNC;
 	}
 
 	private Reader retrieveFile(String timestamp) throws IOException {
@@ -410,9 +443,36 @@ public class BotPlacePublisher {
 		HttpURLConnection con = (HttpURLConnection) url.openConnection();
 
 		int responseCode = con.getResponseCode();
-		LOGGER.info("Sending 'GET' request to URL : " + url);
-		LOGGER.info("Response Code : " + responseCode);
+		LOGGER.debug("Sending 'GET' request to URL : " + url);
+		LOGGER.debug("Response Code : " + responseCode);
 
 		return IOUtils.toString(con.getInputStream(), StandardCharsets.UTF_8);
+	}
+
+	private boolean saveNewSyncState(TreeMap<String, Object> v) {
+		String value = blocksManager.getBlockchain().getRules().getFormatter().fullObjectToJson(v);
+		return jdbcTemplate.update("insert into  " + SETTINGS_TABLE + "(key,value) values (?, ?) "
+				+ " ON CONFLICT (key) DO UPDATE SET value = ? ", SETTINGS_TABLE_SYNC, value, value) != 0;
+	}
+
+	private TreeMap<String, Object> getDBSyncState() {
+		String s = null;
+		try {
+			s = jdbcTemplate.query("select value from " + SETTINGS_TABLE + " where key = ?", new ResultSetExtractor<String>() {
+
+				@Override
+				public String extractData(ResultSet rs) throws SQLException, DataAccessException {
+					boolean next = rs.next();
+					if (next) {
+						return rs.getString(1);
+					}
+					return null;
+				}
+			}, SETTINGS_TABLE_SYNC);
+		} catch (DataAccessException e) {
+			return null;
+		}
+
+		return blocksManager.getBlockchain().getRules().getFormatter().fromJsonToTreeMap(s);
 	}
 }

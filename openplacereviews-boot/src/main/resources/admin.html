@@ -763,7 +763,11 @@
         $("#load-bot-stats-btn").click(function () {
             $.get("/api/bot/stats")
                 .done(function (data) {
-                    var rows = "";
+                    var rows =
+                        "<tr>" +
+                        "<td>Name</td>" +
+                        "<td>Status</td>" +
+                        "</tr>";
                     for (var key in data) {
                         rows +=
                             "<tr>" +
