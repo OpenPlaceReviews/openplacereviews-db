@@ -1,4 +1,4 @@
-package org.openplacereviews.osm;
+package org.openplacereviews.osm.parser;
 
 import org.kxml2.io.KXmlParser;
 import org.openplacereviews.opendb.util.OUtils;
@@ -41,7 +41,7 @@ public class OsmParser {
 		this(new FileReader(file));
 	}
 
-	public List<Object> parseNextCoordinatePlaces(int limit, boolean parseDiff)
+	public List<Object> parseNextCoordinatePlaces(Long limit, Boolean parseDiff)
 			throws IOException, XmlPullParserException {
 		int counter = 0;
 		int event ;
@@ -68,37 +68,29 @@ public class OsmParser {
 				} else if (TAG_NEW.equals(elementName)) {
 					actionSubTag = TAG_NEW;
 				}
-				if (elementName.equals(EntityType.NODE.getName())) {
+				if (EntityType.NODE.getName().equals(elementName)) {
 					double lat = Double.valueOf(getAttributeValue(ATTR_LATITUDE));
 					double lon = Double.valueOf(getAttributeValue(ATTR_LONGITUDE));
 					entity = new Node(lat, lon, id);
-					EntityInfo currentParsedEntity = new EntityInfo()
-							.setVersion(getAttributeValue(ATTR_VERSION))
-							.setTimestamp(getAttributeValue(ATTR_TIMESTAMP))
-							.setChangeset(getAttributeValue(ATTR_CHANGESET))
-							.setUid(getAttributeValue(ATTR_UID))
-							.setUser(getAttributeValue(ATTR_USER))
-							.setVisible(getAttributeValue(ATTR_VISIBLE))
-							.setAction(getAttributeValue(ATTR_ACTION));
-					entity.setEntityInfo(currentParsedEntity);
+					generateEntityInfo(entity);
 					if (parseDiff && TAG_OLD.equals(actionSubTag)) {
 						diffEntity.setOldNode(entity);
-					} else if (parseDiff && (TAG_NEW.equals(actionSubTag) || actionType.equals(ATTR_TYPE_CREATE))) {
+					} else if (parseDiff && (TAG_NEW.equals(actionSubTag) || ATTR_TYPE_CREATE.equals(actionType))) {
 						diffEntity.setNewNode(entity);
 					}
-				} else if (elementName.equals(EntityType.WAY.getName())) {
+				} else if (EntityType.WAY.getName().equals(elementName)) {
 					entity = new Way(id);
-				} else if (elementName.equals(EntityType.RELATION.getName())) {
+				} else if (EntityType.RELATION.getName().equals(elementName)) {
 					entity = new Relation(id);
-				} else if (elementName.equals(ATTR_MEMBER)) {
+				} else if (ATTR_MEMBER.equals(elementName)) {
 					entity = new Relation(id);
 					long ref = OUtils.parseLongSilently(getAttributeValue(ATTR_REF), -1);
 					String tp = getAttributeValue(ATTR_TYPE);
 					String role = getAttributeValue(ATTR_ROLE);
 					((Relation)entity).addMember(ref, EntityType.valueOf(tp.toUpperCase()), role);
-				} else if (elementName.equals(ATTR_ND)) {
+				} else if (ATTR_ND.equals(elementName)) {
 					((Way) entity).addNode(OUtils.parseLongSilently(getAttributeValue(ATTR_REF), -1));
-				} else if (elementName.equals(ATTR_TAG)) {
+				} else if (ATTR_TAG.equals(elementName)) {
 					String k = getAttributeValue(ATTR_TAG_K);
 					String v = getAttributeValue(ATTR_TAG_V);
 					if (!parseDiff) {
@@ -114,14 +106,14 @@ public class OsmParser {
 			} else if (event == XmlPullParser.END_TAG) {
 				// here we could close the tag
 				String elementName = parser.getName();
-				if (parseDiff && elementName.equals(TAG_ACTION)) {
+				if (parseDiff && TAG_ACTION.equals(elementName)) {
 					results.add(diffEntity);
 					diffEntity = null;
 					actionSubTag = "";
 					if (limit == counter++) {
 						break;
 					}
-				} else if (!parseDiff && (elementName.equals(EntityType.NODE.getName()) || elementName.equals(EntityType.WAY.getName()) || elementName.equals(EntityType.RELATION.getName()))) {
+				} else if (!parseDiff && (EntityType.NODE.getName().equals(elementName) || EntityType.WAY.getName().equals(elementName) || EntityType.RELATION.getName().equals(elementName))) {
 					results.add(entity);
 					entity = null;
 					if (limit == counter++) {
@@ -131,6 +123,18 @@ public class OsmParser {
 			}
 		}
 		return results;
+	}
+
+	private void generateEntityInfo(Entity entity) {
+		EntityInfo currentParsedEntity = new EntityInfo()
+				.setVersion(getAttributeValue(ATTR_VERSION))
+				.setTimestamp(getAttributeValue(ATTR_TIMESTAMP))
+				.setChangeset(getAttributeValue(ATTR_CHANGESET))
+				.setUid(getAttributeValue(ATTR_UID))
+				.setUser(getAttributeValue(ATTR_USER))
+				.setVisible(getAttributeValue(ATTR_VISIBLE))
+				.setAction(getAttributeValue(ATTR_ACTION));
+		entity.setEntityInfo(currentParsedEntity);
 	}
 
 	protected String getAttributeValue(String atrName) {

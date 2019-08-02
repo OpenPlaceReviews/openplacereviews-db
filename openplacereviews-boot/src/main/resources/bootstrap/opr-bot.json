@@ -31,23 +31,40 @@
     "type" : "sys.bot",
     "create" : [{
       "id" : ["osm-sync"],
-      "arity": 0,
-      "overpassURL": "http://builder.osmand.net:8083/api/interpreter",
-      "timestampURL": "http://builder.osmand.net:8083/api/timestamp",
-      "osmOpType": "opr.place",
-      "places_per_operation": 250,
-      "operations_per_block": 16,
+      "url" : {
+        "overpass_timestamp" : "http://builder.osmand.net:8083/api/timestamp",
+        "overpass": "http://builder.osmand.net:8083/api/interpreter"
+      },
+      "bot": {
+        "threads": 10,
+        "opr": {
+          "places_per_operation": 250,
+          "operations_per_block": 16,
+          "type": "opr.place"
+        }
+      },
+      "mapping": {},
+      "rules": {},
       "sync-states" : [
         {
           "date":"",
           "tags": {
-            "node[\"amenity\"]": "(50.3456,30.3671,50.5580,30.8671)",
-            "node[\"name\"]": "(50.3456,30.3671,50.5580,30.8671)",
-            "node[\"tourism\"]": "(50.3456,30.3671,50.5580,30.8671)",
-            "node[\"shop\"]": "(50.3456,30.3671,50.5580,30.8671)",
-            "node[\"leisure\"]": "(50.3456,30.3671,50.5580,30.8671)"
+            "node[\"amenity\"~\"cafe|bar|restaurant|biergarten|fast_food|food_court|ice_cream|pub\"]": "",
+            "node[\"tourism\"~\"hotel|motel|hostel|apartment|guest_house\"]": ""
           }
         }]
     }]
   }
+//,
+//  {
+//    "type" : "sys.bot",
+//    "edit" : [{
+//      "id" : ["osm-sync"],
+//      "change": {
+//        "sync-states[0].tags" : {"append" : {"node[\"amenity\"]": "(50.3456,30.3671,50.5580,30.8671)"}}
+//      },
+//      "current" : {
+//      }
+//    }]
+//  }
 ]

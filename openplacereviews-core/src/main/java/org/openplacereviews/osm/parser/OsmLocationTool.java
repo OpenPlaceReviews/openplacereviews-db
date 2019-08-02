@@ -1,11 +1,10 @@
-package org.openplacereviews.osm;
+package org.openplacereviews.osm.parser;
 
 import com.google.openlocationcode.OpenLocationCode;
 import org.openplacereviews.osm.model.LatLon;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Random;
 
 import static com.google.openlocationcode.OpenLocationCode.CodeArea;
 

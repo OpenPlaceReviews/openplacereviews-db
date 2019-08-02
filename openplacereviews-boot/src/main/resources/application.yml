@@ -34,10 +34,22 @@ opendb:
       obj_logins: { "types": ["sys.login", "sys.signup"], "keysize":2 }
       obj_grants: { "types" : ["sys.grant"], "keysize":2 }
       obj_system: { "types": ["sys.validate", "sys.operation", "sys.role"], "keysize":1 }
-      obj_opr_places: { "types": ["opr.place"], "keysize":1 , "columns": [{"name": "osmid", "field": ["osm.id"], "type": "jsonb"}, {"name":"tags_name","field":["osm.tags.name"], "type":"jsonb"},
-                                                                        {"name":"tags_amenity","field":["osm.tags.amenity"], "type":"jsonb"}],
-                 "indices":[{"column":"osmid", "field":["id"], "type":"GIN"},{"column":"p1", "field": [], "type":""}, {"column":"type", "field": [], "type":""},
-                            {"column":"tags_name", "field":["name"],"type":"GIN"},{"column":"tags_amenity", "field":["amenity"],"type":"GIN"}] }
+      obj_opr_places: { "types": ["opr.place"], "keysize":2 , "columns": [
+        {"name": "osmid", "field": ["osm.id"], "type": "jsonb"}, {"name":"tags_name","field":["osm.tags.name"], "type":"jsonb"},
+        {"name":"tags_operator","field":["osm.tags.operator"], "type":"jsonb"},{"name":"tags_addr","field":["osm.tags.addr"], "type":"jsonb"},
+        {"name":"tags_website","field":["osm.tags.website"], "type":"jsonb"},{"name":"tags_appartment","field":["osm.tags.rooms","osm.tags.beds"], "type":"jsonb"},
+        {"name":"tags_cuisine","field":["osm.tags.cuisine"], "type":"jsonb"},
+        {"name":"tags_phone","field":["osm.tags.phone"], "type":"jsonb"},{"name":"tags_delivery","field":["osm.tags.delivery"], "type":"jsonb"},
+        {"name":"tags_opening_hours","field":["osm.tags.opening_hours"], "type":"jsonb"},{"name":"tags_takeaway","field":["osm.tags.takeaway"], "type":"jsonb"}],
+                 "indices":[
+                  {"column":"osmid", "field":["id"], "type":"GIN"},{"column":"p1", "field": [], "type":""}, {"column":"type", "field": [], "type":""},
+                  {"column":"tags_operator", "field":["operator"],"type":"GIN"},{"column":"tags_addr", "field":["addr"],"type":"GIN"},
+                  {"column":"tags_website", "field":["website"],"type":"GIN"},{"column":"tags_appartment", "field":["rooms","beds"],"type":"GIN"},
+                  {"column":"tags_cuisine", "field":["cuisine"],"type":"GIN"},
+                  {"column":"tags_phone", "field":["phone"],"type":"GIN"},{"column":"tags_delivery", "field":["delivery"],"type":"GIN"},
+                  {"column":"tags_opening_hours", "field":["opening_hours"],"type":"GIN"},{"column":"tags_takeaway", "field":["takeaway"],"type":"GIN"}
+                 ]
+      }
   files-backup:
     directory: ${FILE_BLOCKS_DIR:blocks}
   block-create:
