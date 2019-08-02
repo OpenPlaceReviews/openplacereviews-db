@@ -53,6 +53,9 @@ public class BotPlacePublisher implements Callable {
 	private RequestService requestService;
 	private DbManager dbManager;
 
+	List<Future<?>> futures = new ArrayList<>();
+	ExecutorService service;
+
 	public BotPlacePublisher(BlocksManager blocksManager, OpObject botObject, JdbcTemplate jdbcTemplate) {
 		this.blocksManager = blocksManager;
 		this.botObject = botObject;
@@ -68,6 +71,7 @@ public class BotPlacePublisher implements Callable {
 		this.placesPerOperation = (Long) ((Map<String, Object>)botObject.getStringObjMap("bot").get("opr")).get("places_per_operation");
 		this.operationsPerBlock = (Long) ((Map<String, Object>)botObject.getStringObjMap("bot").get("opr")).get("operations_per_block");
 		this.maxThreads = (Long) botObject.getStringObjMap("bot").get("threads");
+		service = Executors.newFixedThreadPool(maxThreads.intValue());
 		try {
 			this.timestamp = requestService.getTimestamp();
 		} catch (IOException e) {
@@ -80,8 +84,7 @@ public class BotPlacePublisher implements Callable {
 		if (syncStatus.equals(SyncStatus.DIFF_SYNC) || syncStatus.equals(SyncStatus.NEW_SYNC) || syncStatus.equals(SyncStatus.TAGS_SYNC)) {
 			LOGGER.info("Start synchronizing: " + syncStatus);
 			List<String> requests = new ArrayList<>(generateRequests(timestamp, syncStatus));
-			List<Future<?>> futures = new ArrayList<>();
-			ExecutorService service = Executors.newFixedThreadPool(maxThreads.intValue());
+
 			OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
 			blocksManager.getBlockchain().getObjectHeaders(opType, objectsSearchRequest);
 			osmPlaceHeaders = objectsSearchRequest.resultWithHeaders;
@@ -124,6 +127,7 @@ public class BotPlacePublisher implements Callable {
 	@Override
 	public Object call() throws Exception {
 		publish();
+		// TODO return some result?
 		return null;
 	}
 
