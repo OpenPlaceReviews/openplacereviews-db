@@ -43,16 +43,6 @@ public class BotController {
 		}
 	}
 
-	@GetMapping(path = "stop", produces = "text/html;charset=UTF-8")
-	@ResponseBody
-	public String stopBot(@RequestParam String botName) {
-		if (botManager.stopBot(botName)) {
-			return "{\"status\": \"OK\"}";
-		} else {
-			return "{\"status\": \"Thread not found\"}";
-		}
-	}
-
 	@GetMapping(path = "stats", produces = "text/json;charset=UTF-8")
 	@ResponseBody
 	public String getBotStats() {

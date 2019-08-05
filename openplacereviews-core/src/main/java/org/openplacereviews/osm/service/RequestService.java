@@ -41,8 +41,9 @@ public class RequestService {
 
 	public Reader retrieveFile(String request) throws IOException {
 		URL url = new URL(request);
+		// TODO change to post request
 		HttpURLConnection con = (HttpURLConnection) url.openConnection();
-		LOGGER.debug("Sending 'GET' request to URL : " + url);
+		LOGGER.debug("Sending 'POST' request to URL : " + url);
 		LOGGER.debug("Response Code : " + con.getResponseCode());
 
 		GZIPInputStream gzis = new GZIPInputStream(con.getInputStream());

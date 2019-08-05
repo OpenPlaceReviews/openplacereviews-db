@@ -24,7 +24,6 @@ public class BotManager {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
-	private volatile Map<List<String>, Thread> runningBots = new HashMap<>();
 	List<Future<?>> futures = new ArrayList<>();
 	ExecutorService service = Executors.newFixedThreadPool(5);
 
@@ -43,18 +42,6 @@ public class BotManager {
 		BotPlacePublisher botPlacePublisher = new BotPlacePublisher(blocksManager, botObject, jdbcTemplate);
 		futures.add(service.submit(botPlacePublisher));
 		return true;
-	}
-
-	public boolean stopBot(String botName) {
-//		OpObject botObject = blocksManager.getBlockchain().getObjectByName(OP_BOT, botName);
-//		if (runningBots.containsKey(botObject.getId())) {
-//			Thread thread = runningBots.get(botObject.getId());
-//			thread.interrupt();
-//			runningBots.remove(botObject.getId());
-//			return true;
-//		}
-
-		return false;
 	}
 
 	// TODO add some info

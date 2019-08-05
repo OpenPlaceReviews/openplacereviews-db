@@ -36,6 +36,7 @@
         "overpass": "http://builder.osmand.net:8083/api/interpreter"
       },
       "bot": {
+        "API" : "org.openplacereviews.osm.service.BotPlacePublisher",
         "threads": 10,
         "opr": {
           "places_per_operation": 250,

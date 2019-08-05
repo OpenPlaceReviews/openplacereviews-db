@@ -43,7 +43,6 @@ public class BotPlacePublisher implements Callable {
 
 	private Long placesPerOperation;
 	private Long operationsPerBlock;
-	private Long maxThreads;
 	private String opType;
 	private String timestamp;
 	private volatile HashSet<List<String>> osmPlaceHeaders;
@@ -70,8 +69,8 @@ public class BotPlacePublisher implements Callable {
 		this.opType = ((Map<String, String>)botObject.getStringObjMap("bot").get("opr")).get("type");
 		this.placesPerOperation = (Long) ((Map<String, Object>)botObject.getStringObjMap("bot").get("opr")).get("places_per_operation");
 		this.operationsPerBlock = (Long) ((Map<String, Object>)botObject.getStringObjMap("bot").get("opr")).get("operations_per_block");
-		this.maxThreads = (Long) botObject.getStringObjMap("bot").get("threads");
-		service = Executors.newFixedThreadPool(maxThreads.intValue());
+		Long maxThreads = (Long) botObject.getStringObjMap("bot").get("threads");
+		this.service = Executors.newFixedThreadPool(maxThreads.intValue());
 		try {
 			this.timestamp = requestService.getTimestamp();
 		} catch (IOException e) {
@@ -192,10 +191,11 @@ public class BotPlacePublisher implements Callable {
 					break;
 				}
 			}
-			LOGGER.debug("Amount of operation transferred data: " + opCounter);
+			LOGGER.info("Amount of operation transferred data: " + opCounter);
 		}
 
 		private void publish(Object places) throws FailedVerificationException {
+			LOGGER.info(request + "     AMOUNT" + ((List<Object>) places).size());
 			List<OpOperation> osmCoordinatePlacesDto = generateOpOperationFromPlaceList((List<Object>) places);
 			try {
 				for (OpOperation opOperation : osmCoordinatePlacesDto) {
@@ -317,7 +317,6 @@ public class BotPlacePublisher implements Callable {
 		Map<String, Object> syncStates = botObject.getListStringObjMap(ATTR__SYNC_STATES).get(0);
 		Map<String, Object> dbSyncState = dbManager.getDBSyncState();
 
-		// TODO add check for tags -> added
 		if (dbSyncState == null) {
 			if (syncStates.get(F_DATE).equals("")) {
 				return SyncStatus.NEW_SYNC;
@@ -361,7 +360,7 @@ public class BotPlacePublisher implements Callable {
 			if (SyncStatus.TAGS_SYNC.equals(syncStatus)) {
 				Map<String, String> dbSyncState = (Map<String, String>) dbManager.getDBSyncState().get(ATTR_TAGS);
 				for (String key : tagsCoordinates.keySet()) {
-					if (!dbSyncState.containsKey(key) || dbSyncState.get(key).equals(states.get(key))) {
+					if (!dbSyncState.containsKey(key) || !dbSyncState.get(key).equals(states.get(key))) {
 						tags.append(key).append(states.get(key)).append(";");
 					}
 				}
@@ -380,8 +379,8 @@ public class BotPlacePublisher implements Callable {
 				if (SyncStatus.TAGS_SYNC.equals(syncStatus)) {
 					Map<String, String> dbSyncState = (Map<String, String>) dbManager.getDBSyncState().get(ATTR_TAGS);
 					for (String key : tagsBbox.keySet()) {
-						if (!dbSyncState.containsKey(key) || dbSyncState.get(key).equals(states.get(key))) {
-							tag.append(key).append(coordinate).append(";");
+						if (!dbSyncState.containsKey(key) || !dbSyncState.get(key).equals(states.get(key))) {
+							tag.append(key).append("(").append(coordinate).append(");");
 						}
 					}
 				} else {
