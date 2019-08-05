@@ -11,7 +11,7 @@ import org.openplacereviews.osm.model.EntityInfo;
 
 import java.util.*;
 
-import static org.openplacereviews.osm.service.BotPlacePublisher.*;
+import static org.openplacereviews.osm.service.PublishBotManager.*;
 import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.ops.OpObject.F_ID;

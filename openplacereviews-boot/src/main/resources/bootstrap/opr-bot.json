@@ -37,7 +37,7 @@
       },
       "bot": {
         "API" : "org.openplacereviews.osm.service.BotPlacePublisher",
-        "threads": 10,
+        "threads": 2,
         "opr": {
           "places_per_operation": 250,
           "operations_per_block": 16,

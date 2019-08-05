@@ -27,9 +27,9 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.ops.OpOperation.F_DELETE;
 
-public class BotPlacePublisher implements Callable {
+public class PublishBotManager implements IBotManager {
 
-	private static final Log LOGGER = LogFactory.getLog(BotPlacePublisher.class);
+	private static final Log LOGGER = LogFactory.getLog(PublishBotManager.class);
 
 	public static final String OP_BOT = OP_TYPE_SYS + "bot";
 	public static final String ATTR_OSM = "osm";
@@ -47,7 +47,7 @@ public class BotPlacePublisher implements Callable {
 	private String timestamp;
 	private volatile HashSet<List<String>> osmPlaceHeaders;
 
-	private BlocksManager blocksManager;
+	private volatile BlocksManager blocksManager;
 	private OpObject botObject;
 	private RequestService requestService;
 	private DbManager dbManager;
@@ -55,7 +55,7 @@ public class BotPlacePublisher implements Callable {
 	List<Future<?>> futures = new ArrayList<>();
 	ExecutorService service;
 
-	public BotPlacePublisher(BlocksManager blocksManager, OpObject botObject, JdbcTemplate jdbcTemplate) {
+	public PublishBotManager(BlocksManager blocksManager, OpObject botObject, JdbcTemplate jdbcTemplate) {
 		this.blocksManager = blocksManager;
 		this.botObject = botObject;
 		this.dbManager = new DbManager(blocksManager, jdbcTemplate);
@@ -126,15 +126,14 @@ public class BotPlacePublisher implements Callable {
 	@Override
 	public Object call() throws Exception {
 		publish();
-		// TODO return some result?
 		return null;
 	}
 
 	private class Publisher implements Callable {
 
-		private volatile long opCounter;
-		private volatile long allOperationsCounter;
-		private volatile long appStartedMs;
+		private long opCounter;
+		private long allOperationsCounter;
+		private long appStartedMs;
 		private String request;
 		private SyncStatus syncStatus;
 

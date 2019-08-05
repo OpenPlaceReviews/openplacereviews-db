@@ -1,22 +1,28 @@
 package org.openplacereviews.db.service;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
-import org.openplacereviews.osm.service.BotPlacePublisher;
+import org.openplacereviews.osm.service.IBotManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.openplacereviews.osm.service.BotPlacePublisher.OP_BOT;
+import static org.openplacereviews.osm.service.PublishBotManager.OP_BOT;
 
 @Service
 public class BotManager {
+
+	private static final Log LOGGER = LogFactory.getLog(BotManager.class);
 
 	@Autowired
 	private BlocksManager blocksManager;
@@ -39,9 +45,21 @@ public class BotManager {
 			return false;
 		}
 
-		BotPlacePublisher botPlacePublisher = new BotPlacePublisher(blocksManager, botObject, jdbcTemplate);
-		futures.add(service.submit(botPlacePublisher));
-		return true;
+		IBotManager botInterface = null;
+		try {
+			Class<?> bot = Class.forName(botObject.getStringObjMap("bot").get("API").toString());
+			Constructor constructor = bot.getConstructor(BlocksManager.class, OpObject.class, JdbcTemplate.class);
+			botInterface = (IBotManager) constructor.newInstance(blocksManager, botObject, jdbcTemplate);
+		} catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+			LOGGER.error("Error while creating bot instance", e);
+		}
+
+		if (botInterface != null) {
+			futures.add(service.submit(botInterface));
+			return true;
+		}
+
+		return false;
 	}
 
 	// TODO add some info
