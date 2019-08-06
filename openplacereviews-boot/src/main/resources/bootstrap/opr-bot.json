@@ -36,7 +36,7 @@
         "overpass": "http://builder.osmand.net:8083/api/interpreter"
       },
       "bot": {
-        "API" : "org.openplacereviews.osm.service.BotPlacePublisher",
+        "API" : "org.openplacereviews.osm.service.PublishBotManager",
         "threads": 2,
         "opr": {
           "places_per_operation": 250,
@@ -44,8 +44,15 @@
           "type": "opr.place"
         }
       },
-      "mapping": {},
-      "rules": {},
+      "mapping": {
+        "lat":"osm[0].lat",
+        "lon":"osm[0].lon",
+        "name":"osm[0].tags.name"
+      },
+      "rules": {
+        "id" : "op:place_id(.lat, .lon, 'false')",
+        "match_id" : "str:concat(op:place_id(.lat, .lon, 'true'), str:concat('###', op:name_simplify('v1', .name)))"
+      },
       "sync-states" : [
         {
           "date":"",

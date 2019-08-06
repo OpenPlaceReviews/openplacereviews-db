@@ -31,7 +31,6 @@ public class RequestService {
 		LOGGER.debug("Sending 'GET' request to URL : " + url);
 		LOGGER.debug("Response Code : " + responseCode);
 
-		// TODO minus 3m
 		return IOUtils.toString(con.getInputStream(), StandardCharsets.UTF_8);
 	}
 
@@ -43,6 +42,7 @@ public class RequestService {
 		URL url = new URL(request);
 		// TODO change to post request
 		HttpURLConnection con = (HttpURLConnection) url.openConnection();
+		//con.setRequestMethod("POST");
 		LOGGER.debug("Sending 'POST' request to URL : " + url);
 		LOGGER.debug("Response Code : " + con.getResponseCode());
 
@@ -51,7 +51,7 @@ public class RequestService {
 	}
 
 	public String generateRequestString(String tags, String type, String timestamp) throws UnsupportedEncodingException {
-		String subRequest = "[out:xml][timeout:25][%s:\"%s\"];(%s); out body; >; out geom meta;";
+		String subRequest = "[out:xml][timeout:100][%s:\"%s\"];(%s); out body; >; out geom meta;";
 		String request = String.format(subRequest, type, timestamp, tags);
 
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());

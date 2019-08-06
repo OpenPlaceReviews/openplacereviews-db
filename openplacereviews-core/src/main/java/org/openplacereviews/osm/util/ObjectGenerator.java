@@ -4,33 +4,30 @@ import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
-import org.openplacereviews.osm.parser.OsmLocationTool;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.model.EntityInfo;
+import org.openplacereviews.osm.parser.OsmLocationTool;
 
 import java.util.*;
 
-import static org.openplacereviews.osm.service.PublishBotManager.*;
-import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
-import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
-import static org.openplacereviews.opendb.ops.OpObject.F_ID;
+import static org.openplacereviews.opendb.ops.OpObject.*;
 import static org.openplacereviews.opendb.ops.OpOperation.F_DELETE;
 import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.model.EntityInfo.*;
+import static org.openplacereviews.osm.service.PublishBotManager.*;
 
 public class ObjectGenerator {
 
 	public static List<List<String>> generateDeleteOpObject(List<List<String>> deletedObjs, Entity entity) {
-		deletedObjs.add(Collections.singletonList(OsmLocationTool.generateStrId(entity.getLatLon(), entity.getId())));
+		deletedObjs.add(Collections.singletonList(OsmLocationTool.generateStrId(entity.getLatLon())));
 		return deletedObjs;
 	}
 
 	public static OpObject generateCreateOpObject(Entity entity) {
 		OpObject create = new OpObject();
-		create.putObjectValue(F_ID, Arrays.asList(OsmLocationTool.generateStrId(entity.getLatLon(), entity.getId())));
 		TreeMap<String, Object> osmObject = new TreeMap<>();
 		osmObject.put(F_ID, Collections.singletonList(String.valueOf(entity.getId())));
 		osmObject.put(F_TYPE, entity.getClass().getSimpleName().toLowerCase());
@@ -47,7 +44,7 @@ public class ObjectGenerator {
 	}
 
 	public static OpObject generateEditOpObject(OpObject edit, DiffEntity diffEntity) {
-		edit.putObjectValue(F_ID, Arrays.asList(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon(), diffEntity.getNewNode().getId())));
+		edit.putObjectValue(F_ID, Arrays.asList(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon())));
 		TreeMap<String, Object> changeTagMap = new TreeMap<>();
 		TreeMap<String, String> currentTagMAp = new TreeMap<>();
 		Map<String, String> tempTags = diffEntity.getOldNode().getTags();
