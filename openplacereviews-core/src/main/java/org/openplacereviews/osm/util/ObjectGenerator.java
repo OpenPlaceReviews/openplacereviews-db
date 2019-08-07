@@ -107,4 +107,23 @@ public class ObjectGenerator {
 		osmObject.put(ATTR_VISIBLE, entityInfo.getVisible());
 		osmObject.put(ATTR_ACTION, entityInfo.getAction());
 	}
+
+	public static List<String> generateListCoordinates() {
+		double quad_size_length = 360/32d;
+		double quad_size_height = 180/16d;
+		double p1 = -90, p2 = -180;
+		List<String> coordinates = new ArrayList<>();
+		while (p2 != 180) {
+			double t = p1 + quad_size_height;
+			double t1 = p2 + quad_size_length;
+			coordinates.add(p1 + ", " + p2 + ", " + t + ", " + t1);
+			p1 += quad_size_height;
+			if (p1 == 90) {
+				p1 = -90;
+				p2 += quad_size_length;
+			}
+		}
+
+		return coordinates;
+	}
 }

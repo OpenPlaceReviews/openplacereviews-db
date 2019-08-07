@@ -22,6 +22,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
 import static org.openplacereviews.osm.util.ObjectGenerator.*;
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_TYPE_SYS;
 import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
@@ -32,17 +33,29 @@ public class PublishBot implements IBotManager {
 
 	private static final Log LOGGER = LogFactory.getLog(PublishBot.class);
 
-	public static final String OP_BOT = OP_TYPE_SYS + "bot";
+	public static final String ATTR_BOT = "bot";
 	public static final String ATTR_SOURCE = "source";
 	public static final String ATTR_OLD_OSM_IDS = "old-osm-ids";
 	public static final String ATTR_OSM = "osm";
 	public static final String ATTR_TAGS = "tags";
 	public static final String ATTR_SET = "set";
+	public static final String ATTR_OPR = "opr";
 	public static final String ATTR_OSM_TAGS = "osm.tags.";
-	private static final String ATTR__SYNC_STATES = "sync-states";
+	public static final String ATTR_SYNC_STATES = "sync-states";
 
 	private static final String F_DATE = "date";
 	private static final String F_DIFF = "diff";
+	private static final String F_MATCH_ID = "match_id";
+	private static final String F_URL = "url";
+	private static final String F_TIMESTAMP = "overpass_timestamp";
+	private static final String F_OVERPASS = "overpass";
+	private static final String F_THREADS = "threads";
+	private static final String F_PLACES_PER_OPERATION = "places_per_operation";
+	private static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
+	private static final String F_RULES = "rules";
+	private static final String F_MAPPING = "mapping";
+
+	public static final String OP_BOT = OP_TYPE_SYS + ATTR_BOT;
 
 	private Long placesPerOperation;
 	private Long operationsPerBlock;
@@ -67,13 +80,13 @@ public class PublishBot implements IBotManager {
 
 	private void init() {
 		this.requestService = new RequestService(
-				botObject.getStringMap("url").get("overpass"),
-				botObject.getStringMap("url").get("overpass_timestamp"));
-		this.opType = ((Map<String, String>)botObject.getStringObjMap("bot").get("opr")).get("type");
-		this.placesPerOperation = (Long) ((Map<String, Object>)botObject.getStringObjMap("bot").get("opr")).get("places_per_operation");
-		this.operationsPerBlock = (Long) ((Map<String, Object>)botObject.getStringObjMap("bot").get("opr")).get("operations_per_block");
-		Long maxThreads = (Long) botObject.getStringObjMap("bot").get("threads");
-		this.service = Executors.newFixedThreadPool(1);
+				botObject.getStringMap(F_URL).get(F_OVERPASS),
+				botObject.getStringMap(F_URL).get(F_TIMESTAMP));
+		this.opType = ((Map<String, String>)botObject.getStringObjMap(ATTR_BOT).get(ATTR_OPR)).get(F_TYPE);
+		this.placesPerOperation = (Long) ((Map<String, Object>)botObject.getStringObjMap(ATTR_BOT).get(ATTR_OPR)).get(F_PLACES_PER_OPERATION);
+		this.operationsPerBlock = (Long) ((Map<String, Object>)botObject.getStringObjMap(ATTR_BOT).get(ATTR_OPR)).get(F_OPERATIONS_PER_BLOCK);
+		Long maxThreads = (Long) botObject.getStringObjMap(ATTR_BOT).get(F_THREADS);
+		this.service = Executors.newFixedThreadPool(maxThreads.intValue());
 		try {
 			this.timestamp = requestService.getTimestamp();
 		} catch (IOException e) {
@@ -106,10 +119,10 @@ public class PublishBot implements IBotManager {
 						blocksManager.addOperation(generateEditOpForOpOprCrawler(timestamp));
 						dbSync.put(F_DATE, timestamp);
 					} else {
-						dbSync.put(F_DATE, botObject.getListStringObjMap(ATTR__SYNC_STATES).get(0).get(F_DATE));
+						dbSync.put(F_DATE, botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(F_DATE));
 					}
 
-					dbSync.put(ATTR_TAGS, botObject.getListStringObjMap(ATTR__SYNC_STATES).get(0).get(ATTR_TAGS));
+					dbSync.put(ATTR_TAGS, botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(ATTR_TAGS));
 					dbManager.saveNewSyncState(dbSync);
 				}
 			} catch (FailedVerificationException e) {
@@ -120,6 +133,7 @@ public class PublishBot implements IBotManager {
 			LOGGER.info("DB is not synchronized!");
 			LOGGER.info("Start db syncing!");
 
+			// TODO implement db syncing
 			LOGGER.info("DB syncing is finished!");
 		} else {
 			LOGGER.info("Blockchain and DB is synchronized");
@@ -257,6 +271,8 @@ public class PublishBot implements IBotManager {
 //			objectList.removeAll(removeCollection);
 //		}
 
+
+		// TODO change creating operations
 		private List<OpOperation> generateOpOperationFromPlaceList(List<Object> places) throws FailedVerificationException {
 			List<OpOperation> opOperations = new ArrayList<>();
 
@@ -271,7 +287,7 @@ public class PublishBot implements IBotManager {
 					OpObject opObject = generateCreateOpObject(obj);
 
 					Map<String, Object> ctx = new HashMap<>();
-					for (Map.Entry<String, String> entry : botObject.getStringMap("mapping").entrySet()) {
+					for (Map.Entry<String, String> entry : botObject.getStringMap(F_MAPPING).entrySet()) {
 						ctx.put(entry.getKey(), opObject.getFieldByExpr(entry.getValue()));
 					}
 					OpExprEvaluator.EvaluationContext evaluationContext = new OpExprEvaluator.EvaluationContext(
@@ -282,13 +298,11 @@ public class PublishBot implements IBotManager {
 							null
 					);
 					String matchId = null;
-					// TODO are we need to store match_id??
-					for (Map.Entry<String, String> entry : botObject.getStringMap("rules").entrySet()) {
-						if (!entry.getKey().equals("match_id")) {
+					for (Map.Entry<String, String> entry : botObject.getStringMap(F_RULES).entrySet()) {
+						if (!entry.getKey().equals(F_MATCH_ID)) {
 							opObject.putObjectValue(entry.getKey(), OprExprEvaluatorExt.parseExpression(entry.getValue()).evaluateObject(evaluationContext));
 						} else {
 							matchId = OprExprEvaluatorExt.parseExpression(entry.getValue()).evaluateObject(evaluationContext).toString();
-							LOGGER.info(matchId);
 						}
 					}
 					if (!osmPlaceHeaders.contains(opObject.getId())) {
@@ -344,7 +358,7 @@ public class PublishBot implements IBotManager {
 	}
 
 	private SyncStatus getSyncStatus(String timestamp) {
-		Map<String, Object> syncStates = botObject.getListStringObjMap(ATTR__SYNC_STATES).get(0);
+		Map<String, Object> syncStates = botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0);
 		Map<String, Object> dbSyncState = dbManager.getDBSyncState();
 
 		if (dbSyncState == null) {
@@ -374,7 +388,7 @@ public class PublishBot implements IBotManager {
 
 		Map<String, String> tagsCoordinates = new HashMap<>();
 		Map<String, String> tagsBbox = new HashMap<>();
-		List<Map<String, Object>> mapList = botObject.getListStringObjMap(ATTR__SYNC_STATES);
+		List<Map<String, Object>> mapList = botObject.getListStringObjMap(ATTR_SYNC_STATES);
 		Map<String, String> states = (Map<String, String>) ((Map<String, Object>) mapList.get(0)).get(ATTR_TAGS);
 
 		for (Map.Entry<String, String> e : states.entrySet()) {
@@ -426,13 +440,12 @@ public class PublishBot implements IBotManager {
 	}
 
 	private void addRequest(String timestamp, SyncStatus syncStatus, List<String> requests, StringBuilder tag) throws UnsupportedEncodingException {
-		if (botObject.getListStringObjMap(ATTR__SYNC_STATES).get(0).get(F_DATE).equals("") || SyncStatus.TAGS_SYNC.equals(syncStatus)) {
+		if (botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(F_DATE).equals("") || SyncStatus.TAGS_SYNC.equals(syncStatus)) {
 			requests.add(requestService.generateRequestString(tag.toString(), F_DATE, timestamp));
 		} else {
-			requests.add(requestService.generateRequestString(tag.toString(), F_DIFF, botObject.getListStringObjMap(ATTR__SYNC_STATES).get(0).get(F_DATE) + "\",\"" + timestamp));
+			requests.add(requestService.generateRequestString(tag.toString(), F_DIFF, botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(F_DATE) + "\",\"" + timestamp));
 		}
 	}
-
 
 	private OpOperation generateEditOpForOpOprCrawler(String timestamp) throws FailedVerificationException {
 		OpOperation opOperation = new OpOperation();
@@ -444,11 +457,11 @@ public class PublishBot implements IBotManager {
 		TreeMap<String, Object> changeDate = new TreeMap<>();
 		TreeMap<String, String> setDate = new TreeMap<>();
 		setDate.put(ATTR_SET, timestamp);
-		changeDate.put(ATTR__SYNC_STATES + "[0]." + F_DATE, setDate);
+		changeDate.put(ATTR_SYNC_STATES + "[0]." + F_DATE, setDate);
 		editObject.putObjectValue(F_CHANGE, changeDate);
 
 		TreeMap<String, String> previousDate = new TreeMap<>();
-		previousDate.put(ATTR__SYNC_STATES + "[0]." + F_DATE, (String) botObject.getListStringObjMap(ATTR__SYNC_STATES).get(0).get(F_DATE));
+		previousDate.put(ATTR_SYNC_STATES + "[0]." + F_DATE, (String) botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(F_DATE));
 		editObject.putObjectValue(F_CURRENT, previousDate);
 
 		opOperation.addEdited(editObject);
@@ -456,25 +469,5 @@ public class PublishBot implements IBotManager {
 
 		return opOperation;
 	}
-
-	private List<String> generateListCoordinates() {
-		double quad_size_length = 360/32d;
-		double quad_size_height = 180/16d;
-		double p1 = -90, p2 = -180;
-		List<String> coordinates = new ArrayList<>();
-		while (p2 != 180) {
-			double t = p1 + quad_size_height;
-			double t1 = p2 + quad_size_length;
-			coordinates.add(p1 + ", " + p2 + ", " + t + ", " + t1);
-			p1 += quad_size_height;
-			if (p1 == 90) {
-				p1 = -90;
-				p2 += quad_size_length;
-			}
-		}
-
-		return coordinates;
-	}
-
 
 }
