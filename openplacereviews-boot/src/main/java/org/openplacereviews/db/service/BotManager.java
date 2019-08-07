@@ -17,8 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.openplacereviews.opendb.ops.OpObject.F_ID;
-import static org.openplacereviews.osm.service.PublishBotManager.OP_BOT;
+import static org.openplacereviews.osm.service.PublishBot.OP_BOT;
 
 @Service
 public class BotManager {
@@ -36,7 +35,6 @@ public class BotManager {
 
 	public Set<List<String>> getAllBots() {
 		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
-		objectsSearchRequest.field = F_ID;
 		blocksManager.getBlockchain().getObjectHeaders(OP_BOT, objectsSearchRequest);
 		return objectsSearchRequest.resultWithHeaders;
 	}

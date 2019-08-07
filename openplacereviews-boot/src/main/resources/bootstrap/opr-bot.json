@@ -45,13 +45,13 @@
         }
       },
       "mapping": {
-        "lat":"osm[0].lat",
-        "lon":"osm[0].lon",
-        "name":"osm[0].tags.name"
+        "lat":"source.osm[0].lat",
+        "lon":"source.osm[0].lon",
+        "tags":"source.osm[0].tags"
       },
       "rules": {
-        "id" : "op:place_id(.lat, .lon, 'false')",
-        "match_id" : "str:concat(op:place_id(.lat, .lon, 'true'), str:concat('###', op:name_simplify('v1', .name)))"
+        //"id" : "str:all(opr:place_loc(6, .lot, ,lon), opr)",
+        "match_id" : "set:all(opr:place_loc(.lat, .lon), str:first_non_empty(.tags.amenity, .tags.leisure), opr:simple_name(.tags.name))"
       },
       "sync-states" : [
         {

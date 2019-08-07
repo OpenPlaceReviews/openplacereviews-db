@@ -51,7 +51,7 @@ public class RequestService {
 	}
 
 	public String generateRequestString(String tags, String type, String timestamp) throws UnsupportedEncodingException {
-		String subRequest = "[out:xml][timeout:100][%s:\"%s\"];(%s); out body; >; out geom meta;";
+		String subRequest = "[out:xml][timeout:1200][%s:\"%s\"];(%s); out body; >; out geom meta;";
 		String request = String.format(subRequest, type, timestamp, tags);
 
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());

@@ -9,10 +9,10 @@ import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.util.OpExprEvaluator;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.db.DbManager;
-import org.openplacereviews.osm.parser.OsmLocationTool;
 import org.openplacereviews.osm.parser.OsmParser;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
+import org.openplacereviews.osm.util.OprExprEvaluatorExt;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -28,11 +28,13 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.ops.OpOperation.F_DELETE;
 
-public class PublishBotManager implements IBotManager {
+public class PublishBot implements IBotManager {
 
-	private static final Log LOGGER = LogFactory.getLog(PublishBotManager.class);
+	private static final Log LOGGER = LogFactory.getLog(PublishBot.class);
 
 	public static final String OP_BOT = OP_TYPE_SYS + "bot";
+	public static final String ATTR_SOURCE = "source";
+	public static final String ATTR_OLD_OSM_IDS = "old-osm-ids";
 	public static final String ATTR_OSM = "osm";
 	public static final String ATTR_TAGS = "tags";
 	public static final String ATTR_SET = "set";
@@ -56,7 +58,7 @@ public class PublishBotManager implements IBotManager {
 	List<Future<?>> futures = new ArrayList<>();
 	ExecutorService service;
 
-	public PublishBotManager(BlocksManager blocksManager, OpObject botObject, JdbcTemplate jdbcTemplate) {
+	public PublishBot(BlocksManager blocksManager, OpObject botObject, JdbcTemplate jdbcTemplate) {
 		this.blocksManager = blocksManager;
 		this.botObject = botObject;
 		this.dbManager = new DbManager(blocksManager, jdbcTemplate);
@@ -71,7 +73,7 @@ public class PublishBotManager implements IBotManager {
 		this.placesPerOperation = (Long) ((Map<String, Object>)botObject.getStringObjMap("bot").get("opr")).get("places_per_operation");
 		this.operationsPerBlock = (Long) ((Map<String, Object>)botObject.getStringObjMap("bot").get("opr")).get("operations_per_block");
 		Long maxThreads = (Long) botObject.getStringObjMap("bot").get("threads");
-		this.service = Executors.newFixedThreadPool(maxThreads.intValue());
+		this.service = Executors.newFixedThreadPool(1);
 		try {
 			this.timestamp = requestService.getTimestamp();
 		} catch (IOException e) {
@@ -86,7 +88,6 @@ public class PublishBotManager implements IBotManager {
 			List<String> requests = new ArrayList<>(generateRequestList(timestamp, syncStatus));
 
 			OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
-			objectsSearchRequest.field = "match_id";
 			blocksManager.getBlockchain().getObjectHeaders(opType, objectsSearchRequest);
 			osmPlaceHeaders = objectsSearchRequest.resultWithHeaders;
 			for (int i = 0; i < requests.size(); i++) {
@@ -280,18 +281,19 @@ public class PublishBotManager implements IBotManager {
 							null,
 							null
 					);
-					List<String> matchId = null;
+					String matchId = null;
 					// TODO are we need to store match_id??
 					for (Map.Entry<String, String> entry : botObject.getStringMap("rules").entrySet()) {
 						if (!entry.getKey().equals("match_id")) {
-							opObject.putObjectValue(entry.getKey(), OpExprEvaluator.parseExpression(entry.getValue()).evaluateObject(evaluationContext));
+							opObject.putObjectValue(entry.getKey(), OprExprEvaluatorExt.parseExpression(entry.getValue()).evaluateObject(evaluationContext));
 						} else {
-							matchId = Collections.singletonList((String) OpExprEvaluator.parseExpression(entry.getValue()).evaluateObject(evaluationContext));
+							matchId = OprExprEvaluatorExt.parseExpression(entry.getValue()).evaluateObject(evaluationContext).toString();
+							LOGGER.info(matchId);
 						}
 					}
-					if (!osmPlaceHeaders.contains(matchId)) {
+					if (!osmPlaceHeaders.contains(opObject.getId())) {
 						createOperation.addCreated(opObject);
-						osmPlaceHeaders.add(matchId);
+						osmPlaceHeaders.add(opObject.getId());
 					}
 				} else if (e instanceof DiffEntity) {
 					DiffEntity diffEntity = (DiffEntity) e;

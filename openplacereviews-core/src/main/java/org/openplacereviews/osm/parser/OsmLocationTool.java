@@ -1,10 +1,13 @@
 package org.openplacereviews.osm.parser;
 
 import com.google.openlocationcode.OpenLocationCode;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.openplacereviews.osm.model.LatLon;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 import static com.google.openlocationcode.OpenLocationCode.CodeArea;
@@ -47,12 +50,6 @@ public class OsmLocationTool {
 		return Integer.parseInt(id.substring(CODE_LENGTH), 16);
 	}
 
-	public static String generateStrId(LatLon latLon) {
-		if (latLon == null) {
-			return null;
-		}
-		return generateStrId(latLon.getLatitude(), latLon.getLongitude());
-	}
 	/**
 	 * Generate osm id from {@code latitude} and {@code longitude}</br>
 	 * and random int value.
@@ -65,6 +62,24 @@ public class OsmLocationTool {
 		Integer suffix = new Random().nextInt(Integer.MAX_VALUE);
 
 		return code + BigInteger.valueOf(suffix).toString(16);
+	}
+
+	public static String generateStrId(LatLon latLon) {
+		if (latLon == null) {
+			return null;
+		}
+		return generateStrId(latLon.getLatitude(), latLon.getLongitude());
+	}
+
+	public static List<String> generatePlaceLocationId(LatLon latLon) {
+		return generatePlaceLocationId(latLon.getLatitude(), latLon.getLongitude());
+	}
+
+	public static List<String> generatePlaceLocationId(double latitude, double longitude) {
+		String firstKey = encode(latitude,longitude);
+		String secondKey = RandomStringUtils.randomAlphanumeric(46);
+
+		return Arrays.asList(firstKey, secondKey);
 	}
 
 	/**

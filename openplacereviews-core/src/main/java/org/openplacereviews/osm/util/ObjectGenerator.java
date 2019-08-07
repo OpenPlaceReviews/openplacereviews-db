@@ -17,7 +17,7 @@ import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.model.EntityInfo.*;
-import static org.openplacereviews.osm.service.PublishBotManager.*;
+import static org.openplacereviews.osm.service.PublishBot.*;
 
 public class ObjectGenerator {
 
@@ -28,8 +28,10 @@ public class ObjectGenerator {
 
 	public static OpObject generateCreateOpObject(Entity entity) {
 		OpObject create = new OpObject();
+		create.putObjectValue(F_ID, OsmLocationTool.generatePlaceLocationId(entity.getLatLon()));
+		TreeMap<String, Object> source = new TreeMap<>();
 		TreeMap<String, Object> osmObject = new TreeMap<>();
-		osmObject.put(F_ID, Collections.singletonList(String.valueOf(entity.getId())));
+		osmObject.put(F_ID, entity.getId());
 		osmObject.put(F_TYPE, entity.getClass().getSimpleName().toLowerCase());
 		osmObject.put(ATTR_TAGS, entity.getTags());
 		osmObject.put(ATTR_LONGITUDE, entity.getLongitude());
@@ -39,7 +41,9 @@ public class ObjectGenerator {
 			generateEntityInfo(osmObject, entity.getEntityInfo());
 		}
 
-		create.putObjectValue(ATTR_OSM, Arrays.asList(osmObject));
+		source.put(ATTR_OSM, Arrays.asList(osmObject));
+		source.put(ATTR_OLD_OSM_IDS, new ArrayList<>());
+		create.putObjectValue(ATTR_SOURCE, source);
 		return create;
 	}
 
@@ -95,10 +99,10 @@ public class ObjectGenerator {
 	}
 
 	public static void generateEntityInfo(TreeMap<String, Object> osmObject, EntityInfo entityInfo) {
-		osmObject.put(ATTR_TIMESTAMP, entityInfo.getTimestamp());
+		osmObject.put(ATTR_TIMESTAMP, entityInfo.getTimestamp() == null ? new Date() : entityInfo.getTimestamp());
 		osmObject.put(ATTR_UID, entityInfo.getUid());
 		osmObject.put(ATTR_USER, entityInfo.getUser());
-		osmObject.put(ATTR_VERSION, entityInfo.getVersion());
+		osmObject.put(ATTR_VERSION, entityInfo.getVersion() == null ? 1 : entityInfo.getVersion());
 		osmObject.put(ATTR_CHANGESET, entityInfo.getChangeset());
 		osmObject.put(ATTR_VISIBLE, entityInfo.getVisible());
 		osmObject.put(ATTR_ACTION, entityInfo.getAction());
