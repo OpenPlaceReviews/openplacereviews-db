@@ -6,6 +6,7 @@ import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.service.IPublishBot;
 import org.openplacereviews.opendb.util.OpExprEvaluator;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.db.DbManager;
@@ -29,7 +30,7 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.ops.OpOperation.F_DELETE;
 
-public class PublishBot implements IBotManager {
+public class PublishBot implements IPublishBot {
 
 	private static final Log LOGGER = LogFactory.getLog(PublishBot.class);
 
