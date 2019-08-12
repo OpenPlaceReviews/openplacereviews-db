@@ -110,13 +110,13 @@ public class OsmParser {
 					results.add(diffEntity);
 					diffEntity = null;
 					actionSubTag = "";
-					if (limit == counter++) {
+					if (limit == ++counter) {
 						break;
 					}
 				} else if (!parseDiff && (EntityType.NODE.getName().equals(elementName) || EntityType.WAY.getName().equals(elementName) || EntityType.RELATION.getName().equals(elementName))) {
 					results.add(entity);
 					entity = null;
-					if (limit == counter++) {
+					if (limit == ++counter) {
 						break;
 					}
 				}

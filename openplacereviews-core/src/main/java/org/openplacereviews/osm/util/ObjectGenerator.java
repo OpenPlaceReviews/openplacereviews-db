@@ -47,8 +47,8 @@ public class ObjectGenerator {
 		return create;
 	}
 
-	public static OpObject generateEditOpObject(OpObject edit, DiffEntity diffEntity) {
-		edit.putObjectValue(F_ID, Arrays.asList(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon())));
+	public static OpObject generateEditOpObject(OpObject edit, DiffEntity diffEntity, List<String> objId) {
+		edit.putObjectValue(F_ID, objId);
 		TreeMap<String, Object> changeTagMap = new TreeMap<>();
 		TreeMap<String, String> currentTagMAp = new TreeMap<>();
 		Map<String, String> tempTags = diffEntity.getOldNode().getTags();
@@ -57,20 +57,20 @@ public class ObjectGenerator {
 				if (!newEntry.getValue().equals(tempTags.get(newEntry.getKey()))) {
 					TreeMap<String, String> setValue = new TreeMap<>();
 					setValue.put(ATTR_SET, newEntry.getValue());
-					changeTagMap.put(ATTR_OSM_TAGS + newEntry.getKey(), setValue);
-					currentTagMAp.put(ATTR_OSM_TAGS + newEntry.getKey(), tempTags.get(newEntry.getKey()));
+					changeTagMap.put(ATTR_SOURCE_OSM_TAGS + newEntry.getKey(), setValue);
+					currentTagMAp.put(ATTR_SOURCE_OSM_TAGS + newEntry.getKey(), tempTags.get(newEntry.getKey()));
 				}
 			} else {
 				TreeMap<String, String> setValue = new TreeMap<>();
 				setValue.put(ATTR_SET, newEntry.getValue());
-				changeTagMap.put(ATTR_OSM_TAGS + newEntry.getKey(), setValue);
+				changeTagMap.put(ATTR_SOURCE_OSM_TAGS + newEntry.getKey(), setValue);
 			}
 		}
 		tempTags = diffEntity.getNewNode().getTags();
 		for (Map.Entry<String, String> oldEntry : diffEntity.getOldNode().getTags().entrySet()) {
 			if (!tempTags.containsKey(oldEntry.getKey())) {
-				changeTagMap.put(ATTR_OSM_TAGS + oldEntry.getKey(), F_DELETE);
-				currentTagMAp.put(ATTR_OSM_TAGS + oldEntry.getKey(), oldEntry.getValue());
+				changeTagMap.put(ATTR_SOURCE_OSM_TAGS + oldEntry.getKey(), F_DELETE);
+				currentTagMAp.put(ATTR_SOURCE_OSM_TAGS + oldEntry.getKey(), oldEntry.getValue());
 			}
 		}
 
@@ -90,12 +90,10 @@ public class ObjectGenerator {
 	}
 
 	public static void generateHashAndSign(List<OpOperation> opOperations, OpOperation opOperation, BlocksManager blocksManager) throws FailedVerificationException {
-		if (opOperation != null) {
-			String obj = blocksManager.getBlockchain().getRules().getFormatter().opToJson(opOperation);
-			opOperation = blocksManager.getBlockchain().getRules().getFormatter().parseOperation(obj);
-			opOperation = blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
-			opOperations.add(opOperation);
-		}
+		String obj = blocksManager.getBlockchain().getRules().getFormatter().opToJson(opOperation);
+		opOperation = blocksManager.getBlockchain().getRules().getFormatter().parseOperation(obj);
+		opOperation = blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
+		opOperations.add(opOperation);
 	}
 
 	public static void generateEntityInfo(TreeMap<String, Object> osmObject, EntityInfo entityInfo) {

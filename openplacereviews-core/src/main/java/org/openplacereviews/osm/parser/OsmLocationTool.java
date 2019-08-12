@@ -28,6 +28,11 @@ public class OsmLocationTool {
 		return code.substring(0, CODE_LENGTH);
 	}
 
+	public static String encode(double latitude, double longitude, int codeLength) {
+		String code = OpenLocationCode.encode(latitude, longitude, codeLength);
+		return code.substring(0, codeLength);
+	}
+
 	/**
 	 * Decode input in {@link CodeArea} object.
 	 * @param code
@@ -77,7 +82,7 @@ public class OsmLocationTool {
 
 	public static List<String> generatePlaceLocationId(double latitude, double longitude) {
 		String firstKey = encode(latitude,longitude);
-		String secondKey = RandomStringUtils.randomAlphanumeric(46);
+		String secondKey = RandomStringUtils.randomAlphanumeric(6).toLowerCase();
 
 		return Arrays.asList(firstKey, secondKey);
 	}

@@ -2,18 +2,15 @@ package org.openplacereviews.osm.service;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.IPublishBot;
-import org.openplacereviews.opendb.util.OpExprEvaluator;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.db.DbManager;
-import org.openplacereviews.osm.parser.OsmParser;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
-import org.openplacereviews.osm.util.OprExprEvaluatorExt;
+import org.openplacereviews.osm.parser.OsmParser;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -24,11 +21,10 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
-import static org.openplacereviews.osm.util.ObjectGenerator.*;
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_TYPE_SYS;
-import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
-import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
+import static org.openplacereviews.opendb.ops.OpObject.*;
 import static org.openplacereviews.opendb.ops.OpOperation.F_DELETE;
+import static org.openplacereviews.osm.util.ObjectGenerator.*;
 
 public class PublishBot implements IPublishBot {
 
@@ -41,20 +37,20 @@ public class PublishBot implements IPublishBot {
 	public static final String ATTR_TAGS = "tags";
 	public static final String ATTR_SET = "set";
 	public static final String ATTR_OPR = "opr";
-	public static final String ATTR_OSM_TAGS = "osm.tags.";
+	public static final String ATTR_SOURCE_OSM_TAGS = "source.osm[0].tags.";
 	public static final String ATTR_SYNC_STATES = "sync-states";
 
 	private static final String F_DATE = "date";
 	private static final String F_DIFF = "diff";
-	private static final String F_MATCH_ID = "match_id";
+	public static final String F_MATCH_ID = "match_id";
 	private static final String F_URL = "url";
 	private static final String F_TIMESTAMP = "overpass_timestamp";
 	private static final String F_OVERPASS = "overpass";
 	private static final String F_THREADS = "threads";
 	private static final String F_PLACES_PER_OPERATION = "places_per_operation";
 	private static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
-	private static final String F_RULES = "rules";
-	private static final String F_MAPPING = "mapping";
+	public static final String F_RULES = "rules";
+	public static final String F_MAPPING = "mapping";
 
 	public static final String OP_BOT = OP_TYPE_SYS + ATTR_BOT;
 
@@ -62,12 +58,12 @@ public class PublishBot implements IPublishBot {
 	private Long operationsPerBlock;
 	private String opType;
 	private String timestamp;
-	private volatile HashSet<List<String>> osmPlaceHeaders;
 
 	private volatile BlocksManager blocksManager;
 	private OpObject botObject;
 	private RequestService requestService;
 	private DbManager dbManager;
+	private PlaceManager placeManager;
 
 	List<Future<?>> futures = new ArrayList<>();
 	ExecutorService service;
@@ -76,6 +72,7 @@ public class PublishBot implements IPublishBot {
 		this.blocksManager = blocksManager;
 		this.botObject = botObject;
 		this.dbManager = new DbManager(blocksManager, jdbcTemplate);
+		this.placeManager = new PlaceManager(blocksManager, botObject);
 		init();
 	}
 
@@ -88,6 +85,7 @@ public class PublishBot implements IPublishBot {
 		this.operationsPerBlock = (Long) ((Map<String, Object>)botObject.getStringObjMap(ATTR_BOT).get(ATTR_OPR)).get(F_OPERATIONS_PER_BLOCK);
 		Long maxThreads = (Long) botObject.getStringObjMap(ATTR_BOT).get(F_THREADS);
 		this.service = Executors.newFixedThreadPool(maxThreads.intValue());
+//		timestamp = "2019-06-01T00:00:00Z";
 		try {
 			this.timestamp = requestService.getTimestamp();
 		} catch (IOException e) {
@@ -101,9 +99,6 @@ public class PublishBot implements IPublishBot {
 			LOGGER.info("Start synchronizing: " + syncStatus);
 			List<String> requests = new ArrayList<>(generateRequestList(timestamp, syncStatus));
 
-			OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
-			blocksManager.getBlockchain().getObjectHeaders(opType, objectsSearchRequest);
-			osmPlaceHeaders = objectsSearchRequest.resultWithHeaders;
 			for (int i = 0; i < requests.size(); i++) {
 				futures.add(service.submit(new Publisher(requests.get(i), syncStatus)));
 			}
@@ -147,6 +142,24 @@ public class PublishBot implements IPublishBot {
 		return null;
 	}
 
+	private synchronized void createBlock(long allOperationsCounter, long opCounter, long appStartedMs) {
+		try {
+			if (!blocksManager.getBlockchain().getQueueOperations().isEmpty()) {
+				boolean createBlock = (allOperationsCounter % operationsPerBlock == 0 || blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock);
+				if (createBlock) {
+					blocksManager.createBlock();
+					LOGGER.info("Op saved: " + opCounter + " date: " + new Date());
+					LOGGER.info("Places saved: " + (allOperationsCounter * placesPerOperation) + " date: " + new Date());
+					long currTimeMs = System.currentTimeMillis();
+					long placesPerSecond = (opCounter * placesPerOperation) / ((currTimeMs - appStartedMs) / 1000);
+					LOGGER.info("Places per second: " + placesPerSecond);
+				}
+			}
+		} catch (Exception e) {
+			LOGGER.error("Error occurred while creating block: " +e.getMessage());
+		}
+	}
+
 	private class Publisher implements Callable {
 
 		private long opCounter;
@@ -179,7 +192,7 @@ public class PublishBot implements IPublishBot {
 			} catch (XmlPullParserException e) {
 				LOGGER.error("Error while reading file", e);
 			}
-			publish(osmParser, syncStatus, osmPlaceHeaders);
+			publish(osmParser, syncStatus);
 			try {
 				file.close();
 			} catch (IOException e) {
@@ -188,7 +201,7 @@ public class PublishBot implements IPublishBot {
 			}
 		}
 
-		private void publish(OsmParser osmParser, SyncStatus statusSync, HashSet<List<String>> osmPlaceHeaders) {
+		private void publish(OsmParser osmParser, SyncStatus statusSync) {
 			appStartedMs = System.currentTimeMillis();
 			while (!Thread.currentThread().isInterrupted()) {
 				try {
@@ -207,11 +220,11 @@ public class PublishBot implements IPublishBot {
 					break;
 				}
 			}
-			LOGGER.info("Amount of operation transferred data: " + opCounter);
 		}
 
 		private void publish(Object places) throws FailedVerificationException {
-			LOGGER.info(request + "     AMOUNT" + ((List<Object>) places).size());
+			// TODO change logs!!!
+			//LOGGER.info(request + "     AMOUNT" + ((List<Object>) places).size());
 			List<OpOperation> osmCoordinatePlacesDto = generateOpOperationFromPlaceList((List<Object>) places);
 			try {
 				for (OpOperation opOperation : osmCoordinatePlacesDto) {
@@ -220,60 +233,14 @@ public class PublishBot implements IPublishBot {
 				}
 				allOperationsCounter += 1;
 			} catch (Exception e) {
+				e.printStackTrace();
 				LOGGER.error("Error occurred while posting places: " + e.getMessage());
-				LOGGER.info("Amount of pack transferred data: " + opCounter);
+				LOGGER.info("Amount of pack transferred data: " + allOperationsCounter);
 			}
 
-			try {
-				if (!blocksManager.getBlockchain().getQueueOperations().isEmpty()) {
-					boolean createBlock = (allOperationsCounter % operationsPerBlock == 0 || blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock);
-					if (createBlock) {
-						blocksManager.createBlock();
-						LOGGER.info("Op saved: " + opCounter + " date: " + new Date());
-						LOGGER.info("Places saved: " + (allOperationsCounter * placesPerOperation) + " date: " + new Date());
-						long currTimeMs = System.currentTimeMillis();
-						long placesPerSecond = (opCounter * placesPerOperation) / ((currTimeMs - appStartedMs) / 1000);
-						LOGGER.info("Places per second: " + placesPerSecond);
-					}
-				}
-			} catch (Exception e) {
-				LOGGER.error("Error occurred while creating block: " +e.getMessage());
-			}
-
+			createBlock(allOperationsCounter, opCounter, appStartedMs);
 		}
 
-//		private void removeDuplicates(Object places, HashSet<List<String>> osmPlaceHeaders) {
-//			List<Object> objectList = (List<Object>) places;
-//			List<Object> removeCollection = new LinkedList<>();
-//			for (Object o : objectList) {
-//				if (o instanceof Entity) {
-//					Entity entity = (Entity) o;
-//					// TODO generate match id
-//					//List<String> matchId = Collections.singletonList(OpExprEvaluator.parseExpression(botObject.getStringMap("rules").get("match_id")).evaluateObject(evaluationContext)));
-//					List<String> strId = Collections.singletonList(OsmLocationTool.generateStrId(entity.getLatLon()));
-//					if (osmPlaceHeaders.contains(strId)) {
-//						removeCollection.add(o);
-//					} else {
-//						osmPlaceHeaders.add(strId);
-//					}
-//				} else if (o instanceof DiffEntity) {
-//					DiffEntity diffEntity = (DiffEntity) o;
-//					if (DiffEntity.DiffEntityType.CREATE.equals(diffEntity.getType())) {
-//						// TODO generate match id
-//						List<String> strId = Collections.singletonList(OsmLocationTool.generateStrId(diffEntity.getNewNode().getLatLon()));
-//						if (osmPlaceHeaders.contains(strId)) {
-//							removeCollection.add(o);
-//						} else {
-//							osmPlaceHeaders.add(strId);
-//						}
-//					}
-//				}
-//			}
-//			objectList.removeAll(removeCollection);
-//		}
-
-
-		// TODO change creating operations
 		private List<OpOperation> generateOpOperationFromPlaceList(List<Object> places) throws FailedVerificationException {
 			List<OpOperation> opOperations = new ArrayList<>();
 
@@ -285,31 +252,28 @@ public class PublishBot implements IPublishBot {
 				if (e instanceof Entity) {
 					Entity obj = (Entity) e;
 					createOperation = initOpOperation(createOperation, opType, blocksManager);
-					OpObject opObject = generateCreateOpObject(obj);
 
-					Map<String, Object> ctx = new HashMap<>();
-					for (Map.Entry<String, String> entry : botObject.getStringMap(F_MAPPING).entrySet()) {
-						ctx.put(entry.getKey(), opObject.getFieldByExpr(entry.getValue()));
-					}
-					OpExprEvaluator.EvaluationContext evaluationContext = new OpExprEvaluator.EvaluationContext(
-							null,
-							blocksManager.getBlockchain().getRules().getFormatter().toJsonElement(ctx).getAsJsonObject(),
-							blocksManager.getBlockchain().getRules().getFormatter().toJsonElement(obj).getAsJsonObject(),
-							null,
-							null
-					);
-					String matchId = null;
-					for (Map.Entry<String, String> entry : botObject.getStringMap(F_RULES).entrySet()) {
-						if (!entry.getKey().equals(F_MATCH_ID)) {
-							opObject.putObjectValue(entry.getKey(), OprExprEvaluatorExt.parseExpression(entry.getValue()).evaluateObject(evaluationContext));
-						} else {
-							matchId = OprExprEvaluatorExt.parseExpression(entry.getValue()).evaluateObject(evaluationContext).toString();
+					// TODO load object by osm id, if not exist -> create, else check matchId equals -> skip, else -> create new Object
+					OpObject objExist = placeManager.getObjectByExtId(String.valueOf(obj.getId()));
+					if (objExist == null) {
+						OpObject createOpObject = generateCreateOpObject(obj);
+						createOperation.addCreated(createOpObject);
+					} else {
+						// TODO add check match ID if matchIds equals skip, else create new
+						OpObject newOpObject = generateCreateOpObject(obj);
+						String matchId = placeManager.generateMatchIdFromOpObject(newOpObject);
+						String oldMatchId = placeManager.generateMatchIdFromOpObject(objExist);
+						if (!Objects.equals(matchId, oldMatchId)) {
+							// TODO create with same OSM-ID??
+							createOperation.addCreated(newOpObject);
 						}
 					}
-					if (!osmPlaceHeaders.contains(opObject.getId())) {
-						createOperation.addCreated(opObject);
-						osmPlaceHeaders.add(opObject.getId());
-					}
+
+//					OpObject newOpObject = generateCreateOpObject(obj);
+//					String matchId = placeManager.generateMatchIdFromOpObject(newOpObject);
+//					if (placeManager.getObjectByMatchId(matchId) == null) {
+//						createOperation.addCreated(newOpObject);
+//					}
 				} else if (e instanceof DiffEntity) {
 					DiffEntity diffEntity = (DiffEntity) e;
 					if (DiffEntity.DiffEntityType.DELETE.equals(diffEntity.getType())) {
@@ -318,33 +282,81 @@ public class PublishBot implements IPublishBot {
 						if (deletedObjs.isEmpty()) {
 							deletedObjs = new ArrayList<>();
 						}
-						deleteOperation.putObjectValue(F_DELETE, generateDeleteOpObject(deletedObjs, diffEntity.getOldNode()));
+
+						OpObject deleteObject =  placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
+						if (deleteObject != null) {
+							deletedObjs.add(deleteObject.getId());
+							deleteOperation.putObjectValue(F_DELETE, deletedObjs);
+						}
 					} else if (DiffEntity.DiffEntityType.CREATE.equals(diffEntity.getType())) {
 						createOperation = initOpOperation(createOperation, opType, blocksManager);
-						createOperation.addCreated(generateCreateOpObject(diffEntity.getNewNode()));
+
+						OpObject objExist = placeManager.getObjectByExtId(String.valueOf(diffEntity.getNewNode().getId()));
+						if (objExist == null) {
+							OpObject createObj = generateCreateOpObject(diffEntity.getNewNode());
+							createOperation.addCreated(createObj);
+						} else {
+							// TODO add check match ID if matchIds equals skip, else create new
+							String matchId = placeManager.generateMatchIdFromOpObject(objExist);
+							OpObject newOpObject = generateCreateOpObject(diffEntity.getNewNode());
+							String newMatchId = placeManager.generateMatchIdFromOpObject(newOpObject);
+							if (!Objects.equals(matchId, newMatchId)) {
+								// TODO create with same OSM-ID??
+								createOperation.addCreated(newOpObject);
+							}
+						}
+
+//						OpObject newOpObject = generateCreateOpObject(diffEntity.getNewNode());
+//						String matchId = placeManager.generateMatchIdFromOpObject(newOpObject);
+//						if (placeManager.getObjectByMatchId(matchId) == null) {
+//							createOperation.addCreated(newOpObject);
+//						}
 					} else if (DiffEntity.DiffEntityType.MODIFY.equals(diffEntity.getType())) {
 						OpObject edit = new OpObject();
+
+						/// TODO refactor that code -> change check only by matchID ??
 						if (diffEntity.getNewNode().getLatLon().equals(diffEntity.getOldNode().getLatLon())) {
 							editOperation = initOpOperation(editOperation, opType, blocksManager);
-							editOperation.addEdited(generateEditOpObject(edit, diffEntity));
+
+							OpObject deleteObject = placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
+							if (deleteObject != null) {
+								editOperation.addEdited(generateEditOpObject(edit, diffEntity, deleteObject.getId()));
+							}
 						} else {
 							deleteOperation = initOpOperation(deleteOperation, opType, blocksManager);
 							List<List<String>> deletedObjs = deleteOperation.getDeleted();
 							if (deletedObjs.isEmpty()) {
 								deletedObjs = new ArrayList<>();
 							}
-							deleteOperation.putObjectValue(F_DELETE, generateDeleteOpObject(deletedObjs, diffEntity.getOldNode()));
+
+							List<OpObject> opObjects = blocksManager.getObjectByIndex("obj_opr_places", "osmid", "id", String.valueOf(diffEntity.getOldNode().getId()));
+							if (!opObjects.isEmpty()) {
+								deletedObjs.add(opObjects.get(0).getId());
+								deleteOperation.putObjectValue(F_DELETE, deletedObjs);
+							}
 
 							createOperation = initOpOperation(createOperation, opType, blocksManager);
-							createOperation.addCreated(generateCreateOpObject(diffEntity.getNewNode()));
+							opObjects = blocksManager.getObjectByIndex("obj_opr_places", "osmid", "id", String.valueOf(diffEntity.getNewNode().getId()));
+							if (opObjects.isEmpty()) {
+								OpObject createObj = generateCreateOpObject(diffEntity.getNewNode());
+								createOperation.addCreated(createObj);
+							} else {
+								// TODO add check match ID if matchIds equals skip, else remove old create new
+							}
 						}
 					}
 				}
 			}
 
-			generateHashAndSign(opOperations, deleteOperation, blocksManager);
-			generateHashAndSign(opOperations, createOperation, blocksManager);
-			generateHashAndSign(opOperations, editOperation, blocksManager);
+			if (deleteOperation != null && deleteOperation.getDeleted().size() != 0) {
+				generateHashAndSign(opOperations, deleteOperation, blocksManager);
+			}
+			if (createOperation != null && createOperation.getCreated().size() != 0) {
+				generateHashAndSign(opOperations, createOperation, blocksManager);
+			}
+			if (editOperation != null && editOperation.getEdited().size() != 0) {
+				generateHashAndSign(opOperations, editOperation, blocksManager);
+			}
 
 			return opOperations;
 		}
@@ -464,6 +476,24 @@ public class PublishBot implements IPublishBot {
 		TreeMap<String, String> previousDate = new TreeMap<>();
 		previousDate.put(ATTR_SYNC_STATES + "[0]." + F_DATE, (String) botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(F_DATE));
 		editObject.putObjectValue(F_CURRENT, previousDate);
+
+		opOperation.addEdited(editObject);
+		blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
+
+		return opOperation;
+	}
+
+	private OpOperation generateEditOpDeleteOsmIds(List<String> placeId, String extId) throws FailedVerificationException {
+		OpOperation opOperation = new OpOperation();
+		opOperation.setType(opType);
+		opOperation.setSignedBy(blocksManager.getServerUser());
+		OpObject editObject = new OpObject();
+		editObject.putObjectValue(F_ID, placeId);
+
+		TreeMap<String, Object> addDeletedIds = new TreeMap<>();
+		TreeMap<String, Object> appendOp = new TreeMap<>();
+		appendOp.put("append", extId);
+		addDeletedIds.put(ATTR_SOURCE + "." + ATTR_OLD_OSM_IDS, appendOp);
 
 		opOperation.addEdited(editObject);
 		blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());

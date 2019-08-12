@@ -39,7 +39,7 @@ public class OprExprEvaluatorExt extends OpExprEvaluator {
 		try {
 			return super.callFunction(functionName, args, ctx);
 		} catch (UnsupportedDataTypeException e) {
-			Object obj1, obj2;
+			Object obj1, obj2, obj3;
 			switch (functionName) {
 				case FUNCTION_FIRST_NOT_EMPTY: {
 					StringBuilder str = new StringBuilder();
@@ -63,9 +63,10 @@ public class OprExprEvaluatorExt extends OpExprEvaluator {
 				case FUNCTION_PLACE_LOCATION: {
 					obj1 = getObjArgument(functionName, args, 0, false);
 					obj2 = getObjArgument(functionName, args, 1, false);
+					obj3 = getObjArgument(functionName, args, 1, false);
 
-					if (obj1 instanceof Number && obj2 instanceof Number) {
-						return OsmLocationTool.encode((double) obj1, (double) obj2);
+					if (obj1 instanceof Number && obj2 instanceof Number && obj2 instanceof Number) {
+						return OsmLocationTool.encode((double) obj1, (double) obj2, ((Long) obj3).intValue());
 					}
 					throw new UnsupportedOperationException(FUNCTION_PLACE_LOCATION + "support only Numbers");
 				}
