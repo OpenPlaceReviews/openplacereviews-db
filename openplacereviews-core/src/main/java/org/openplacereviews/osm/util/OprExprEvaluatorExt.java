@@ -36,57 +36,50 @@ public class OprExprEvaluatorExt extends OpExprEvaluator {
 
 	@Override
 	protected Object callFunction(String functionName, List<Object> args, EvaluationContext ctx) {
-		try {
-			return super.callFunction(functionName, args, ctx);
-		} catch (UnsupportedDataTypeException e) {
-			Object obj1, obj2, obj3;
-			switch (functionName) {
-				case FUNCTION_FIRST_NOT_EMPTY: {
-					StringBuilder str = new StringBuilder();
-					for (int i = 0; i < args.size(); i++) {
-						String obj = getStringArgument(functionName, args, i);
-						if (obj != null) {
-							int indexOf = obj.indexOf(";");
-							if (indexOf != -1) {
-								str.append(obj, 0, indexOf);
-							} else {
-								str.append(obj);
-							}
-						}
+		Object obj1, obj2, obj3;
+		switch (functionName) {
+		case FUNCTION_FIRST_NOT_EMPTY: {
+			StringBuilder str = new StringBuilder();
+			for (int i = 0; i < args.size(); i++) {
+				String obj = getStringArgument(functionName, args, i);
+				if (obj != null) {
+					int indexOf = obj.indexOf(";");
+					if (indexOf != -1) {
+						str.append(obj, 0, indexOf);
+					} else {
+						str.append(obj);
 					}
-
-					if (str.length() == 0) {
-						return null;
-					}
-					return str.toString();
-				}
-				case FUNCTION_PLACE_LOCATION: {
-					obj1 = getObjArgument(functionName, args, 0, false);
-					obj2 = getObjArgument(functionName, args, 1, false);
-					obj3 = getObjArgument(functionName, args, 1, false);
-
-					if (obj1 instanceof Number && obj2 instanceof Number && obj2 instanceof Number) {
-						return OsmLocationTool.encode((double) obj1, (double) obj2, ((Long) obj3).intValue());
-					}
-					throw new UnsupportedOperationException(FUNCTION_PLACE_LOCATION + "support only Numbers");
-				}
-				case FUNCTION_SIMPLE_NAME: {
-					obj1 = getStringArgument(functionName, args, 0);
-
-					if (obj1 == null) {
-						return null;
-					}
-
-					return ((String) obj1).replaceAll("[ -]", "").toLowerCase();
-				}
-				default: {
-					break;
 				}
 			}
-			throw new UnsupportedOperationException(String.format("Unsupported function '%s'", e));
+
+			if (str.length() == 0) {
+				return null;
+			}
+			return str.toString();
+		}
+		case FUNCTION_PLACE_LOCATION: {
+			obj1 = getObjArgument(functionName, args, 0, false);
+			obj2 = getObjArgument(functionName, args, 1, false);
+			obj3 = getObjArgument(functionName, args, 1, false);
+
+			if (obj1 instanceof Number && obj2 instanceof Number && obj2 instanceof Number) {
+				return OsmLocationTool.encode((double) obj1, (double) obj2, ((Long) obj3).intValue());
+			}
+			throw new UnsupportedOperationException(FUNCTION_PLACE_LOCATION + "support only Numbers");
+		}
+		case FUNCTION_SIMPLE_NAME: {
+			obj1 = getStringArgument(functionName, args, 0);
+
+			if (obj1 == null) {
+				return null;
+			}
+
+			return ((String) obj1).replaceAll("[ -]", "").toLowerCase();
+		}
+		default: {
+			return super.callFunction(functionName, args, ctx);
+		}
 		}
 	}
-
-
 
 }
