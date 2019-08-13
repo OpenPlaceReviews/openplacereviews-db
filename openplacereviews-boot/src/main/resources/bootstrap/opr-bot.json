@@ -1,33 +1,5 @@
 [
   {
-    "type": "sys.operation",
-    "create": [
-      {
-        "id": ["sys.bot"],
-        "arity": 0,
-        "fields" : {
-          "overpassURL":"url for getting places",
-          "timestampURL":"url for getting timestamp",
-          "osmOpType":"types operations which bot will be create",
-          "user":"user which will be create blocks",
-          "rules":"rules that the bot will be use",
-          "API": "java-package.ClassName;",
-          "places_per_operation":"",
-          "operations_per_block":"",
-          "mappings":"",
-          "sync-states": [
-            {
-              "date": "sync date",
-              "tags": {
-                "tagName" : "bbox"
-              }
-            }
-          ]
-        }
-      }
-    ]
-  },
-  {
     "type" : "sys.bot",
     "create" : [{
       "id" : ["osm-sync"],
@@ -35,29 +7,28 @@
         "overpass_timestamp" : "http://builder.osmand.net:8083/api/timestamp",
         "overpass": "http://builder.osmand.net:8083/api/interpreter"
       },
-      "bot": {
-        "API" : "org.openplacereviews.osm.service.PublishBot",
-        "threads": 4,
-        "opr": {
-          "places_per_operation": 250,
-          "operations_per_block": 16,
-          "type": "opr.place"
-        }
+      "opr": {
+        "places_per_operation": 250,
+        "operations_per_block": 16,
+        "type": "opr.place"
       },
+      "api" : "org.openplacereviews.osm.service.PublishBot",
+      "threads": 4,
+      "version" : 0,
       "mapping": {
         "lat":"source.osm[0].lat",
         "lon":"source.osm[0].lon",
         "tags":"source.osm[0].tags"
       },
       "rules": {
-        "match_id" : "set:all(opr:place_loc(.lat, .lon), str:first_non_empty(.tags.amenity, .tags.leisure), opr:simple_name(.tags.name))"
+        "match_id" : "set:all(opr:place_loc(6, .lat, .lon), str:first_non_empty(.tags.amenity, .tags.leisure), opr:simple_name(.tags.name))"
       },
-      "sync-states" : [
+      "bot-state" : [
         {
           "date":"",
           "tags": {
-            "node[\"amenity\"~\"cafe|bar|restaurant|biergarten|fast_food|food_court|ice_cream|pub\"]": "",
-            "node[\"tourism\"~\"hotel|motel|hostel|apartment|guest_house\"]": ""
+            "node[\"amenity\"~\"cafe|bar|restaurant|biergarten|fast_food|food_court|ice_cream|pub\"]": "(50.3456,30.3671,50.5580,30.8671)",
+            "node[\"tourism\"~\"hotel|motel|hostel|apartment|guest_house\"]": "(50.3456,30.3671,50.5580,30.8671)"
           }
         }]
     }]

@@ -9,23 +9,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.openplacereviews.osm.service.PublishBot.*;
-
 public class PlaceManager {
 
-	private String table = "obj_opr_places";
-	private String column = "osmid";
-	private String field = "id";
+	public static final String F_MATCH_ID = "match_id";
+	public static final String F_RULES = "rules";
+	public static final String F_MAPPING = "mapping";
+
+	private final String index = "id";
+	private String opType;
 	private BlocksManager blocksManager;
 	private OpObject botObject;
 
-	public PlaceManager(BlocksManager blocksManager, OpObject botObject) {
+	public PlaceManager(String opType, BlocksManager blocksManager, OpObject botObject) {
 		this.blocksManager = blocksManager;
 		this.botObject = botObject;
+		this.opType = opType;
 	}
 
 	public OpObject getObjectByExtId(String extId) {
-		List<OpObject> opObjectList = blocksManager.getObjectByIndex(table, column, field, extId);
+		List<OpObject> opObjectList = blocksManager.getObjectsByIndex(opType, index, extId);
 
 		if (opObjectList != null && !opObjectList.isEmpty()) {
 			return opObjectList.get(0);

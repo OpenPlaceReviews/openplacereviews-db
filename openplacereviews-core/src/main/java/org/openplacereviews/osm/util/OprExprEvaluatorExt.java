@@ -8,7 +8,6 @@ import org.openplacereviews.opendb.expr.OpenDBExprParser;
 import org.openplacereviews.opendb.util.OpExprEvaluator;
 import org.openplacereviews.osm.parser.OsmLocationTool;
 
-import javax.activation.UnsupportedDataTypeException;
 import java.util.List;
 
 public class OprExprEvaluatorExt extends OpExprEvaluator {
@@ -60,10 +59,10 @@ public class OprExprEvaluatorExt extends OpExprEvaluator {
 		case FUNCTION_PLACE_LOCATION: {
 			obj1 = getObjArgument(functionName, args, 0, false);
 			obj2 = getObjArgument(functionName, args, 1, false);
-			obj3 = getObjArgument(functionName, args, 1, false);
+			obj3 = getObjArgument(functionName, args, 2, false);
 
-			if (obj1 instanceof Number && obj2 instanceof Number && obj2 instanceof Number) {
-				return OsmLocationTool.encode((double) obj1, (double) obj2, ((Long) obj3).intValue());
+			if (obj1 instanceof Number && obj2 instanceof Number && obj3 instanceof Number) {
+				return OsmLocationTool.encode(((Number) obj2).doubleValue(), ((Number) obj3).doubleValue(), ((Number) obj1).intValue());
 			}
 			throw new UnsupportedOperationException(FUNCTION_PLACE_LOCATION + "support only Numbers");
 		}
