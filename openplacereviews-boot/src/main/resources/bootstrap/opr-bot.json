@@ -3,46 +3,45 @@
     "type" : "sys.bot",
     "create" : [{
       "id" : ["osm-sync"],
-      "url" : {
-        "overpass_timestamp" : "http://builder.osmand.net:8083/api/timestamp",
-        "overpass": "http://builder.osmand.net:8083/api/interpreter"
-      },
-      "opr": {
-        "places_per_operation": 250,
-        "operations_per_block": 16,
-        "type": "opr.place"
-      },
       "api" : "org.openplacereviews.osm.service.PublishBot",
       "threads": 4,
-      "version" : 0,
-      "mapping": {
-        "lat":"source.osm[0].lat",
-        "lon":"source.osm[0].lon",
-        "tags":"source.osm[0].tags"
+      "blockchain-config": {
+          "places_per_operation": 250,
+          "operations_per_block": 16,
+          "type": "opr.place"
       },
-      "rules": {
-        "match_id" : "set:all(opr:place_loc(6, .lat, .lon), str:first_non_empty(.tags.amenity, .tags.leisure), opr:simple_name(.tags.name))"
+      "config": {
+      	"url" : {
+        	"overpass_timestamp" : "http://builder.osmand.net:8083/api/timestamp",
+        	"overpass": "http://builder.osmand.net:8083/api/interpreter"
+      	},
+        "match-id" : "set:all(opr:place_loc(.lat, .lon), str:first_non_empty(.tags.amenity, .tags.leisure), opr:simple_name(.tags.name))",
+        "mapping": {
+        	"lat":"source.osm[0].lat",
+        	"lon":"source.osm[0].lon",
+        	"tags":"source.osm[0].tags"
+      	},
+      	"osm-tags" : {
+      		"amenity" : {
+      			"values" : ["cafe","bar","restaurant","biergarten","fast_food","food_court","ice_cream","pub"],
+      			"type" : ["node"]
+      		},
+      		"tourism" : {
+      			"values" : ["hotel","motel","hostel","apartment","guest_house"],
+      			"type" : ["node"]
+			}      		
+      	}
       },
       "bot-state" : [
         {
           "date":"",
           "tags": {
-            "node[\"amenity\"~\"cafe|bar|restaurant|biergarten|fast_food|food_court|ice_cream|pub\"]": "(50.3456,30.3671,50.5580,30.8671)",
-            "node[\"tourism\"~\"hotel|motel|hostel|apartment|guest_house\"]": "(50.3456,30.3671,50.5580,30.8671)"
+            "node[\"amenity\"~\"cafe|bar|restaurant|biergarten|fast_food|food_court|ice_cream|pub\"]": "",
+            "node[\"tourism\"~\"hotel|motel|hostel|apartment|guest_house\"]": ""
           }
-        }]
+        }
+       ]
     }]
   }
-//,
-//  {
-//    "type" : "sys.bot",
-//    "edit" : [{
-//      "id" : ["osm-sync"],
-//      "change": {
-//        "sync-states[0].tags" : {"append" : {"node[\"amenity\"]": "(50.3456,30.3671,50.5580,30.8671)"}}
-//      },
-//      "current" : {
-//      }
-//    }]
-//  }
+
 ]
