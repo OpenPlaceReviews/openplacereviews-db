@@ -1,5 +1,6 @@
 package org.openplacereviews.osm.service;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlock;
@@ -82,7 +83,10 @@ public class PublishBot implements IOpenDBBot {
 		this.placeManager = new PlaceManager(opType, blocksManager, botObject);
 		this.placesPerOperation = (Long) botObject.getStringObjMap(F_BLOCKCHAIN_CONFIG).get(F_PLACES_PER_OPERATION);
 		this.operationsPerBlock = (Long) botObject.getStringObjMap(F_BLOCKCHAIN_CONFIG).get(F_OPERATIONS_PER_BLOCK);
-		this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 0));
+
+		ThreadFactory namedThreadFactory =
+				new ThreadFactoryBuilder().setNameFormat(botObject.getId().get(0) + "-%d").build();
+		this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 0), namedThreadFactory);
 		//timestamp = "2019-06-01T00:00:00Z";
 		try {
 			this.timestamp = requestService.getTimestamp();
@@ -91,7 +95,7 @@ public class PublishBot implements IOpenDBBot {
 		}
 	}
 
-	public void publish() throws IOException, ExecutionException, InterruptedException {
+	public void publish() throws IOException {
 		initVariables();
 		SyncStatus syncStatus = getSyncStatus(timestamp);
 		if (syncStatus.equals(SyncStatus.DIFF_SYNC) || syncStatus.equals(SyncStatus.NEW_SYNC) ||
@@ -102,19 +106,21 @@ public class PublishBot implements IOpenDBBot {
 			for (int i = 0; i < requests.size(); i++) {
 				futures.add(service.submit(new Publisher(requests.get(i), syncStatus)));
 			}
-
+			service.shutdown();
 			for (Future future : futures) {
-				if (!future.isDone()) {
+				try {
 					Long amount = (Long) future.get();
-					LOGGER.info("COMPLETED/QUEUE TASKS " + service.getCompletedTaskCount() + "/" +
-							service.getQueue().size() + " AMOUNT ADDED OPs By TASK: " + amount);
+					LOGGER.info("Completed/Queue tasks " + service.getCompletedTaskCount() + "/" +
+							service.getQueue().size() + " Added ops: " + amount);
+				} catch (Exception e) {
+					LOGGER.error("Error while executing task", e);
 				}
 			}
 
 			try {
 				TreeMap<String, Object> dbSync = new TreeMap<>();
 				if (!SyncStatus.TAGS_SYNC.equals(syncStatus)) {
-					blocksManager.addOperation(generateEditOpForOpOprCrawler(timestamp));
+					blocksManager.addOperation(generateEditOpForBotObject(timestamp));
 					dbSync.put(F_DATE, timestamp);
 				} else {
 					dbSync.put(F_DATE, botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE));
@@ -141,7 +147,7 @@ public class PublishBot implements IOpenDBBot {
 	@Override
 	public Object call() throws Exception {
 		publish();
-		return null;
+		return this;
 	}
 
 	private void createBlock(long opCounter, long appStartedMs) {
@@ -247,8 +253,6 @@ public class PublishBot implements IOpenDBBot {
 					break;
 				}
 			}
-			LOGGER.info(String.format("Amount created OP: %s, PLACES: %s, SPEED %s" , opCounter,
-					placesPerOperation * opCounter, (opCounter * placesPerOperation) / ((System.currentTimeMillis() - appStartedMs) / 1000)));
 		}
 
 		private void publish(List<Object> places) throws FailedVerificationException {
@@ -477,7 +481,7 @@ public class PublishBot implements IOpenDBBot {
 		return requests;
 	}
 
-	private OpOperation generateEditOpForOpOprCrawler(String timestamp) throws FailedVerificationException {
+	private OpOperation generateEditOpForBotObject(String timestamp) throws FailedVerificationException {
 		OpOperation opOperation = new OpOperation();
 		opOperation.setType(OP_BOT);
 		opOperation.setSignedBy(blocksManager.getServerUser());

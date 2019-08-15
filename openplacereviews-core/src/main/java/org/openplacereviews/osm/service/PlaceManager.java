@@ -13,10 +13,10 @@ import static org.openplacereviews.osm.service.PublishBot.F_CONFIG;
 
 public class PlaceManager {
 
-	public static final String F_MATCH_ID = "match_id";
+	public static final String F_MATCH_ID = "match-id";
 	public static final String F_MAPPING = "mapping";
 
-	private final String index = "id";
+	private final String index = "osmid";
 	private String opType;
 	private BlocksManager blocksManager;
 	private OpObject botObject;
@@ -40,7 +40,7 @@ public class PlaceManager {
 
 	public String generateMatchIdFromOpObject(OpObject opObject) {
 		Map<String, Object> ctx = new HashMap<>();
-		for (Map.Entry<String, String> entry : botObject.getStringMap(F_MAPPING).entrySet()) {
+		for (Map.Entry<String, String> entry : ((Map<String, String>)botObject.getStringObjMap(F_CONFIG).get(F_MAPPING)).entrySet()) {
 			ctx.put(entry.getKey(), opObject.getFieldByExpr(entry.getValue()));
 		}
 		OpExprEvaluator.EvaluationContext evaluationContext = new OpExprEvaluator.EvaluationContext(

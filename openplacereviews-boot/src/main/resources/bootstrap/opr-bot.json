@@ -15,7 +15,7 @@
         	"overpass_timestamp" : "http://builder.osmand.net:8083/api/timestamp",
         	"overpass": "http://builder.osmand.net:8083/api/interpreter"
       	},
-        "match-id" : "set:all(opr:place_loc(.lat, .lon), str:first_non_empty(.tags.amenity, .tags.leisure), opr:simple_name(.tags.name))",
+        "match-id" : "set:all(opr:place_loc(6, .lat, .lon), str:first_non_empty(.tags.amenity, .tags.leisure), opr:simple_name(.tags.name))",
         "mapping": {
         	"lat":"source.osm[0].lat",
         	"lon":"source.osm[0].lon",
@@ -48,17 +48,5 @@
       }
     }]
   }
-//
-//  {
-//        "type" : "sys.bot",
-//        "edit" : [{
-//          "id" : ["osm-sync"],
-//          "change": {
-//            "bot-state.tags[0].value" : {"append" : "pub"}
-//          },
-//          "current" : {
-//          }
-//        }]
-//      }
 
 ]
