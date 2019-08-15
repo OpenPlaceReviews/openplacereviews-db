@@ -1,18 +1,19 @@
 package org.openplacereviews.osm.service;
 
+import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.util.OpExprEvaluator;
 import org.openplacereviews.osm.util.OprExprEvaluatorExt;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+
+import static org.openplacereviews.osm.service.PublishBot.F_CONFIG;
 
 public class PlaceManager {
 
 	public static final String F_MATCH_ID = "match_id";
-	public static final String F_RULES = "rules";
 	public static final String F_MAPPING = "mapping";
 
 	private final String index = "id";
@@ -27,10 +28,11 @@ public class PlaceManager {
 	}
 
 	public OpObject getObjectByExtId(String extId) {
-		List<OpObject> opObjectList = blocksManager.getObjectsByIndex(opType, index, extId);
+		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
+		blocksManager.getObjectsByIndex(opType, index, objectsSearchRequest,  extId);
 
-		if (opObjectList != null && !opObjectList.isEmpty()) {
-			return opObjectList.get(0);
+		if (objectsSearchRequest.result != null && !objectsSearchRequest.result.isEmpty()) {
+			return objectsSearchRequest.result.get(0);
 		} else {
 			return null;
 		}
@@ -49,13 +51,8 @@ public class PlaceManager {
 				null
 		);
 
-		for (Map.Entry<String, String> entry : botObject.getStringMap(F_RULES).entrySet()) {
-			if (entry.getKey().equals(F_MATCH_ID)) {
-				return OprExprEvaluatorExt.parseExpression(entry.getValue()).evaluateObject(evaluationContext).toString();
-			}
-		}
-
-		return null;
+		String matchId = botObject.getStringMap(F_CONFIG).get(F_MATCH_ID);
+		return OprExprEvaluatorExt.parseExpression(matchId).evaluateObject(evaluationContext).toString();
 	}
 
 }

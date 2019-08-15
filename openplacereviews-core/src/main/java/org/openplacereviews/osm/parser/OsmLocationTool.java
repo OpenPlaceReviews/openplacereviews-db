@@ -28,7 +28,7 @@ public class OsmLocationTool {
 		return code.substring(0, CODE_LENGTH);
 	}
 
-	public static String encode(double latitude, double longitude, int codeLength) {
+	public static String encode( int codeLength, double latitude, double longitude) {
 		String code = OpenLocationCode.encode(latitude, longitude, codeLength);
 		return code.substring(0, codeLength);
 	}

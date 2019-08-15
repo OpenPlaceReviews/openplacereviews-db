@@ -36,19 +36,20 @@ public class PublishBot implements IOpenDBBot {
 	public static final String ATTR_OSM = "osm";
 	public static final String ATTR_TAGS = "tags";
 	public static final String ATTR_SET = "set";
-	public static final String ATTR_OPR = "opr";
 	public static final String ATTR_SOURCE_OSM_TAGS = "source.osm[0].tags.";
 	public static final String ATTR_SYNC_STATES = "bot-state";
 
-	private static final String F_DATE = "date";
-	private static final String F_DIFF = "diff";
+	public static final String F_DATE = "date";
+	public static final String F_DIFF = "diff";
 
-	private static final String F_URL = "url";
-	private static final String F_TIMESTAMP = "overpass_timestamp";
-	private static final String F_OVERPASS = "overpass";
-	private static final String F_THREADS = "threads";
-	private static final String F_PLACES_PER_OPERATION = "places_per_operation";
-	private static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
+	public static final String F_CONFIG = "config";
+	public static final String F_BLOCKCHAIN_CONFIG = "blockchain-config";
+	public static final String F_URL = "url";
+	public static final String F_TIMESTAMP = "overpass_timestamp";
+	public static final String F_OVERPASS = "overpass";
+	public static final String F_THREADS = "threads";
+	public static final String F_PLACES_PER_OPERATION = "places_per_operation";
+	public static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
 
 	private Long placesPerOperation;
 	private Long operationsPerBlock;
@@ -66,7 +67,7 @@ public class PublishBot implements IOpenDBBot {
 	private PlaceManager placeManager;
 
 	List<Future<?>> futures = new ArrayList<>();
-	ExecutorService service;
+	ThreadPoolExecutor service;
 
 	public PublishBot(OpObject botObject) {
 		this.botObject = botObject;
@@ -75,15 +76,14 @@ public class PublishBot implements IOpenDBBot {
 	private void initVariables() {
 		this.dbManager = new DbManager(blocksManager, jdbcTemplate);
 		this.requestService = new RequestService(
-				botObject.getStringMap(F_URL).get(F_OVERPASS),
-				botObject.getStringMap(F_URL).get(F_TIMESTAMP));
-		this.opType = botObject.getStringMap(ATTR_OPR).get(F_TYPE);
+				((Map<String, String>)botObject.getStringObjMap(F_CONFIG).get(F_URL)).get(F_OVERPASS),
+				((Map<String, String>)botObject.getStringObjMap(F_CONFIG).get(F_URL)).get(F_TIMESTAMP));
+		this.opType = botObject.getStringMap(F_BLOCKCHAIN_CONFIG).get(F_TYPE);
 		this.placeManager = new PlaceManager(opType, blocksManager, botObject);
-		this.placesPerOperation = (Long) botObject.getStringObjMap(ATTR_OPR).get(F_PLACES_PER_OPERATION);
-		this.operationsPerBlock = (Long) botObject.getStringObjMap(ATTR_OPR).get(F_OPERATIONS_PER_BLOCK);
-		int maxThreads = botObject.getIntValue(F_THREADS, 0);
-		this.service = Executors.newFixedThreadPool(maxThreads);
-		timestamp = "2019-06-01T00:00:00Z";
+		this.placesPerOperation = (Long) botObject.getStringObjMap(F_BLOCKCHAIN_CONFIG).get(F_PLACES_PER_OPERATION);
+		this.operationsPerBlock = (Long) botObject.getStringObjMap(F_BLOCKCHAIN_CONFIG).get(F_OPERATIONS_PER_BLOCK);
+		this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 0));
+		//timestamp = "2019-06-01T00:00:00Z";
 		try {
 			this.timestamp = requestService.getTimestamp();
 		} catch (IOException e) {
@@ -94,7 +94,8 @@ public class PublishBot implements IOpenDBBot {
 	public void publish() throws IOException, ExecutionException, InterruptedException {
 		initVariables();
 		SyncStatus syncStatus = getSyncStatus(timestamp);
-		if (syncStatus.equals(SyncStatus.DIFF_SYNC) || syncStatus.equals(SyncStatus.NEW_SYNC) || syncStatus.equals(SyncStatus.TAGS_SYNC)) {
+		if (syncStatus.equals(SyncStatus.DIFF_SYNC) || syncStatus.equals(SyncStatus.NEW_SYNC) ||
+				syncStatus.equals(SyncStatus.TAGS_SYNC)) {
 			LOGGER.info("Start synchronizing: " + syncStatus);
 			List<String> requests = new ArrayList<>(generateRequestList(timestamp, syncStatus));
 
@@ -103,22 +104,24 @@ public class PublishBot implements IOpenDBBot {
 			}
 
 			for (Future future : futures) {
-				Long amount = (Long) future.get();
+				if (!future.isDone()) {
+					Long amount = (Long) future.get();
+					LOGGER.info("COMPLETED/QUEUE TASKS " + service.getCompletedTaskCount() + "/" +
+							service.getQueue().size() + " AMOUNT ADDED OPs By TASK: " + amount);
+				}
 			}
 
 			try {
-				if (!Thread.currentThread().isInterrupted()) {
-					TreeMap<String, Object> dbSync = new TreeMap<>();
-					if (!SyncStatus.TAGS_SYNC.equals(syncStatus)) {
-						blocksManager.addOperation(generateEditOpForOpOprCrawler(timestamp));
-						dbSync.put(F_DATE, timestamp);
-					} else {
-						dbSync.put(F_DATE, botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(F_DATE));
-					}
-
-					dbSync.put(ATTR_TAGS, botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(ATTR_TAGS));
-					dbManager.saveNewSyncState(dbSync);
+				TreeMap<String, Object> dbSync = new TreeMap<>();
+				if (!SyncStatus.TAGS_SYNC.equals(syncStatus)) {
+					blocksManager.addOperation(generateEditOpForOpOprCrawler(timestamp));
+					dbSync.put(F_DATE, timestamp);
+				} else {
+					dbSync.put(F_DATE, botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE));
 				}
+
+				dbSync.put(ATTR_TAGS, botObject.getStringObjMap(ATTR_SYNC_STATES).get(ATTR_TAGS));
+				dbManager.saveNewSyncState(dbSync);
 			} catch (FailedVerificationException e) {
 				LOGGER.error(e.getMessage());
 				throw new IllegalArgumentException("Error while updating op opr.crawler", e);
@@ -141,15 +144,15 @@ public class PublishBot implements IOpenDBBot {
 		return null;
 	}
 
-	private synchronized void createBlock(long allOperationsCounter, long opCounter, long appStartedMs) {
+	private void createBlock(long opCounter, long appStartedMs) {
 		try {
 			if (!blocksManager.getBlockchain().getQueueOperations().isEmpty()) {
-				boolean createBlock = (allOperationsCounter % operationsPerBlock == 0 || blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock);
+				boolean createBlock = (opCounter % operationsPerBlock == 0 || blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock);
 				if (createBlock) {
 					OpBlock opBlock = blocksManager.createBlock();
 					LOGGER.info("Created block: " + opBlock.getRawHash() + " with size: " + opBlock.getOperations().size());
 					LOGGER.info("Op saved: " + opCounter + " date: " + new Date());
-					LOGGER.info("Places saved: " + (allOperationsCounter * placesPerOperation) + " date: " + new Date());
+					LOGGER.info("Places saved: " + (opCounter * placesPerOperation) + " date: " + new Date());
 					long currTimeMs = System.currentTimeMillis();
 					long placesPerSecond = (opCounter * placesPerOperation) / ((currTimeMs - appStartedMs) / 1000);
 					LOGGER.info("Places per second: " + placesPerSecond);
@@ -188,7 +191,6 @@ public class PublishBot implements IOpenDBBot {
 	private class Publisher implements Callable {
 
 		private long opCounter;
-		private long allOperationsCounter;
 		private long appStartedMs;
 		private String request;
 		private SyncStatus syncStatus;
@@ -201,7 +203,7 @@ public class PublishBot implements IOpenDBBot {
 		@Override
 		public Long call() {
 			startPublish();
-			return allOperationsCounter;
+			return opCounter;
 		}
 
 		private void startPublish() {
@@ -239,113 +241,100 @@ public class PublishBot implements IOpenDBBot {
 					if (places == null || ((List)places).isEmpty())
 						break;
 
-					publish(places);
+					publish((List<Object>) places);
 				} catch (Exception e) {
 					LOGGER.error("Error while publishing", e);
 					break;
 				}
 			}
-			LOGGER.info(String.format("Amount created OP: %s, PLACES: %s, SPEED %s" ,allOperationsCounter,
+			LOGGER.info(String.format("Amount created OP: %s, PLACES: %s, SPEED %s" , opCounter,
 					placesPerOperation * opCounter, (opCounter * placesPerOperation) / ((System.currentTimeMillis() - appStartedMs) / 1000)));
 		}
 
-		private void publish(Object places) throws FailedVerificationException {
-			List<OpOperation> osmCoordinatePlacesDto = generateOpOperationFromPlaceList((List<Object>) places);
+		private void publish(List<Object> places) throws FailedVerificationException {
+			List<OpOperation> osmCoordinatePlacesDto = generateOpOperationFromPlaceList(places);
 			try {
 				for (OpOperation opOperation : osmCoordinatePlacesDto) {
 					blocksManager.addOperation(opOperation);
-					opCounter += 1;
 				}
-				allOperationsCounter += 1;
+				opCounter += osmCoordinatePlacesDto.size();
 			} catch (Exception e) {
 				e.printStackTrace();
 				LOGGER.error("Error occurred while posting places: " + e.getMessage());
-				LOGGER.info("Amount of pack transferred data: " + allOperationsCounter);
+				LOGGER.info("Amount of pack transferred data: " + opCounter);
 			}
 
-			createBlock(allOperationsCounter, opCounter, appStartedMs);
+			createBlock(opCounter, appStartedMs);
 		}
 
 		private List<OpOperation> generateOpOperationFromPlaceList(List<Object> places) throws FailedVerificationException {
 			List<OpOperation> opOperations = new ArrayList<>();
 
-			OpOperation createOperation = null;
-			OpOperation deleteOperation = null;
-			OpOperation editOperation = null;
+			OpOperation opOperation = initOpOperation(opType, blocksManager);
 
 			for (Object e : places) {
 				if (e instanceof Entity) {
 					Entity obj = (Entity) e;
-					createOperation = initOpOperation(createOperation, opType, blocksManager);
-
-					OpObject objExist = placeManager.getObjectByExtId(String.valueOf(obj.getId()));
-					if (objExist == null) {
-						OpObject createOpObject = generateCreateOpObject(obj);
-						createOperation.addCreated(createOpObject);
+					OpObject loadedObj = placeManager.getObjectByExtId(String.valueOf(obj.getId()));
+					if (loadedObj == null) {
+						OpObject newObj = generateCreateOpObject(obj);
+						opOperation.addCreated(newObj);
 					} else {
-						OpObject newOpObject = generateCreateOpObject(obj);
-						String matchId = placeManager.generateMatchIdFromOpObject(newOpObject);
-						String oldMatchId = placeManager.generateMatchIdFromOpObject(objExist);
+						OpObject newObj = generateCreateOpObject(obj);
+						String matchId = placeManager.generateMatchIdFromOpObject(newObj);
+						String oldMatchId = placeManager.generateMatchIdFromOpObject(loadedObj);
 						if (!Objects.equals(matchId, oldMatchId)) {
-							// TODO create with same OSM-ID??
-							createOperation.addCreated(newOpObject);
+							opOperation.addDeleted(loadedObj.getId());
+							opOperation.addCreated(newObj);
 						}
 					}
 				} else if (e instanceof DiffEntity) {
 					DiffEntity diffEntity = (DiffEntity) e;
 					if (DiffEntity.DiffEntityType.DELETE.equals(diffEntity.getType())) {
-						deleteOperation = initOpOperation(deleteOperation, opType, blocksManager);
 
 						OpObject deleteObject =  placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
 						if (deleteObject != null) {
-							deleteOperation.addDeleted(deleteObject.getId());
+							opOperation.addDeleted(deleteObject.getId());
 						}
 					} else if (DiffEntity.DiffEntityType.CREATE.equals(diffEntity.getType())) {
-						createOperation = initOpOperation(createOperation, opType, blocksManager);
 
-						OpObject objExist = placeManager.getObjectByExtId(String.valueOf(diffEntity.getNewNode().getId()));
-						if (objExist == null) {
-							OpObject createObj = generateCreateOpObject(diffEntity.getNewNode());
-							createOperation.addCreated(createObj);
+						OpObject loadedObj = placeManager.getObjectByExtId(String.valueOf(diffEntity.getNewNode().getId()));
+						if (loadedObj == null) {
+							OpObject newObj = generateCreateOpObject(diffEntity.getNewNode());
+							opOperation.addCreated(newObj);
 						} else {
-							OpObject newOpObject = generateCreateOpObject(diffEntity.getNewNode());
-							String matchId = placeManager.generateMatchIdFromOpObject(objExist);
-							String newMatchId = placeManager.generateMatchIdFromOpObject(newOpObject);
+							OpObject newObj = generateCreateOpObject(diffEntity.getNewNode());
+							String matchId = placeManager.generateMatchIdFromOpObject(loadedObj);
+							String newMatchId = placeManager.generateMatchIdFromOpObject(newObj);
 							if (!Objects.equals(matchId, newMatchId)) {
-								// TODO create with same OSM-ID??
-								createOperation.addCreated(newOpObject);
+								opOperation.addDeleted(loadedObj.getId());
+								opOperation.addCreated(newObj);
 							}
 						}
 					} else if (DiffEntity.DiffEntityType.MODIFY.equals(diffEntity.getType())) {
 						OpObject edit = new OpObject();
 
-						/// TODO refactor this code -> change check by osmID and matchID,
 						if (diffEntity.getNewNode().getLatLon().equals(diffEntity.getOldNode().getLatLon())) {
-							editOperation = initOpOperation(editOperation, opType, blocksManager);
-
-							OpObject deleteObject = placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
-							if (deleteObject != null) {
-								editOperation.addEdited(generateEditOpObject(edit, diffEntity, deleteObject.getId()));
+							OpObject loadedObject = placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
+							if (loadedObject != null) {
+								opOperation.addEdited(generateEditOpObject(edit, diffEntity, loadedObject.getId()));
 							}
 						} else {
-							deleteOperation = initOpOperation(deleteOperation, opType, blocksManager);
-							OpObject deleteObject =  placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
-							if (deleteObject != null) {
-								deleteOperation.addDeleted(deleteObject.getId());
-							}
-
-							createOperation = initOpOperation(createOperation, opType, blocksManager);
+//							OpObject loadedObject =  placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
+//							if (loadedObject != null) {
+//								deleteOperation.addDeleted(loadedObject.getId());
+//							}
 							OpObject opObject = placeManager.getObjectByExtId(String.valueOf(diffEntity.getNewNode().getId()));
 							if (opObject == null) {
 								OpObject createObj = generateCreateOpObject(diffEntity.getNewNode());
-								createOperation.addCreated(createObj);
+								opOperation.addCreated(createObj);
 							} else {
 								String matchId = placeManager.generateMatchIdFromOpObject(opObject);
 								OpObject newOpObject = generateCreateOpObject(diffEntity.getNewNode());
 								String newMatchId = placeManager.generateMatchIdFromOpObject(newOpObject);
 								if (!Objects.equals(matchId, newMatchId)) {
-									// TODO create with same OSM-ID??
-									createOperation.addCreated(newOpObject);
+									opOperation.addDeleted(opObject.getId());
+									opOperation.addCreated(newOpObject);
 								}
 							}
 						}
@@ -353,16 +342,7 @@ public class PublishBot implements IOpenDBBot {
 				}
 			}
 
-			if (deleteOperation != null && deleteOperation.getDeleted().size() != 0) {
-				generateHashAndSign(opOperations, deleteOperation, blocksManager);
-			}
-			if (createOperation != null && createOperation.getCreated().size() != 0) {
-				generateHashAndSign(opOperations, createOperation, blocksManager);
-			}
-			if (editOperation != null && editOperation.getEdited().size() != 0) {
-				generateHashAndSign(opOperations, editOperation, blocksManager);
-			}
-
+			generateHashAndSign(opOperations, opOperation, blocksManager);
 			return opOperations;
 		}
 	}
@@ -376,7 +356,7 @@ public class PublishBot implements IOpenDBBot {
 	}
 
 	private SyncStatus getSyncStatus(String timestamp) {
-		Map<String, Object> syncStates = botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0);
+		Map<String, Object> syncStates = botObject.getStringObjMap(ATTR_SYNC_STATES);
 		Map<String, Object> dbSyncState = dbManager.getDBSyncState();
 
 		if (dbSyncState == null) {
@@ -401,70 +381,100 @@ public class PublishBot implements IOpenDBBot {
 		return SyncStatus.SYNCHRONIZED;
 	}
 
+	public static class Tag {
+		String name;
+		List<String> tags;
+		String coordinate;
+		String type;
+	}
+
 	private List<String> generateRequestList(String timestamp, SyncStatus syncStatus) throws UnsupportedEncodingException {
 		List<String> requests = new ArrayList<>();
+		List<Tag> coordinateList = new ArrayList<>();
+		List<Tag> bboxList = new ArrayList<>();
+		Map<String, Object> states = botObject.getStringObjMap(ATTR_SYNC_STATES);
 
-		Map<String, String> tagsCoordinates = new HashMap<>();
-		Map<String, String> tagsBbox = new HashMap<>();
-		List<Map<String, Object>> mapList = botObject.getListStringObjMap(ATTR_SYNC_STATES);
-		Map<String, String> states = (Map<String, String>) mapList.get(0).get(ATTR_TAGS);
-
-		for (Map.Entry<String, String> e : states.entrySet()) {
-			if (e.getValue().equals("")) {
-				tagsBbox.put(e.getKey(), e.getValue());
-			} else {
-				tagsCoordinates.put(e.getKey(), e.getValue());
-			}
-		}
-
-		if (!tagsCoordinates.isEmpty()) {
-			StringBuilder tags = new StringBuilder();
+		for (Map<String, Object> objectMap : ((List<Map<String, Object>>)states.get(ATTR_TAGS))) {
 			if (SyncStatus.TAGS_SYNC.equals(syncStatus)) {
-				Map<String, String> dbSyncState = (Map<String, String>) dbManager.getDBSyncState().get(ATTR_TAGS);
-				for (String key : tagsCoordinates.keySet()) {
-					if (!dbSyncState.containsKey(key) || !dbSyncState.get(key).equals(states.get(key))) {
-						tags.append(key).append(states.get(key)).append(";");
-					}
-				}
-			} else {
-				for (Map.Entry<String, String> e : tagsCoordinates.entrySet()) {
-					tags.append(e.getKey()).append(e.getValue()).append(";");
-				}
-			}
-			addRequest(timestamp, syncStatus, requests, tags);
-		}
-
-		if (!tagsBbox.isEmpty()) {
-			List<String> coordinates = generateListCoordinates();
-			for (String coordinate : coordinates) {
-				StringBuilder tag = new StringBuilder();
-				if (SyncStatus.TAGS_SYNC.equals(syncStatus)) {
-					Map<String, String> dbSyncState = (Map<String, String>) dbManager.getDBSyncState().get(ATTR_TAGS);
-					for (String key : tagsBbox.keySet()) {
-						if (!dbSyncState.containsKey(key) || !dbSyncState.get(key).equals(states.get(key))) {
-							tag.append(key).append("(").append(coordinate).append(");");
+				List<Map<String, Object>> dbSyncState = (List<Map<String, Object>>) dbManager.getDBSyncState().get(ATTR_TAGS);
+				for (Map<String, Object> map : dbSyncState) {
+					if (objectMap.get("key").equals(map.get("key"))) {
+						if (objectMap.get("bbox").equals("")) {
+							for (String coordinate : generateListCoordinates()) {
+								List<String> dbTags = (List<String>) map.get("value");
+								List<String> botTags = (List<String>) objectMap.get("value");
+								List<String> notSyncTags = new ArrayList<>();
+								for (String botTag : botTags) {
+									if (!dbTags.contains(botTag)) {
+										notSyncTags.add(botTag);
+									}
+								}
+								Tag tag = new Tag();
+								tag.name = (String) objectMap.get("key");
+								tag.tags = notSyncTags;
+								tag.coordinate = "(" + coordinate + ")";
+								tag.type = (String) objectMap.get("type");
+								bboxList.add(tag);
+							}
+						} else {
+							List<String> dbTags = (List<String>) map.get("value");
+							List<String> botTags = (List<String>) objectMap.get("value");
+							List<String> notSyncTags = new ArrayList<>();
+							for (String botTag : botTags) {
+								if (!dbTags.contains(botTag)) {
+									notSyncTags.add(botTag);
+								}
+							}
+							if (!notSyncTags.isEmpty()) {
+								Tag tag = new Tag();
+								tag.name = (String) objectMap.get("key");
+								tag.tags = notSyncTags;
+								tag.coordinate = (String) objectMap.get("bbox");
+								tag.type = (String) objectMap.get("type");
+								coordinateList.add(tag);
+							}
 						}
 					}
-				} else {
-					for (Map.Entry<String, String> e : tagsBbox.entrySet()) {
-						tag.append(e.getKey()).append("(").append(coordinate).append(");");
-					}
 				}
-				addRequest(timestamp, syncStatus, requests, tag);
+			} else {
+				if (objectMap.get("bbox").equals("")) {
+					for (String coordinate : generateListCoordinates()) {
+						Tag tag = new Tag();
+						tag.name = (String) objectMap.get("key");
+						tag.tags = (List<String>) objectMap.get("value");
+						tag.coordinate = "(" + coordinate + ")";
+						tag.type = (String) objectMap.get("type");
+						bboxList.add(tag);
+					}
+				} else {
+					Tag tag = new Tag();
+					tag.name = (String) objectMap.get("key");
+					tag.tags = (List<String>) objectMap.get("value");
+					tag.coordinate = (String) objectMap.get("bbox");
+					tag.type = (String) objectMap.get("type");
+					coordinateList.add(tag);
+				}
+			}
+		}
+
+		requests.addAll(generateRequestList(timestamp, syncStatus, bboxList));
+		requests.addAll(generateRequestList(timestamp, syncStatus, coordinateList));
+		return requests;
+	}
+
+	private List<String> generateRequestList(String timestamp, SyncStatus syncStatus, List<Tag> listTags) throws UnsupportedEncodingException {
+		List<String> requests = new ArrayList<>();
+		for (Tag tag : listTags) {
+			if (botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE).equals("")
+					|| SyncStatus.TAGS_SYNC.equals(syncStatus)) {
+				requests.add(requestService.generateRequestString(tag, F_DATE, timestamp));
+			} else {
+				requests.add(requestService.generateRequestString(tag, F_DIFF,
+						botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE) + "\",\"" + timestamp));
 			}
 		}
 
 		return requests;
-	}
-
-	private void addRequest(String timestamp, SyncStatus syncStatus, List<String> requests, StringBuilder tag) throws UnsupportedEncodingException {
-		if (botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(F_DATE).equals("")
-				|| SyncStatus.TAGS_SYNC.equals(syncStatus)) {
-			requests.add(requestService.generateRequestString(tag.toString(), F_DATE, timestamp));
-		} else {
-			requests.add(requestService.generateRequestString(tag.toString(), F_DIFF,
-					botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(F_DATE) + "\",\"" + timestamp));
-		}
 	}
 
 	private OpOperation generateEditOpForOpOprCrawler(String timestamp) throws FailedVerificationException {
@@ -477,11 +487,11 @@ public class PublishBot implements IOpenDBBot {
 		TreeMap<String, Object> changeDate = new TreeMap<>();
 		TreeMap<String, String> setDate = new TreeMap<>();
 		setDate.put(ATTR_SET, timestamp);
-		changeDate.put(ATTR_SYNC_STATES + "[0]." + F_DATE, setDate);
+		changeDate.put(ATTR_SYNC_STATES + "." + F_DATE, setDate);
 		editObject.putObjectValue(F_CHANGE, changeDate);
 
 		TreeMap<String, String> previousDate = new TreeMap<>();
-		previousDate.put(ATTR_SYNC_STATES + "[0]." + F_DATE, (String) botObject.getListStringObjMap(ATTR_SYNC_STATES).get(0).get(F_DATE));
+		previousDate.put(ATTR_SYNC_STATES + "." + F_DATE, botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE));
 		editObject.putObjectValue(F_CURRENT, previousDate);
 
 		opOperation.addEdited(editObject);
@@ -490,17 +500,27 @@ public class PublishBot implements IOpenDBBot {
 		return opOperation;
 	}
 
-	private OpOperation generateEditOpDeleteOsmIds(List<String> placeId, String extId) throws FailedVerificationException {
+	private OpOperation generateEditOpDeleteOsmIds(OpObject oldObject, String extId) throws FailedVerificationException {
 		OpOperation opOperation = new OpOperation();
 		opOperation.setType(opType);
 		opOperation.setSignedBy(blocksManager.getServerUser());
 		OpObject editObject = new OpObject();
-		editObject.putObjectValue(F_ID, placeId);
+		editObject.putObjectValue(F_ID, oldObject.getId());
 
 		TreeMap<String, Object> addDeletedIds = new TreeMap<>();
 		TreeMap<String, Object> appendOp = new TreeMap<>();
-		appendOp.put("append", extId);
+		TreeMap<String, Object> idMap = new TreeMap<>();
+		idMap.put(F_ID, extId);
+		appendOp.put("append", idMap);
 		addDeletedIds.put(ATTR_SOURCE + "." + ATTR_OLD_OSM_IDS, appendOp);
+
+		for (Map<String, Object> map : ((List<Map<String, Object>>)oldObject.getStringObjMap(ATTR_SOURCE).get(ATTR_OSM))) {
+			if (map.get(F_ID).equals(extId)) {
+				addDeletedIds.put(ATTR_SOURCE + "." + ATTR_OSM + "[0]", "delete");
+			}
+		}
+		editObject.putObjectValue(F_CHANGE, addDeletedIds);
+		editObject.putObjectValue(F_CURRENT, Collections.emptyList());
 
 		opOperation.addEdited(editObject);
 		blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());

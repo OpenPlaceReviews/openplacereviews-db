@@ -34,10 +34,6 @@ public class RequestService {
 		return IOUtils.toString(con.getInputStream(), StandardCharsets.UTF_8);
 	}
 
-	public Reader retrieveFile(String tags, String type, String timestamp) throws IOException {
-		return retrieveFile(generateRequestString(tags, type, timestamp));
-	}
-
 	public Reader retrieveFile(String request) throws IOException {
 		URL url = new URL(request);
 		// TODO change to post request
@@ -50,8 +46,18 @@ public class RequestService {
 		return new BufferedReader(new InputStreamReader(gzis));
 	}
 
-	public String generateRequestString(String tags, String type, String timestamp) throws UnsupportedEncodingException {
+	public String generateRequestString(PublishBot.Tag tag, String type, String timestamp) throws UnsupportedEncodingException {
 		String subRequest = "[out:xml][timeout:1200][%s:\"%s\"];(%s); out meta; >; out geom;";
+		String subTagRequest = "%s[\"%s\"~\"%s\"] %s;";
+		StringBuilder tagsValues = new StringBuilder();
+		for (String strTag : tag.tags) {
+			if (tagsValues.length() == 0) {
+				tagsValues.append(strTag);
+			} else {
+				tagsValues.append("|").append(strTag);
+			}
+		}
+		String tags = String.format(subTagRequest, tag.type, tag.name, tagsValues, tag.coordinate);
 		String request = String.format(subRequest, type, timestamp, tags);
 
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());

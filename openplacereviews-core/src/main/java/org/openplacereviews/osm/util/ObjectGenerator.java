@@ -21,11 +21,6 @@ import static org.openplacereviews.osm.service.PublishBot.*;
 
 public class ObjectGenerator {
 
-	public static List<List<String>> generateDeleteOpObject(List<List<String>> deletedObjs, Entity entity) {
-		deletedObjs.add(Collections.singletonList(OsmLocationTool.generateStrId(entity.getLatLon())));
-		return deletedObjs;
-	}
-
 	public static OpObject generateCreateOpObject(Entity entity) {
 		OpObject create = new OpObject();
 		create.putObjectValue(F_ID, OsmLocationTool.generatePlaceLocationId(entity.getLatLon()));
@@ -80,12 +75,11 @@ public class ObjectGenerator {
 		return edit;
 	}
 
-	public static OpOperation initOpOperation(OpOperation opOperation, String osmOpType, BlocksManager blocksManager) {
-		if (opOperation == null) {
-			opOperation = new OpOperation();
-			opOperation.setType(osmOpType);
-			opOperation.setSignedBy(blocksManager.getServerUser());
-		}
+	public static OpOperation initOpOperation(String osmOpType, BlocksManager blocksManager) {
+		OpOperation opOperation = new OpOperation();
+		opOperation.setType(osmOpType);
+		opOperation.setSignedBy(blocksManager.getServerUser());
+
 		return opOperation;
 	}
 
