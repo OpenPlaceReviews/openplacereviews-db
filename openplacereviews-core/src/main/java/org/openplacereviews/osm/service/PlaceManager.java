@@ -29,6 +29,7 @@ public class PlaceManager {
 
 	public OpObject getObjectByExtId(Long extId) {
 		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
+		objectsSearchRequest.limit = 1;
 		blocksManager.getObjectsByIndex(opType, index, objectsSearchRequest,  extId);
 
 		if (objectsSearchRequest.result != null && !objectsSearchRequest.result.isEmpty()) {
