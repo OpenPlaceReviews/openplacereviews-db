@@ -11,6 +11,7 @@ import org.openplacereviews.osm.parser.OsmLocationTool;
 
 import java.util.*;
 
+import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_BOT;
 import static org.openplacereviews.opendb.ops.OpObject.*;
 import static org.openplacereviews.opendb.ops.OpOperation.F_DELETE;
 import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
@@ -73,6 +74,29 @@ public class ObjectGenerator {
 		edit.putObjectValue(F_CURRENT, currentTagMAp);
 
 		return edit;
+	}
+
+	public static OpOperation generateEditOpForBotObject(String timestamp, OpObject botObject, BlocksManager blocksManager) throws FailedVerificationException {
+		OpOperation opOperation = new OpOperation();
+		opOperation.setType(OP_BOT);
+		opOperation.setSignedBy(blocksManager.getServerUser());
+		OpObject editObject = new OpObject();
+		editObject.setId(botObject.getId().get(0));
+
+		TreeMap<String, Object> changeDate = new TreeMap<>();
+		TreeMap<String, String> setDate = new TreeMap<>();
+		setDate.put(ATTR_SET, timestamp);
+		changeDate.put(ATTR_SYNC_STATES + "." + F_DATE, setDate);
+		editObject.putObjectValue(F_CHANGE, changeDate);
+
+		TreeMap<String, String> previousDate = new TreeMap<>();
+		previousDate.put(ATTR_SYNC_STATES + "." + F_DATE, botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE));
+		editObject.putObjectValue(F_CURRENT, previousDate);
+
+		opOperation.addEdited(editObject);
+		blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
+
+		return opOperation;
 	}
 
 	public static OpOperation initOpOperation(String osmOpType, BlocksManager blocksManager) {

@@ -24,7 +24,6 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
-import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_BOT;
 import static org.openplacereviews.opendb.ops.OpObject.*;
 import static org.openplacereviews.osm.util.ObjectGenerator.*;
 
@@ -100,7 +99,7 @@ public class PublishBot implements IOpenDBBot {
 		SyncStatus syncStatus = getSyncStatus(timestamp);
 		if (!syncStatus.equals(SyncStatus.SYNCHRONIZED)) {
 			LOGGER.info("Start synchronizing: " + syncStatus);
-			List<String> requests = generateRequestList(timestamp, syncStatus);
+			List<String> requests = getRequestList(timestamp, syncStatus);
 
 			for (int i = 0; i < requests.size(); i++) {
 				futures.add(service.submit(new Publisher(requests.get(i), syncStatus)));
@@ -119,7 +118,7 @@ public class PublishBot implements IOpenDBBot {
 			try {
 				TreeMap<String, Object> dbSync = new TreeMap<>();
 				if (!SyncStatus.TAGS_SYNC.equals(syncStatus) && !SyncStatus.DB_SYNC.equals(syncStatus)) {
-					blocksManager.addOperation(generateEditOpForBotObject(timestamp));
+					blocksManager.addOperation(generateEditOpForBotObject(timestamp, botObject, blocksManager));
 					dbSync.put(F_DATE, timestamp);
 				} else {
 					dbSync.put(F_DATE, botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE));
@@ -179,12 +178,12 @@ public class PublishBot implements IOpenDBBot {
 
 	@Override
 	public int total() {
-		return (int) service.getTaskCount();
+		return ((Number) service.getTaskCount()).intValue();
 	}
 
 	@Override
 	public int progress() {
-		return (int) ((service.getCompletedTaskCount() / service.getTaskCount()) * 100);
+		return ((Number) ((service.getCompletedTaskCount() / service.getTaskCount()) * 100)).intValue();
 	}
 
 	private class Publisher implements Callable {
@@ -387,7 +386,7 @@ public class PublishBot implements IOpenDBBot {
 		String type;
 	}
 
-	private List<String> generateRequestList(String timestamp, SyncStatus syncStatus) throws UnsupportedEncodingException {
+	private List<String> getRequestList(String timestamp, SyncStatus syncStatus) throws UnsupportedEncodingException {
 		List<String> requests = new ArrayList<>();
 		List<Tag> coordinateList = new ArrayList<>();
 		List<Tag> bboxList = new ArrayList<>();
@@ -456,12 +455,12 @@ public class PublishBot implements IOpenDBBot {
 			}
 		}
 
-		requests.addAll(generateRequestList(timestamp, syncStatus, bboxList));
-		requests.addAll(generateRequestList(timestamp, syncStatus, coordinateList));
+		requests.addAll(getRequestList(timestamp, syncStatus, bboxList));
+		requests.addAll(getRequestList(timestamp, syncStatus, coordinateList));
 		return requests;
 	}
 
-	private List<String> generateRequestList(String timestamp, SyncStatus syncStatus, List<Tag> listTags) throws UnsupportedEncodingException {
+	private List<String> getRequestList(String timestamp, SyncStatus syncStatus, List<Tag> listTags) throws UnsupportedEncodingException {
 		List<String> requests = new ArrayList<>();
 		for (Tag tag : listTags) {
 			if (botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE).equals("")
@@ -474,29 +473,6 @@ public class PublishBot implements IOpenDBBot {
 		}
 
 		return requests;
-	}
-
-	private OpOperation generateEditOpForBotObject(String timestamp) throws FailedVerificationException {
-		OpOperation opOperation = new OpOperation();
-		opOperation.setType(OP_BOT);
-		opOperation.setSignedBy(blocksManager.getServerUser());
-		OpObject editObject = new OpObject();
-		editObject.setId(botObject.getId().get(0));
-
-		TreeMap<String, Object> changeDate = new TreeMap<>();
-		TreeMap<String, String> setDate = new TreeMap<>();
-		setDate.put(ATTR_SET, timestamp);
-		changeDate.put(ATTR_SYNC_STATES + "." + F_DATE, setDate);
-		editObject.putObjectValue(F_CHANGE, changeDate);
-
-		TreeMap<String, String> previousDate = new TreeMap<>();
-		previousDate.put(ATTR_SYNC_STATES + "." + F_DATE, botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE));
-		editObject.putObjectValue(F_CURRENT, previousDate);
-
-		opOperation.addEdited(editObject);
-		blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
-
-		return opOperation;
 	}
 
 	private OpOperation generateEditOpDeleteOsmIds(OpObject oldObject, String extId) throws FailedVerificationException {
