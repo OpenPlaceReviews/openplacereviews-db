@@ -234,7 +234,9 @@ public class PublishBot implements IOpenDBBot {
 			List<OpOperation> osmCoordinatePlacesDto = generateOpOperationFromPlaceList(places);
 			try {
 				for (OpOperation opOperation : osmCoordinatePlacesDto) {
-					blocksManager.addOperation(opOperation);
+					if(opOperation.hasCreated() || opOperation.hasEdited()) {
+						blocksManager.addOperation(opOperation);
+					}
 				}
 				opCounter += osmCoordinatePlacesDto.size();
 			} catch (Exception e) {
