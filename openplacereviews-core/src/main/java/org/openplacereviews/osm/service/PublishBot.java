@@ -144,25 +144,6 @@ public class PublishBot implements IOpenDBBot {
 		return this;
 	}
 
-	private void createBlock(long opCounter, long appStartedMs) {
-		try {
-			if (!blocksManager.getBlockchain().getQueueOperations().isEmpty()) {
-				boolean createBlock = (opCounter % operationsPerBlock == 0 || blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock);
-				if (createBlock) {
-					OpBlock opBlock = blocksManager.createBlock();
-					LOGGER.info("Created block: " + opBlock.getRawHash() + " with size: " + opBlock.getOperations().size());
-					LOGGER.info("Op saved: " + opCounter + " date: " + new Date());
-					LOGGER.info("Places saved: " + (opCounter * placesPerOperation) + " date: " + new Date());
-					long currTimeMs = System.currentTimeMillis();
-					long placesPerSecond = (opCounter * placesPerOperation) / ((currTimeMs - appStartedMs) / 1000);
-					LOGGER.info("Places per second: " + placesPerSecond);
-				}
-			}
-		} catch (Exception e) {
-			LOGGER.error("Error occurred while creating block: " +e.getMessage());
-		}
-	}
-
 	@Override
 	public String getTaskDescription() {
 		return null;
@@ -263,6 +244,25 @@ public class PublishBot implements IOpenDBBot {
 			}
 
 			createBlock(opCounter, appStartedMs);
+		}
+
+		private void createBlock(long opCounter, long appStartedMs) {
+			try {
+				if (!blocksManager.getBlockchain().getQueueOperations().isEmpty()) {
+					boolean createBlock = (opCounter % operationsPerBlock == 0 || blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock);
+					if (createBlock) {
+						OpBlock opBlock = blocksManager.createBlock();
+						LOGGER.info("Created block: " + opBlock.getRawHash() + " with size: " + opBlock.getOperations().size());
+						LOGGER.info("Op saved: " + opCounter + " date: " + new Date());
+						LOGGER.info("Places saved: " + (opCounter * placesPerOperation) + " date: " + new Date());
+						long currTimeMs = System.currentTimeMillis();
+						long placesPerSecond = (opCounter * placesPerOperation) / ((currTimeMs - appStartedMs) / 1000);
+						LOGGER.info("Places per second: " + placesPerSecond);
+					}
+				}
+			} catch (Exception e) {
+				LOGGER.error("Error occurred while creating block: " +e.getMessage());
+			}
 		}
 
 		private List<OpOperation> generateOpOperationFromPlaceList(List<Object> places) throws FailedVerificationException {
