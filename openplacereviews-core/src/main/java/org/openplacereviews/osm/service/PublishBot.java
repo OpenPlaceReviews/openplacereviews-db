@@ -108,8 +108,10 @@ public class PublishBot implements IOpenDBBot {
 			for (Future future : futures) {
 				try {
 					Long amount = (Long) future.get();
-					LOGGER.info("Completed/Queue tasks " + service.getCompletedTaskCount() + "/" +
-							service.getQueue().size() + " Added ops: " + amount);
+					if (amount != 0) {
+						LOGGER.info("Completed/total tasks " + service.getCompletedTaskCount() + "/" + service.getTaskCount()
+								+ " , queue: " + service.getQueue().size() + " Added ops: " + amount);
+					}
 				} catch (Exception e) {
 					LOGGER.error("Error while executing task", e);
 				}
