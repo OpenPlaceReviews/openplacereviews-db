@@ -110,7 +110,7 @@ public class PublishBot implements IOpenDBBot {
 					Long amount = (Long) future.get();
 					if (amount != 0) {
 						LOGGER.info("Completed/total tasks " + service.getCompletedTaskCount() + "/" + service.getTaskCount()
-								+ " , queue: " + service.getQueue().size() + " Added ops: " + amount);
+								+ " ,queue: " + service.getQueue().size() + " Added ops: " + amount);
 					}
 				} catch (Exception e) {
 					LOGGER.error("Error while executing task", e);
@@ -273,7 +273,7 @@ public class PublishBot implements IOpenDBBot {
 			for (Object e : places) {
 				if (e instanceof Entity) {
 					Entity obj = (Entity) e;
-					OpObject loadedObj = placeManager.getObjectByExtId(String.valueOf(obj.getId()));
+					OpObject loadedObj = placeManager.getObjectByExtId(obj.getId());
 					if (loadedObj == null) {
 						OpObject newObj = generateCreateOpObject(obj);
 						opOperation.addCreated(newObj);
@@ -290,13 +290,13 @@ public class PublishBot implements IOpenDBBot {
 					DiffEntity diffEntity = (DiffEntity) e;
 					if (DiffEntity.DiffEntityType.DELETE.equals(diffEntity.getType())) {
 
-						OpObject deleteObject =  placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
+						OpObject deleteObject =  placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
 						if (deleteObject != null) {
 							opOperation.addDeleted(deleteObject.getId());
 						}
 					} else if (DiffEntity.DiffEntityType.CREATE.equals(diffEntity.getType())) {
 
-						OpObject loadedObj = placeManager.getObjectByExtId(String.valueOf(diffEntity.getNewNode().getId()));
+						OpObject loadedObj = placeManager.getObjectByExtId(diffEntity.getNewNode().getId());
 						if (loadedObj == null) {
 							OpObject newObj = generateCreateOpObject(diffEntity.getNewNode());
 							opOperation.addCreated(newObj);
@@ -313,18 +313,18 @@ public class PublishBot implements IOpenDBBot {
 						OpObject edit = new OpObject();
 
 						if (diffEntity.getNewNode().getLatLon().equals(diffEntity.getOldNode().getLatLon())) {
-							OpObject loadedObject = placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
+							OpObject loadedObject = placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
 							if (loadedObject != null) {
 								opOperation.addEdited(generateEditOpObject(edit, diffEntity, loadedObject.getId()));
 							}
 						} else {
 							if (diffEntity.getOldNode().getId() != diffEntity.getNewNode().getId()) {
-								OpObject loadedObject = placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
+								OpObject loadedObject = placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
 								if (loadedObject != null) {
 									opOperation.addDeleted(loadedObject.getId());
 								}
 							}
-							OpObject opObject = placeManager.getObjectByExtId(String.valueOf(diffEntity.getNewNode().getId()));
+							OpObject opObject = placeManager.getObjectByExtId(diffEntity.getNewNode().getId());
 							if (opObject == null) {
 								OpObject createObj = generateCreateOpObject(diffEntity.getNewNode());
 								opOperation.addCreated(createObj);
