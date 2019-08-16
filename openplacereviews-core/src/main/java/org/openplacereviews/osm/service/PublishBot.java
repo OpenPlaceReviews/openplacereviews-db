@@ -110,7 +110,7 @@ public class PublishBot implements IOpenDBBot {
 					Long amount = (Long) future.get();
 					if (amount != 0) {
 						LOGGER.info("Completed/total tasks " + service.getCompletedTaskCount() + "/" + service.getTaskCount()
-								+ " ,queue: " + service.getQueue().size() + " Added ops: " + amount);
+								+ ", queue: " + service.getQueue().size() + " Added ops: " + amount);
 					}
 				} catch (Exception e) {
 					LOGGER.error("Error while executing task", e);
@@ -438,13 +438,22 @@ public class PublishBot implements IOpenDBBot {
 				}
 			} else {
 				if (objectMap.get("bbox").equals("")) {
-					for (String coordinate : generateListCoordinates()) {
+					if (SyncStatus.DIFF_SYNC.equals(syncStatus)) {
 						Tag tag = new Tag();
 						tag.name = (String) objectMap.get("name");
 						tag.tags = (List<String>) objectMap.get("values");
-						tag.coordinate = "(" + coordinate + ")";
+						tag.coordinate = "({{bbox}})";
 						tag.type = (String) objectMap.get("type");
 						bboxList.add(tag);
+					} else {
+						for (String coordinate : generateListCoordinates()) {
+							Tag tag = new Tag();
+							tag.name = (String) objectMap.get("name");
+							tag.tags = (List<String>) objectMap.get("values");
+							tag.coordinate = "(" + coordinate + ")";
+							tag.type = (String) objectMap.get("type");
+							bboxList.add(tag);
+						}
 					}
 				} else {
 					Tag tag = new Tag();
