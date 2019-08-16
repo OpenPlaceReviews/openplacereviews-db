@@ -85,9 +85,9 @@ public class PublishBot implements IOpenDBBot {
 		this.operationsPerBlock = (Long) botObject.getStringObjMap(F_BLOCKCHAIN_CONFIG).get(F_OPERATIONS_PER_BLOCK);
 
 		ThreadFactory namedThreadFactory =
-				new ThreadFactoryBuilder().setNameFormat(botObject.getId().get(0) + "-%d").build();
+				new ThreadFactoryBuilder().setNameFormat(Thread.currentThread().getName() + "-%d").build();
 		this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 0), namedThreadFactory);
-		//timestamp = "2019-06-01T00:00:00Z";
+//		timestamp = "2019-06-01T00:00:00Z";
 		try {
 			this.timestamp = requestService.getTimestamp();
 		} catch (IOException e) {
@@ -98,10 +98,9 @@ public class PublishBot implements IOpenDBBot {
 	public void publish() throws IOException {
 		initVariables();
 		SyncStatus syncStatus = getSyncStatus(timestamp);
-		if (syncStatus.equals(SyncStatus.DIFF_SYNC) || syncStatus.equals(SyncStatus.NEW_SYNC) ||
-				syncStatus.equals(SyncStatus.TAGS_SYNC)) {
+		if (!syncStatus.equals(SyncStatus.SYNCHRONIZED)) {
 			LOGGER.info("Start synchronizing: " + syncStatus);
-			List<String> requests = new ArrayList<>(generateRequestList(timestamp, syncStatus));
+			List<String> requests = generateRequestList(timestamp, syncStatus);
 
 			for (int i = 0; i < requests.size(); i++) {
 				futures.add(service.submit(new Publisher(requests.get(i), syncStatus)));
@@ -119,7 +118,7 @@ public class PublishBot implements IOpenDBBot {
 
 			try {
 				TreeMap<String, Object> dbSync = new TreeMap<>();
-				if (!SyncStatus.TAGS_SYNC.equals(syncStatus)) {
+				if (!SyncStatus.TAGS_SYNC.equals(syncStatus) && !SyncStatus.DB_SYNC.equals(syncStatus)) {
 					blocksManager.addOperation(generateEditOpForBotObject(timestamp));
 					dbSync.put(F_DATE, timestamp);
 				} else {
@@ -133,12 +132,6 @@ public class PublishBot implements IOpenDBBot {
 				throw new IllegalArgumentException("Error while updating op opr.crawler", e);
 			}
 			LOGGER.info("Synchronization is finished");
-		} else if (syncStatus.equals(SyncStatus.DB_SYNC)) {
-			LOGGER.info("DB is not synchronized!");
-			LOGGER.info("Start db syncing!");
-
-			// TODO implement db syncing
-			LOGGER.info("DB syncing is finished!");
 		} else {
 			LOGGER.info("Blockchain and DB is synchronized");
 		}
@@ -176,22 +169,22 @@ public class PublishBot implements IOpenDBBot {
 
 	@Override
 	public String getTaskName() {
-		return null;
+		return Thread.currentThread().getName();
 	}
 
 	@Override
 	public int taskCount() {
-		return 0;
+		return service.getQueue().size();
 	}
 
 	@Override
 	public int total() {
-		return 0;
+		return (int) service.getTaskCount();
 	}
 
 	@Override
 	public int progress() {
-		return 0;
+		return (int) ((service.getCompletedTaskCount() / service.getTaskCount()) * 100);
 	}
 
 	private class Publisher implements Callable {
@@ -324,10 +317,12 @@ public class PublishBot implements IOpenDBBot {
 								opOperation.addEdited(generateEditOpObject(edit, diffEntity, loadedObject.getId()));
 							}
 						} else {
-//							OpObject loadedObject =  placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
-//							if (loadedObject != null) {
-//								deleteOperation.addDeleted(loadedObject.getId());
-//							}
+							if (diffEntity.getOldNode().getId() != diffEntity.getNewNode().getId()) {
+								OpObject loadedObject = placeManager.getObjectByExtId(String.valueOf(diffEntity.getOldNode().getId()));
+								if (loadedObject != null) {
+									opOperation.addDeleted(loadedObject.getId());
+								}
+							}
 							OpObject opObject = placeManager.getObjectByExtId(String.valueOf(diffEntity.getNewNode().getId()));
 							if (opObject == null) {
 								OpObject createObj = generateCreateOpObject(diffEntity.getNewNode());
@@ -402,11 +397,11 @@ public class PublishBot implements IOpenDBBot {
 			if (SyncStatus.TAGS_SYNC.equals(syncStatus)) {
 				List<Map<String, Object>> dbSyncState = (List<Map<String, Object>>) dbManager.getDBSyncState().get(ATTR_TAGS);
 				for (Map<String, Object> map : dbSyncState) {
-					if (objectMap.get("key").equals(map.get("key"))) {
+					if (objectMap.get("name").equals(map.get("name"))) {
 						if (objectMap.get("bbox").equals("")) {
 							for (String coordinate : generateListCoordinates()) {
-								List<String> dbTags = (List<String>) map.get("value");
-								List<String> botTags = (List<String>) objectMap.get("value");
+								List<String> dbTags = (List<String>) map.get("values");
+								List<String> botTags = (List<String>) objectMap.get("values");
 								List<String> notSyncTags = new ArrayList<>();
 								for (String botTag : botTags) {
 									if (!dbTags.contains(botTag)) {
@@ -414,15 +409,15 @@ public class PublishBot implements IOpenDBBot {
 									}
 								}
 								Tag tag = new Tag();
-								tag.name = (String) objectMap.get("key");
+								tag.name = (String) objectMap.get("name");
 								tag.tags = notSyncTags;
 								tag.coordinate = "(" + coordinate + ")";
 								tag.type = (String) objectMap.get("type");
 								bboxList.add(tag);
 							}
 						} else {
-							List<String> dbTags = (List<String>) map.get("value");
-							List<String> botTags = (List<String>) objectMap.get("value");
+							List<String> dbTags = (List<String>) map.get("values");
+							List<String> botTags = (List<String>) objectMap.get("values");
 							List<String> notSyncTags = new ArrayList<>();
 							for (String botTag : botTags) {
 								if (!dbTags.contains(botTag)) {
@@ -431,7 +426,7 @@ public class PublishBot implements IOpenDBBot {
 							}
 							if (!notSyncTags.isEmpty()) {
 								Tag tag = new Tag();
-								tag.name = (String) objectMap.get("key");
+								tag.name = (String) objectMap.get("name");
 								tag.tags = notSyncTags;
 								tag.coordinate = (String) objectMap.get("bbox");
 								tag.type = (String) objectMap.get("type");
@@ -444,16 +439,16 @@ public class PublishBot implements IOpenDBBot {
 				if (objectMap.get("bbox").equals("")) {
 					for (String coordinate : generateListCoordinates()) {
 						Tag tag = new Tag();
-						tag.name = (String) objectMap.get("key");
-						tag.tags = (List<String>) objectMap.get("value");
+						tag.name = (String) objectMap.get("name");
+						tag.tags = (List<String>) objectMap.get("values");
 						tag.coordinate = "(" + coordinate + ")";
 						tag.type = (String) objectMap.get("type");
 						bboxList.add(tag);
 					}
 				} else {
 					Tag tag = new Tag();
-					tag.name = (String) objectMap.get("key");
-					tag.tags = (List<String>) objectMap.get("value");
+					tag.name = (String) objectMap.get("name");
+					tag.tags = (List<String>) objectMap.get("values");
 					tag.coordinate = (String) objectMap.get("bbox");
 					tag.type = (String) objectMap.get("type");
 					coordinateList.add(tag);

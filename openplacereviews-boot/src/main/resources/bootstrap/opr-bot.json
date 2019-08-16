@@ -35,14 +35,14 @@
       "bot-state" : {
         "date": "",
         "tags": [{
-          "key" : "amenity",
-          "value" : ["cafe", "bar", "restaurant", "biergarten", "fast_food", "food_court", "ice-cream"],
-          "bbox": "(50.3456,30.3671,50.5580,30.8671)",
+          "name" : "amenity",
+          "values" : ["cafe", "bar", "restaurant", "biergarten", "fast_food", "food_court", "ice-cream"],
+          "bbox": "",
           "type" : "node"
         },{
-          "key" : "tourism",
-          "value" : ["hotel", "motel", "hostel", "apartment", "guest_house"],
-          "bbox": "(50.3456,30.3671,50.5580,30.8671)",
+          "name" : "tourism",
+          "values" : ["hotel", "motel", "hostel", "apartment", "guest_house"],
+          "bbox": "",
           "type" : "node"
         }]
       }
