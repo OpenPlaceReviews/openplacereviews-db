@@ -1,11 +1,38 @@
 package org.openplacereviews.osm.service;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
+import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
+import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
+import static org.openplacereviews.opendb.ops.OpObject.F_ID;
+import static org.openplacereviews.osm.util.ObjectGenerator.generateCreateOpObject;
+import static org.openplacereviews.osm.util.ObjectGenerator.generateEditOpForBotObject;
+import static org.openplacereviews.osm.util.ObjectGenerator.generateEditOpObject;
+import static org.openplacereviews.osm.util.ObjectGenerator.generateHashAndSign;
+import static org.openplacereviews.osm.util.ObjectGenerator.generateListCoordinates;
+import static org.openplacereviews.osm.util.ObjectGenerator.initOpOperation;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.openplacereviews.opendb.ops.OpBlock;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
+import org.openplacereviews.opendb.ops.PerformanceMetrics;
+import org.openplacereviews.opendb.ops.PerformanceMetrics.Metric;
+import org.openplacereviews.opendb.ops.PerformanceMetrics.PerformanceMetric;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.IOpenDBBot;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
@@ -15,21 +42,19 @@ import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.parser.OsmParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.io.UnsupportedEncodingException;
-import java.util.*;
-import java.util.concurrent.*;
-
-import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
-import static org.openplacereviews.opendb.ops.OpObject.*;
-import static org.openplacereviews.osm.util.ObjectGenerator.*;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 public class PublishBot implements IOpenDBBot {
 
 	private static final Log LOGGER = LogFactory.getLog(PublishBot.class);
+	
+	private static final PerformanceMetric mOverpassQuery = PerformanceMetrics.i().getMetric("opr.osm-sync.overpass");
+	private static final PerformanceMetric mPublish = PerformanceMetrics.i().getMetric("opr.osm-sync.publish");
+	private static final PerformanceMetric mProcDiff = PerformanceMetrics.i().getMetric("opr.osm-sync.proc-diff");
+	private static final PerformanceMetric mProcEntity = PerformanceMetrics.i().getMetric("opr.osm-sync.proc-e");
+	private static final PerformanceMetric mBlock = PerformanceMetrics.i().getMetric("opr.osm-sync.block");
+	private static final PerformanceMetric mOpAdd = PerformanceMetrics.i().getMetric("opr.osm-sync.opadd");
 
 	public static final String ATTR_SOURCE = "source";
 	public static final String ATTR_OLD_OSM_IDS = "old-osm-ids";
@@ -183,46 +208,55 @@ public class PublishBot implements IOpenDBBot {
 
 		@Override
 		public Long call() {
-			startPublish();
+			Reader file = null;
+			try {
+				Metric m = mOverpassQuery.start();
+				file = requestService.retrieveFile(request);
+				OsmParser osmParser = null;
+				osmParser = new OsmParser(file);
+				m.capture();
+				
+				m = mPublish.start();
+				publish(osmParser, syncStatus);
+				m.capture();
+				file.close();
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage());
+				throw new IllegalStateException(e.getMessage(), e);
+			}
 			return opCounter;
 		}
 
-		private void startPublish() {
-			Reader file = null;
-			try {
-				file = requestService.retrieveFile(request);
-			} catch (IOException e) {
-				LOGGER.error("Error while getting file", e);
-			}
-			OsmParser osmParser = null;
-			try {
-				osmParser = new OsmParser(file);
-			} catch (XmlPullParserException e) {
-				LOGGER.error("Error while reading file", e);
-			}
-			publish(osmParser, syncStatus);
-			try {
-				file.close();
-			} catch (IOException e) {
-				LOGGER.error(e.getMessage());
-				throw new IllegalArgumentException("Error while stream closing", e);
-			}
-		}
-
 		private void publish(OsmParser osmParser, SyncStatus statusSync) {
-			appStartedMs = System.currentTimeMillis();
-			while (true) {
+			while (osmParser.hasNext()) {
 				try {
-					Object places;
+					OpOperation opOperation = initOpOperation(opType, blocksManager);
+					;
 					if (SyncStatus.NEW_SYNC.equals(statusSync) || SyncStatus.TAGS_SYNC.equals(statusSync)) {
-						places = osmParser.parseNextCoordinatePlaces(placesPerOperation, false);
+						List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
+						for(Entity e : newEntities) {
+							Metric m = mProcEntity.start();
+							processEntity(opOperation, e);
+							m.capture();
+						}
 					} else {
-						places = osmParser.parseNextCoordinatePlaces(placesPerOperation, true);
+						List<DiffEntity> places = osmParser.parseNextCoordinatePlaces(placesPerOperation, DiffEntity.class);
+						for(DiffEntity e : places) {
+							Metric m = mProcDiff.start();
+							processDiffEntity(opOperation, e);
+							m.capture();
+						}
 					}
-					if (places == null || ((List)places).isEmpty())
-						break;
-
-					publish((List<Object>) places);
+					if(opOperation.hasCreated() || opOperation.hasEdited()) {
+						Metric m = mOpAdd.start();
+						blocksManager.addOperation(generateHashAndSign(opOperation, blocksManager));
+						m.capture();
+					}
+					if (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock) {
+						Metric m = mBlock.start();
+						blocksManager.createBlock();
+						m.capture();
+					}
 				} catch (Exception e) {
 					LOGGER.error("Error while publishing", e);
 					break;
@@ -230,122 +264,73 @@ public class PublishBot implements IOpenDBBot {
 			}
 		}
 
-		private void publish(List<Object> places) throws FailedVerificationException {
-			List<OpOperation> osmCoordinatePlacesDto = generateOpOperationFromPlaceList(places);
-			try {
-				for (OpOperation opOperation : osmCoordinatePlacesDto) {
-					if(opOperation.hasCreated() || opOperation.hasEdited()) {
-						blocksManager.addOperation(opOperation);
-					}
+		private void processEntity(OpOperation opOperation, Entity obj) {
+			OpObject loadedObj = placeManager.getObjectByExtId(obj.getId());
+			if (loadedObj == null) {
+				OpObject newObj = generateCreateOpObject(obj);
+				opOperation.addCreated(newObj);
+			} else {
+				OpObject newObj = generateCreateOpObject(obj);
+				String matchId = placeManager.generateMatchIdFromOpObject(newObj);
+				String oldMatchId = placeManager.generateMatchIdFromOpObject(loadedObj);
+				if (!Objects.equals(matchId, oldMatchId)) {
+					opOperation.addDeleted(loadedObj.getId());
+					opOperation.addCreated(newObj);
 				}
-				opCounter += osmCoordinatePlacesDto.size();
-			} catch (Exception e) {
-				e.printStackTrace();
-				LOGGER.error("Error occurred while posting places: " + e.getMessage());
-				LOGGER.info("Amount of pack transferred data: " + opCounter);
-			}
-
-			createBlock(opCounter, appStartedMs);
-		}
-
-		private void createBlock(long opCounter, long appStartedMs) {
-			try {
-				if (!blocksManager.getBlockchain().getQueueOperations().isEmpty()) {
-					boolean createBlock = (opCounter % operationsPerBlock == 0 || blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock);
-					if (createBlock) {
-						OpBlock opBlock = blocksManager.createBlock();
-						LOGGER.info("Created block: " + opBlock.getRawHash() + " with size: " + opBlock.getOperations().size());
-						LOGGER.info("Op saved: " + opCounter + " date: " + new Date());
-						LOGGER.info("Places saved: " + (opCounter * placesPerOperation) + " date: " + new Date());
-						long currTimeMs = System.currentTimeMillis();
-						long placesPerSecond = (opCounter * placesPerOperation) / ((currTimeMs - appStartedMs) / 1000);
-						LOGGER.info("Places per second: " + placesPerSecond);
-					}
-				}
-			} catch (Exception e) {
-				LOGGER.error("Error occurred while creating block: " +e.getMessage());
 			}
 		}
 
-		private List<OpOperation> generateOpOperationFromPlaceList(List<Object> places) throws FailedVerificationException {
-			List<OpOperation> opOperations = new ArrayList<>();
+		private void processDiffEntity(OpOperation opOperation, DiffEntity diffEntity) {
+			if (DiffEntity.DiffEntityType.DELETE.equals(diffEntity.getType())) {
+				OpObject deleteObject =  placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
+				if (deleteObject != null) {
+					opOperation.addDeleted(deleteObject.getId());
+				}
+			} else if (DiffEntity.DiffEntityType.CREATE.equals(diffEntity.getType())) {
 
-			OpOperation opOperation = initOpOperation(opType, blocksManager);
-
-			for (Object e : places) {
-				if (e instanceof Entity) {
-					Entity obj = (Entity) e;
-					OpObject loadedObj = placeManager.getObjectByExtId(obj.getId());
-					if (loadedObj == null) {
-						OpObject newObj = generateCreateOpObject(obj);
+				OpObject loadedObj = placeManager.getObjectByExtId(diffEntity.getNewNode().getId());
+				if (loadedObj == null) {
+					OpObject newObj = generateCreateOpObject(diffEntity.getNewNode());
+					opOperation.addCreated(newObj);
+				} else {
+					OpObject newObj = generateCreateOpObject(diffEntity.getNewNode());
+					String matchId = placeManager.generateMatchIdFromOpObject(loadedObj);
+					String newMatchId = placeManager.generateMatchIdFromOpObject(newObj);
+					if (!Objects.equals(matchId, newMatchId)) {
+						opOperation.addDeleted(loadedObj.getId());
 						opOperation.addCreated(newObj);
-					} else {
-						OpObject newObj = generateCreateOpObject(obj);
-						String matchId = placeManager.generateMatchIdFromOpObject(newObj);
-						String oldMatchId = placeManager.generateMatchIdFromOpObject(loadedObj);
-						if (!Objects.equals(matchId, oldMatchId)) {
-							opOperation.addDeleted(loadedObj.getId());
-							opOperation.addCreated(newObj);
+					}
+				}
+			} else if (DiffEntity.DiffEntityType.MODIFY.equals(diffEntity.getType())) {
+				OpObject edit = new OpObject();
+
+				if (diffEntity.getNewNode().getLatLon().equals(diffEntity.getOldNode().getLatLon())) {
+					OpObject loadedObject = placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
+					if (loadedObject != null) {
+						opOperation.addEdited(generateEditOpObject(edit, diffEntity, loadedObject.getId()));
+					}
+				} else {
+					if (diffEntity.getOldNode().getId() != diffEntity.getNewNode().getId()) {
+						OpObject loadedObject = placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
+						if (loadedObject != null) {
+							opOperation.addDeleted(loadedObject.getId());
 						}
 					}
-				} else if (e instanceof DiffEntity) {
-					DiffEntity diffEntity = (DiffEntity) e;
-					if (DiffEntity.DiffEntityType.DELETE.equals(diffEntity.getType())) {
-
-						OpObject deleteObject =  placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
-						if (deleteObject != null) {
-							opOperation.addDeleted(deleteObject.getId());
-						}
-					} else if (DiffEntity.DiffEntityType.CREATE.equals(diffEntity.getType())) {
-
-						OpObject loadedObj = placeManager.getObjectByExtId(diffEntity.getNewNode().getId());
-						if (loadedObj == null) {
-							OpObject newObj = generateCreateOpObject(diffEntity.getNewNode());
-							opOperation.addCreated(newObj);
-						} else {
-							OpObject newObj = generateCreateOpObject(diffEntity.getNewNode());
-							String matchId = placeManager.generateMatchIdFromOpObject(loadedObj);
-							String newMatchId = placeManager.generateMatchIdFromOpObject(newObj);
-							if (!Objects.equals(matchId, newMatchId)) {
-								opOperation.addDeleted(loadedObj.getId());
-								opOperation.addCreated(newObj);
-							}
-						}
-					} else if (DiffEntity.DiffEntityType.MODIFY.equals(diffEntity.getType())) {
-						OpObject edit = new OpObject();
-
-						if (diffEntity.getNewNode().getLatLon().equals(diffEntity.getOldNode().getLatLon())) {
-							OpObject loadedObject = placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
-							if (loadedObject != null) {
-								opOperation.addEdited(generateEditOpObject(edit, diffEntity, loadedObject.getId()));
-							}
-						} else {
-							if (diffEntity.getOldNode().getId() != diffEntity.getNewNode().getId()) {
-								OpObject loadedObject = placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
-								if (loadedObject != null) {
-									opOperation.addDeleted(loadedObject.getId());
-								}
-							}
-							OpObject opObject = placeManager.getObjectByExtId(diffEntity.getNewNode().getId());
-							if (opObject == null) {
-								OpObject createObj = generateCreateOpObject(diffEntity.getNewNode());
-								opOperation.addCreated(createObj);
-							} else {
-								String matchId = placeManager.generateMatchIdFromOpObject(opObject);
-								OpObject newOpObject = generateCreateOpObject(diffEntity.getNewNode());
-								String newMatchId = placeManager.generateMatchIdFromOpObject(newOpObject);
-								if (!Objects.equals(matchId, newMatchId)) {
-									opOperation.addDeleted(opObject.getId());
-									opOperation.addCreated(newOpObject);
-								}
-							}
+					OpObject opObject = placeManager.getObjectByExtId(diffEntity.getNewNode().getId());
+					if (opObject == null) {
+						OpObject createObj = generateCreateOpObject(diffEntity.getNewNode());
+						opOperation.addCreated(createObj);
+					} else {
+						String matchId = placeManager.generateMatchIdFromOpObject(opObject);
+						OpObject newOpObject = generateCreateOpObject(diffEntity.getNewNode());
+						String newMatchId = placeManager.generateMatchIdFromOpObject(newOpObject);
+						if (!Objects.equals(matchId, newMatchId)) {
+							opOperation.addDeleted(opObject.getId());
+							opOperation.addCreated(newOpObject);
 						}
 					}
 				}
 			}
-
-			generateHashAndSign(opOperations, opOperation, blocksManager);
-			return opOperations;
 		}
 	}
 

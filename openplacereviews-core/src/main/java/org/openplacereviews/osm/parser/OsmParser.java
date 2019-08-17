@@ -28,28 +28,33 @@ import static org.openplacereviews.osm.model.Way.ATTR_ND;
 
 public class OsmParser {
 
-	private Reader reader;
 	private KXmlParser parser;
+	private int event;
 
-	public OsmParser(Reader reader) throws XmlPullParserException {
-		this.reader = reader;
+	public OsmParser(Reader reader) throws XmlPullParserException, IOException {
 		parser = new KXmlParser();
 		parser.setInput(reader);
+		// we can skip first tag cause we don't process start document
+		event = parser.next();
 	}
 
 	public OsmParser(File file) throws IOException, XmlPullParserException {
 		this(new FileReader(file));
 	}
+	
+	public boolean hasNext() {
+		return event != XmlPullParser.END_DOCUMENT;
+	}
 
-	public List<Object> parseNextCoordinatePlaces(Long limit, Boolean parseDiff)
-			throws IOException, XmlPullParserException {
+	@SuppressWarnings("unchecked")
+	public <T> List<T> parseNextCoordinatePlaces(long limit, Class<T> cl) throws IOException, XmlPullParserException {
 		int counter = 0;
-		int event ;
 		Entity entity = null;
 		DiffEntity diffEntity = null;
 		String actionSubTag = "";
 		String actionType = "";
-		List<Object> results = new ArrayList<>();
+		boolean parseDiff = DiffEntity.class.equals(cl);
+		List<T> results = new ArrayList<>();
 		while ((event = parser.next()) != XmlPullParser.END_DOCUMENT) {
 			if (event == XmlPullParser.START_TAG) {
 				String elementName = parser.getName();
@@ -107,21 +112,24 @@ public class OsmParser {
 				// here we could close the tag
 				String elementName = parser.getName();
 				if (parseDiff && TAG_ACTION.equals(elementName)) {
-					results.add(diffEntity);
+					results.add((T) diffEntity);
 					diffEntity = null;
 					actionSubTag = "";
 					if (limit == ++counter) {
 						break;
 					}
-				} else if (!parseDiff && (EntityType.NODE.getName().equals(elementName) || EntityType.WAY.getName().equals(elementName) || EntityType.RELATION.getName().equals(elementName))) {
-					results.add(entity);
+				} else if (!parseDiff && 
+						(EntityType.NODE.getName().equals(elementName) || 
+								EntityType.WAY.getName().equals(elementName) || 
+								EntityType.RELATION.getName().equals(elementName))) {
+					results.add((T) entity);
 					entity = null;
 					if (limit == ++counter) {
 						break;
 					}
 				}
 			}
-		}
+		};
 		return results;
 	}
 
@@ -140,5 +148,7 @@ public class OsmParser {
 	protected String getAttributeValue(String atrName) {
 		return parser.getAttributeValue(null, atrName);
 	}
+
+	
 
 }

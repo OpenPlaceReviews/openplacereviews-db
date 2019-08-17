@@ -3,6 +3,7 @@ package org.openplacereviews.osm.util;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.util.JsonFormatter;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
@@ -103,15 +104,13 @@ public class ObjectGenerator {
 		OpOperation opOperation = new OpOperation();
 		opOperation.setType(osmOpType);
 		opOperation.setSignedBy(blocksManager.getServerUser());
-
 		return opOperation;
 	}
 
-	public static void generateHashAndSign(List<OpOperation> opOperations, OpOperation opOperation, BlocksManager blocksManager) throws FailedVerificationException {
-		String obj = blocksManager.getBlockchain().getRules().getFormatter().opToJson(opOperation);
-		opOperation = blocksManager.getBlockchain().getRules().getFormatter().parseOperation(obj);
-		opOperation = blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
-		opOperations.add(opOperation);
+	public static OpOperation generateHashAndSign(OpOperation opOperation, BlocksManager blocksManager) throws FailedVerificationException {
+		JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
+		opOperation = formatter.parseOperation(formatter.opToJson(opOperation));
+		return blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
 	}
 
 	public static void generateEntityInfo(TreeMap<String, Object> osmObject, EntityInfo entityInfo) {
@@ -125,8 +124,8 @@ public class ObjectGenerator {
 	}
 
 	public static List<String> generateListCoordinates() {
-		double quad_size_length = 360/32d;
-		double quad_size_height = 180/16d;
+		double quad_size_length = 360 / 32d;
+		double quad_size_height = 180 / 16d;
 		double p1 = -90, p2 = -180;
 		List<String> coordinates = new ArrayList<>();
 		while (p2 != 180) {
