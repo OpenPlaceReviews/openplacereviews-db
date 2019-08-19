@@ -165,7 +165,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			}
 		}
 		String request = String.format(requestTemplate, queryType, timestamp, ts.toString());
-		LOGGER.info(String.format("Overpass query: %s", request));
+		// LOGGER.info(String.format("Overpass query: %s", request));
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
 		request = overpassURL+ "?data=" + request;
 		return request;
@@ -293,14 +293,14 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					submitTask(String.format("> Start synchronizing %s new tag/values [%s] [%s] - %s", r.name,
 							r.nvalues, r.ntype, r.date), task, futures);
 					OpOperation op = generateEditOpForBotObject(r, botObject, blocksManager);
-//					blocksManager.addOperation(op);
+					blocksManager.addOperation(op);
 				}
 				if (!OUtils.equals(r.date, r.state.date)) {
 					Publisher task = new Publisher(futures, overpassURL, r, null, true);
 					submitTask(String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.date, r.state.date),
 							task, futures);
 					OpOperation op = generateEditOpForBotObject(r.name, r.state.date, r.date, botObject, blocksManager);
-//					blocksManager.addOperation(op);
+					blocksManager.addOperation(op);
 				}
 			}
 			LOGGER.info("Synchronization is finished");
@@ -372,11 +372,11 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 							String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
 							String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox,
 									false, true);
-							BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of %s", bbox));
+							BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of (%s)", bbox));
 							String c = r.readLine();
 							Long cnt = c == null ? null : Long.parseLong(c);
 							r.close();
-							LOGGER.info(String.format("Size %s %s", bbox, c));
+							LOGGER.info(String.format("Size (%s) %s", bbox, c));
 							if (cnt != null && cnt < SPLIT_QUERY_LIMIT) {
 								if (cnt > 0) {
 									Publisher task = new Publisher(futures, overpassURL, request, bbox, false);
@@ -403,7 +403,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 
 					Metric m = mOverpassQuery.start();
 					Reader file = OprUtil.downloadGzipReader(reqUrl,
-							String.format("Download overpass data %s", bbox == null ? "" : bbox));
+							String.format("Download overpass data (%s)", bbox == null ? "" : bbox));
 					OsmParser osmParser = null;
 					osmParser = new OsmParser(file);
 					m.capture();
@@ -441,6 +441,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 						}
 					}
 					if(opOperation.hasCreated() || opOperation.hasEdited()) {
+						opCounter++;
 						Metric m = mOpAdd.start();
 						blocksManager.addOperation(generateHashAndSign(opOperation, blocksManager));
 						m.capture();

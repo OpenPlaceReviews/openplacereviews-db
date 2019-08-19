@@ -25,7 +25,8 @@ public class OprUtil {
 		int cd = con.getResponseCode();
 		String rmsg = con.getResponseMessage();
 		tm = System.currentTimeMillis() - tm;
-		LOGGER.info(String.format("%s: %s - %d ms, %d %s", msg, urlReq, tm, cd, rmsg));
+		// LOGGER.info(String.format("%s: %s - %d ms, %d %s", msg, urlReq, tm, cd, rmsg));
+		LOGGER.info(String.format("%s: %s - %d ms, %d %s", msg, url.getHost(), tm, cd, rmsg));
 		return con;
 	}
 	
