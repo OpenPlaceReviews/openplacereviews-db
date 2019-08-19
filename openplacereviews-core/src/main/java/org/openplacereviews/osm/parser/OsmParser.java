@@ -92,7 +92,10 @@ public class OsmParser {
 					String role = getAttributeValue(ATTR_ROLE);
 					((Relation)entity).addMember(ref, EntityType.valueOf(tp.toUpperCase()), role);
 				} else if (ATTR_ND.equals(elementName)) {
-					((Way) entity).addNode(OUtils.parseLongSilently(getAttributeValue(ATTR_REF), -1));
+					long lid = OUtils.parseLongSilently(getAttributeValue(ATTR_REF), -1);
+					double lat = Double.valueOf(getAttributeValue(ATTR_LATITUDE));
+					double lon = Double.valueOf(getAttributeValue(ATTR_LONGITUDE));
+					((Way) entity).addNode(new Node(lat, lon, lid));
 				} else if (ATTR_TAG.equals(elementName)) {
 					String k = getAttributeValue(ATTR_TAG_K);
 					String v = getAttributeValue(ATTR_TAG_V);
