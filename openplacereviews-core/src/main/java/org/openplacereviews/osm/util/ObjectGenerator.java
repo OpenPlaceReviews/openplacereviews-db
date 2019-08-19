@@ -47,6 +47,7 @@ public class ObjectGenerator {
 	
 	public static OpOperation generateEditOpDeleteOsmIds(String opType,
 			OpObject oldObject, String extId, BlocksManager blocksManager) throws FailedVerificationException {
+		// TODO not used yet
 		OpOperation opOperation = new OpOperation();
 		opOperation.setType(opType);
 		opOperation.setSignedBy(blocksManager.getServerUser());

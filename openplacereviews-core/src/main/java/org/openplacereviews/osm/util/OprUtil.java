@@ -13,7 +13,6 @@ import java.util.zip.GZIPInputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.openplacereviews.osm.service.OsmSyncBot;
 
 public class OprUtil {
 
@@ -38,7 +37,7 @@ public class OprUtil {
 		return res;
 	}
 
-	public static Reader downloadGzipReader(String request, String msg) throws IOException {
+	public static BufferedReader downloadGzipReader(String request, String msg) throws IOException {
 		HttpURLConnection con = connect(request, msg);
 		GZIPInputStream gzis = new GZIPInputStream(con.getInputStream());
 		return new BufferedReader(new InputStreamReader(gzis));

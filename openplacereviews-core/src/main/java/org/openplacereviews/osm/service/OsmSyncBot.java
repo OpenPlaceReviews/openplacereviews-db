@@ -1,9 +1,6 @@
 package org.openplacereviews.osm.service;
 
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
-import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
-import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
-import static org.openplacereviews.opendb.ops.OpObject.F_ID;
 import static org.openplacereviews.osm.util.ObjectGenerator.generateCreateOpObject;
 import static org.openplacereviews.osm.util.ObjectGenerator.generateEditOpForBotObject;
 import static org.openplacereviews.osm.util.ObjectGenerator.generateEditOpObject;
@@ -12,12 +9,8 @@ import static org.openplacereviews.osm.util.ObjectGenerator.initOpOperation;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -29,13 +22,11 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.TimeZone;
-import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
@@ -45,9 +36,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.zip.GZIPInputStream;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpObject;
@@ -58,7 +47,6 @@ import org.openplacereviews.opendb.ops.PerformanceMetrics.PerformanceMetric;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.IOpenDBBot;
 import org.openplacereviews.opendb.util.OUtils;
-import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.parser.OsmParser;
@@ -102,7 +90,8 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	public static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
 
 	private static final long WAIT_HOURS_TIMEOUT = 4;
-
+	private static final long SPLIT_QUERY_LIMIT = 10000;
+	
 	private long placesPerOperation = 250;
 	private long operationsPerBlock = 16;
 	private String opType;
@@ -136,7 +125,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	
 
 	public String generateRequestString(String overpassURL,
-			Collection<SyncRequest> req, boolean diff, boolean cnt) throws UnsupportedEncodingException {
+			Collection<SyncRequest> req, String bboxParam, boolean diff, boolean cnt) throws UnsupportedEncodingException {
 		// check if works 'out meta; >; out geom;' vs 'out geom meta;';
 		String queryType = diff ? "diff" : "date";
 		String requestTemplate = "[out:xml][timeout:1800][maxsize:1000000000][%s:%s]; %s out geom meta;";
@@ -165,8 +154,12 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					}
 				}
 				String bbox = tag.coordinates;
-				if(bbox == null) {
+				if(tag.coordinates == null && bboxParam == null) {
 					bbox = "";
+				} else if(bboxParam != null){
+					bbox = "(" + bboxParam +")";
+				} else {
+					bbox = "(" + tag.coordinates +")";
 				}
 				ts.append(String.format(subTagRequest, type, tag.key, tagsValues, bbox));
 			}
@@ -285,13 +278,13 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			List<SyncRequest> requests = calculateRequests(timestamp, schema, state);
 			for(SyncRequest r : requests) {
 				if(!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
-					Publisher task = new Publisher(futures, overpassURL, r, false);
+					Publisher task = new Publisher(futures, overpassURL, r, null, false);
 					submitTask(String.format("> Start synchronizing %s new tag/values [%s] [%s] - %s", r.name, r.nvalues, r.ntype, r.date), 
 							task, futures);
 					generateEditOpForBotObject(r, botObject, blocksManager);
 				}
 				if(!OUtils.equals(r.date, r.state.date)) {
-					Publisher task = new Publisher(futures, overpassURL, r, true);
+					Publisher task = new Publisher(futures, overpassURL, r, null, true);
 					submitTask(
 							String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.date, r.state.date), task, futures);
 					generateEditOpForBotObject(r.name, r.state.date, r.date, botObject, blocksManager);
@@ -336,59 +329,76 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		private boolean diff;
 		private String overpassURL;
 		private Deque<Future<Long>> futures;
+		private String bbox;
 
-		public Publisher(Deque<Future<Long>> futures, String overpassURL, SyncRequest request, boolean diff) {
+		public Publisher(Deque<Future<Long>> futures, String overpassURL, SyncRequest request, 
+				String bbox, boolean diff) {
 			this.futures = futures;
 			this.overpassURL = overpassURL;
 			this.request = request;
+			this.bbox = bbox;
 			this.diff = diff;
 		}
 
-		public static List<String> generateListCoordinates() {
-			double quad_size_length = 360 / 32d;
-			double quad_size_height = 180 / 16d;
-			double p1 = -90, p2 = -180;
-			List<String> coordinates = new ArrayList<>();
-			while (p2 != 180) {
-				double t = p1 + quad_size_height;
-				double t1 = p2 + quad_size_length;
-				coordinates.add(p1 + ", " + p2 + ", " + t + ", " + t1);
-				p1 += quad_size_height;
-				if (p1 == 90) {
-					p1 = -90;
-					p2 += quad_size_length;
-				}
-			}
-
-			return coordinates;
-		}
 		@Override
-		public Long call() {
-			Reader file = null;
-			String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), diff, false);
-			try {
-				Metric m = mOverpassQuery.start();
-				file = requestService.retrieveFile(request);
-				OsmParser osmParser = null;
-				osmParser = new OsmParser(file);
-				m.capture();
-				
-				m = mPublish.start();
-				publish(osmParser, syncStatus);
-				m.capture();
-				file.close();
-			} catch (Exception e) {
-				LOGGER.error(e.getMessage());
-				throw new IllegalStateException(e.getMessage(), e);
+		public Long call() throws IOException {
+			if(!diff && request.coordinates == null && bbox == null) {
+				// calculate bbox to process in parallel
+				double xd = 360 / 8;
+				double yd = 180 / 4;
+				int split = 3;
+				for(double tx = -180; tx + xd <= 180; tx += xd) {
+					for(double ty = -90; ty +  yd <= -90; ty += yd) {
+						String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
+						String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, false, true);
+						BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of %s", bbox));
+						long cnt = Long.parseLong(r.readLine());
+						r.close();
+						LOGGER.info(String.format("Size %s %d", bbox, cnt));
+						if(cnt < SPLIT_QUERY_LIMIT) {
+							Publisher task = new Publisher(futures, reqUrl, request, bbox, false);
+							futures.add(service.submit(task));
+						} else {
+							double sxd = xd / split;
+							double syd = xd / split;
+							for(double ttx = tx; ttx + sxd <= tx + xd; ttx += sxd) {
+								for (double tty = ty; tty + syd <= ty + yd; tty += sxd) {
+									String nbbox = String.format("%f,%f,%f,%f", tty, ttx, tty + syd, tx + sxd);
+									Publisher task = new Publisher(futures, reqUrl, request, nbbox, false);
+									futures.add(service.submit(task));
+								}
+							}
+						}
+						
+					}
+				}
+				return 0l;
+			} else {
+				String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff, false);
+				try {
+					Metric m = mOverpassQuery.start();
+					Reader file = OprUtil.downloadGzipReader(reqUrl, String.format("Download overpass data %s", bbox == null ? "" : bbox));
+					OsmParser osmParser = null;
+					osmParser = new OsmParser(file);
+					m.capture();
+					
+					m = mPublish.start();
+					publish(osmParser);
+					m.capture();
+					file.close();
+				} catch (Exception e) {
+					LOGGER.error(e.getMessage());
+					throw new IllegalStateException(e.getMessage(), e);
+				}
+				return opCounter;	
 			}
-			return opCounter;
 		}
 
-		private void publish(OsmParser osmParser, SyncStatus statusSync) {
+		private void publish(OsmParser osmParser) {
 			while (osmParser.hasNext()) {
 				try {
 					OpOperation opOperation = initOpOperation(opType, blocksManager);
-					if (SyncStatus.NEW_SYNC.equals(statusSync) || SyncStatus.TAGS_SYNC.equals(statusSync)) {
+					if (!diff) {
 						List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
 						for(Entity e : newEntities) {
 							Metric m = mProcEntity.start();
