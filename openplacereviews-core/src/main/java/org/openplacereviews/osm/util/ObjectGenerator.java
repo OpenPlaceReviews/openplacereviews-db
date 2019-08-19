@@ -9,6 +9,7 @@ import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.model.EntityInfo;
 import org.openplacereviews.osm.parser.OsmLocationTool;
+import org.openplacereviews.osm.service.OsmSyncBot.SyncRequest;
 
 import java.util.*;
 
@@ -19,7 +20,7 @@ import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.model.EntityInfo.*;
-import static org.openplacereviews.osm.service.PublishBot.*;
+import static org.openplacereviews.osm.service.OsmSyncBot.*;
 
 public class ObjectGenerator {
 
@@ -43,6 +44,36 @@ public class ObjectGenerator {
 		create.putObjectValue(ATTR_SOURCE, source);
 		return create;
 	}
+	
+	public static OpOperation generateEditOpDeleteOsmIds(String opType,
+			OpObject oldObject, String extId, BlocksManager blocksManager) throws FailedVerificationException {
+		OpOperation opOperation = new OpOperation();
+		opOperation.setType(opType);
+		opOperation.setSignedBy(blocksManager.getServerUser());
+		OpObject editObject = new OpObject();
+		editObject.putObjectValue(F_ID, oldObject.getId());
+
+		TreeMap<String, Object> addDeletedIds = new TreeMap<>();
+		TreeMap<String, Object> appendOp = new TreeMap<>();
+		TreeMap<String, Object> idMap = new TreeMap<>();
+		idMap.put(F_ID, extId);
+		appendOp.put("append", idMap);
+		addDeletedIds.put(ATTR_SOURCE + "." + ATTR_OLD_OSM_IDS, appendOp);
+
+		for (Map<String, Object> map : ((List<Map<String, Object>>)oldObject.getStringObjMap(ATTR_SOURCE).get(ATTR_OSM))) {
+			if (map.get(F_ID).equals(extId)) {
+				addDeletedIds.put(ATTR_SOURCE + "." + ATTR_OSM + "[0]", "delete");
+			}
+		}
+		editObject.putObjectValue(F_CHANGE, addDeletedIds);
+		editObject.putObjectValue(F_CURRENT, Collections.emptyList());
+
+		opOperation.addEdited(editObject);
+		blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
+
+		return opOperation;
+	}
+
 
 	public static OpObject generateEditOpObject(OpObject edit, DiffEntity diffEntity, List<String> objId) {
 		edit.putObjectValue(F_ID, objId);
@@ -76,8 +107,61 @@ public class ObjectGenerator {
 
 		return edit;
 	}
+	
+	@SuppressWarnings("unchecked")
+	public static SyncRequest parseSyncRequest(SyncRequest cp, Object o) {
+		SyncRequest sr = new SyncRequest();
+		if (o != null) {
+			Map<String, Object> value = (Map<String, Object>) o;
+			sr.date = (String) value.get("date");
+			sr.coordinates = (String) value.get("bbox");
+			sr.key = (String) value.get("key");
+			sr.type = (List<String>) value.get("type");
+			sr.values = (List<String>) value.get("values");
+		} else {
+			sr.empty = true;
+			sr.coordinates = cp.coordinates;
+			sr.key = cp.key;
+			sr.date = cp.date;
+		}
+		return sr;
+	}
 
-	public static OpOperation generateEditOpForBotObject(String timestamp, OpObject botObject, BlocksManager blocksManager) throws FailedVerificationException {
+	public static OpOperation generateEditOpForBotObject(SyncRequest r, OpObject botObject, BlocksManager blocksManager) throws FailedVerificationException {
+		OpOperation opOperation = new OpOperation();
+		opOperation.setType(OP_BOT);
+		opOperation.setSignedBy(blocksManager.getServerUser());
+		OpObject editObject = new OpObject();
+		editObject.setId(botObject.getId().get(0));
+
+		TreeMap<String, Object> change = new TreeMap<>();
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".key", r.key);
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".values", r.values);
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".type", r.type);
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".date", r.date);
+		if (r.coordinates != null) {
+			change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".bbox", r.coordinates);
+		}
+		editObject.putObjectValue(F_CHANGE, change);
+		if(!r.state.empty) {
+			TreeMap<String, Object> current = new TreeMap<>();
+			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".key", r.state.key);
+			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".values", r.state.values);
+			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".type", r.state.type);
+			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".date", r.state.date);
+			if (r.coordinates != null) {
+				current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".bbox", r.coordinates);
+			}
+			editObject.putObjectValue(F_CURRENT, current);	
+		}
+		opOperation.addEdited(editObject);
+		blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
+
+		return opOperation;
+	}
+	
+	public static OpOperation generateEditOpForBotObject(String field, String ptimestamp, 
+			String timestamp, OpObject botObject, BlocksManager blocksManager) throws FailedVerificationException {
 		OpOperation opOperation = new OpOperation();
 		opOperation.setType(OP_BOT);
 		opOperation.setSignedBy(blocksManager.getServerUser());
@@ -86,12 +170,11 @@ public class ObjectGenerator {
 
 		TreeMap<String, Object> changeDate = new TreeMap<>();
 		TreeMap<String, String> setDate = new TreeMap<>();
-		setDate.put(ATTR_SET, timestamp);
-		changeDate.put(ATTR_SYNC_STATES + "." + F_DATE, setDate);
-		editObject.putObjectValue(F_CHANGE, changeDate);
-
 		TreeMap<String, String> previousDate = new TreeMap<>();
-		previousDate.put(ATTR_SYNC_STATES + "." + F_DATE, botObject.getStringMap(ATTR_SYNC_STATES).get(F_DATE));
+		setDate.put(ATTR_SET, timestamp);
+		changeDate.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + field + "." + F_DATE, setDate);
+		editObject.putObjectValue(F_CHANGE, changeDate);
+		previousDate.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + field + "." + F_DATE, ptimestamp);
 		editObject.putObjectValue(F_CURRENT, previousDate);
 
 		opOperation.addEdited(editObject);
@@ -123,22 +206,5 @@ public class ObjectGenerator {
 		osmObject.put(ATTR_ACTION, entityInfo.getAction());
 	}
 
-	public static List<String> generateListCoordinates() {
-		double quad_size_length = 360 / 32d;
-		double quad_size_height = 180 / 16d;
-		double p1 = -90, p2 = -180;
-		List<String> coordinates = new ArrayList<>();
-		while (p2 != 180) {
-			double t = p1 + quad_size_height;
-			double t1 = p2 + quad_size_length;
-			coordinates.add(p1 + ", " + p2 + ", " + t + ", " + t1);
-			p1 += quad_size_height;
-			if (p1 == 90) {
-				p1 = -90;
-				p2 += quad_size_length;
-			}
-		}
-
-		return coordinates;
-	}
+		
 }

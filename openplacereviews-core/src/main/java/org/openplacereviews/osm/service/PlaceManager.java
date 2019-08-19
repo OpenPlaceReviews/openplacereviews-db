@@ -3,13 +3,14 @@ package org.openplacereviews.osm.service;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.util.JsonFormatter;
 import org.openplacereviews.opendb.util.OpExprEvaluator;
 import org.openplacereviews.osm.util.OprExprEvaluatorExt;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.openplacereviews.osm.service.PublishBot.F_CONFIG;
+import static org.openplacereviews.osm.service.OsmSyncBot.F_CONFIG;
 
 public class PlaceManager {
 
@@ -44,10 +45,11 @@ public class PlaceManager {
 		for (Map.Entry<String, String> entry : ((Map<String, String>)botObject.getStringObjMap(F_CONFIG).get(F_MAPPING)).entrySet()) {
 			ctx.put(entry.getKey(), opObject.getFieldByExpr(entry.getValue()));
 		}
+		JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
 		OpExprEvaluator.EvaluationContext evaluationContext = new OpExprEvaluator.EvaluationContext(
 				null,
-				blocksManager.getBlockchain().getRules().getFormatter().toJsonElement(ctx).getAsJsonObject(),
-				blocksManager.getBlockchain().getRules().getFormatter().toJsonElement(opObject).getAsJsonObject(),
+				formatter.toJsonElement(ctx).getAsJsonObject(),
+				formatter.toJsonElement(opObject).getAsJsonObject(),
 				null,
 				null
 		);

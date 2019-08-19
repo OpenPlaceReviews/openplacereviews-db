@@ -3,7 +3,7 @@
     "type" : "sys.bot",
     "create" : [{
       "id" : ["osm-sync"],
-      "api" : "org.openplacereviews.osm.service.PublishBot",
+      "api" : "org.openplacereviews.osm.service.OsmSyncBot",
       "threads": 4,
       "blockchain-config": {
           "places_per_operation": 250,
@@ -21,32 +21,36 @@
         	"lon":"source.osm[0].lon",
         	"tags":"source.osm[0].tags"
       	},
-      	"osm-tags" : {
-      		"amenity" : {
+        "osm-tags" : {
+          "food" : {
+      			"key" : "amenity",
       			"values" : ["cafe","bar","restaurant","biergarten","fast_food","food_court","ice_cream","pub"],
       			"type" : ["node"]
-      		},
-      		"tourism" : {
+          },
+          "hotel" : {
+      			"key" : "tourism",
       			"values" : ["hotel","motel","hostel","apartment","guest_house"],
-      			"type" : ["node"]
-			}      		
-      	}
+            "type" : ["node"]
+          }
+        }
       },
       "bot-state" : {
-        "date": "",
-        "tags": [{
-          "name" : "amenity",
-          "values" : ["cafe", "bar", "restaurant", "biergarten", "fast_food", "food_court", "ice-cream"],
-          "bbox": "",
-          "type" : "node"
-        },{
-          "name" : "tourism",
-          "values" : ["hotel", "motel", "hostel", "apartment", "guest_house"],
-          "bbox": "",
-          "type" : "node"
-        }]
+        "osm-tags-example": {
+          "food" : {
+            "date": "",
+            "key" : "amenity",
+            "values" : ["cafe", "bar", "restaurant", "biergarten", "fast_food", "food_court", "ice-cream"],
+            "bbox": "",
+            "type" : ["node"] },
+          "hotel" : {
+            "date": "",
+            "key" : "tourism",
+            "values" : ["hotel", "motel", "hostel", "apartment", "guest_house"],
+            "bbox": "",
+            "type" : ["node"]
+          }
+        }
       }
     }]
   }
-
 ]
