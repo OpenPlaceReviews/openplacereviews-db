@@ -374,7 +374,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 									false, true);
 							BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of %s", bbox));
 							String c = r.readLine();
-							Long cnt = c == null ? null : Long.parseLong(r.readLine());
+							Long cnt = c == null ? null : Long.parseLong(c);
 							r.close();
 							LOGGER.info(String.format("Size %s %s", bbox, c));
 							if (cnt != null && cnt < SPLIT_QUERY_LIMIT) {
