@@ -248,15 +248,15 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		return r;
 	}
 	
-	private void submitTask(String msg, Publisher task, Deque<Future<Long>> futures)
+	private void submitTask(String msg, Publisher task, Deque<Future<String>> futures)
 			throws InterruptedException, ExecutionException, TimeoutException {
 		LOGGER.info(msg);
-		Future<Long> f = service.submit(task);
+		Future<String> f = service.submit(task);
 		f.get(WAIT_HOURS_TIMEOUT, TimeUnit.HOURS);
 		int i = 0;
 		while (!futures.isEmpty()) {
-			Long ops = futures.pop().get(WAIT_HOURS_TIMEOUT, TimeUnit.HOURS);
-			LOGGER.info(String.format("%d / %d: added %d ops", i++, futures.size(), ops));
+			String msgF = futures.pop().get(WAIT_HOURS_TIMEOUT, TimeUnit.HOURS);
+			LOGGER.info(String.format("%d / %d: %s", i++, futures.size(), msgF));
 		}
 	}
 	
@@ -285,7 +285,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			Map<String, Object> schema = getMap(F_CONFIG, F_OSM_TAGS);
 			Map<String, Object> state = getMap(F_BOT_STATE, F_OSM_TAGS);
 
-			Deque<Future<Long>> futures = new ConcurrentLinkedDeque<Future<Long>>();
+			Deque<Future<String>> futures = new ConcurrentLinkedDeque<Future<String>>();
 			List<SyncRequest> requests = calculateRequests(timestamp, schema, state);
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
@@ -341,16 +341,16 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		return (int) service.getCompletedTaskCount();
 	}
 
-	private class Publisher implements Callable<Long> {
+	private class Publisher implements Callable<String> {
 
-		private long opCounter;
+		private long placeCounter;
 		private SyncRequest request;
 		private boolean diff;
 		private String overpassURL;
-		private Deque<Future<Long>> futures;
+		private Deque<Future<String>> futures;
 		private String bbox;
 
-		public Publisher(Deque<Future<Long>> futures, String overpassURL, SyncRequest request, 
+		public Publisher(Deque<Future<String>> futures, String overpassURL, SyncRequest request, 
 				String bbox, boolean diff) {
 			this.futures = futures;
 			this.overpassURL = overpassURL;
@@ -360,8 +360,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		}
 
 		@Override
-		public Long call() throws IOException {
+		public String call() throws IOException {
 			try {
+				long tm = System.currentTimeMillis();
 				if (!diff && request.coordinates == null && bbox == null) {
 					// calculate bbox to process in parallel
 					double xd = 360 / 8;
@@ -396,7 +397,8 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 
 						}
 					}
-					return 0l;
+					return String.format("Proccessed split bbox coordinates %d ms - tasks %d", 
+							(System.currentTimeMillis() - tm), futures.size()); 
 				} else {
 					String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff,
 							false);
@@ -412,8 +414,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					publish(osmParser);
 					m.capture();
 					file.close();
-
-					return opCounter;
+					tm = System.currentTimeMillis() - tm + 1; 
+					return String.format("Proccessed places (%s): %d ms, %d places, %d places / sec",
+							bbox == null ? "diff" : bbox, tm, placeCounter, placeCounter * 1000 / tm); 
 				}
 			} catch (Exception e) {
 				LOGGER.error(e.getMessage(), e);
@@ -441,7 +444,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 						}
 					}
 					if(opOperation.hasCreated() || opOperation.hasEdited()) {
-						opCounter++;
+						placeCounter = opOperation.getEdited().size() + opOperation.getCreated().size();
 						Metric m = mOpAdd.start();
 						blocksManager.addOperation(generateHashAndSign(opOperation, blocksManager));
 						m.capture();
