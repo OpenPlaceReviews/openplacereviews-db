@@ -17,7 +17,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -261,7 +260,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		int i = 0;
 		while (!futures.isEmpty()) {
 			String msgF = futures.pop().get(WAIT_HOURS_TIMEOUT, TimeUnit.HOURS);
-			LOGGER.info(String.format("%d / %d: %s", i++, futures.size(), msgF));
+			LOGGER.info(String.format("%d / %d: %s", i++, service.getTaskCount(), msgF));
 		}
 	}
 	

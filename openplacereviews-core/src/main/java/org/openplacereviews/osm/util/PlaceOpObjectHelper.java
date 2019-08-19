@@ -106,9 +106,7 @@ public class PlaceOpObjectHelper {
 			Object po = oldM.get(tag);
 			Object no = newM.get(tag);
 			if(!OUtils.equals(po, no)) {
-				Map<String, Object> setValue = new TreeMap<>();
-				setValue.put(OpBlockChain.OP_CHANGE_SET, no);
-				change.put(field + tag, setValue);
+				change.put(field + tag, set(no));
 				if(po != null) {
 					current.put(field + tag, po);
 				}
@@ -162,12 +160,12 @@ public class PlaceOpObjectHelper {
 		editObject.setId(botObject.getId().get(0));
 
 		TreeMap<String, Object> change = new TreeMap<>();
-		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".key", r.key);
-		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".values", r.values);
-		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".type", r.type);
-		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".date", r.date);
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".key", set(r.key));
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".values", set(r.values));
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".type", set(r.type));
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".date", set(r.date));
 		if (r.coordinates != null) {
-			change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".bbox", r.coordinates);
+			change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".bbox", set(r.coordinates));
 		}
 		editObject.putObjectValue(F_CHANGE, change);
 		if(!r.state.empty) {
@@ -192,10 +190,9 @@ public class PlaceOpObjectHelper {
 		editObject.setId(botObject.getId().get(0));
 
 		TreeMap<String, Object> changeDate = new TreeMap<>();
-		TreeMap<String, String> setDate = new TreeMap<>();
 		TreeMap<String, String> previousDate = new TreeMap<>();
-		setDate.put(OpBlockChain.OP_CHANGE_SET, timestamp);
-		changeDate.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + field + "." + F_DATE, setDate);
+		
+		changeDate.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + field + "." + F_DATE, set(timestamp));
 		editObject.putObjectValue(F_CHANGE, changeDate);
 		previousDate.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + field + "." + F_DATE, ptimestamp);
 		editObject.putObjectValue(F_CURRENT, previousDate);
@@ -206,6 +203,12 @@ public class PlaceOpObjectHelper {
 	}
 
 
+
+	private static Object set(Object vl) {
+		Map<String, Object> set = new TreeMap<String, Object>();
+		set.put(OpBlockChain.OP_CHANGE_SET, vl);
+		return set;
+	}
 
 	public static void generateEntityInfo(TreeMap<String, Object> osmObject, EntityInfo entityInfo) {
 		osmObject.put(ATTR_TIMESTAMP, entityInfo.getTimestamp() == null ? new Date() : entityInfo.getTimestamp());
