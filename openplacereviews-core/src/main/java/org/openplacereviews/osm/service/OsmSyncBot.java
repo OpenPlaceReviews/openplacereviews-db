@@ -130,9 +130,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		String queryType = diff ? "diff" : "date";
 		String requestTemplate = "[out:xml][timeout:1800][maxsize:1000000000][%s:%s]; %s out geom meta;";
 		if(cnt) {
-			requestTemplate = "[out:csv(::count;false)];[timeout:1800][maxsize:1000000000][%s:%s]; %s out count;";
+			requestTemplate = "[out:csv(::count;false)][timeout:1800][maxsize:1000000000][%s:%s]; %s out count;";
 		}
-		String subTagRequest = "%s[\"%s\"~\"%s\"] %s;";
+		String subTagRequest = "%s[\"%s\"~\"%s\"]%s;";
 		StringBuilder ts = new StringBuilder();
 		String timestamp = null;
 		for (SyncRequest tag : req) {
@@ -165,7 +165,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			}
 		}
 		String request = String.format(requestTemplate, queryType, timestamp, ts.toString());
-
+		LOGGER.info(String.format("Overpass query: %s", request));
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
 		request = overpassURL+ "?data=" + request;
 		return request;
@@ -207,10 +207,12 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			Entry<String, Object> e = i.next();
 			SyncRequest cfg = ObjectGenerator.parseSyncRequest(null, e.getValue());
 			cfg.name = e.getKey();
+			cfg.date = timestamp;
+			
 			SyncRequest cstate = ObjectGenerator.parseSyncRequest(cfg, state.get(cfg.name));
 			cstate.name = e.getKey();
 			cfg.state = cstate;
-			cfg.date = timestamp;
+			
 			// calculate diff to retrieve new objects
 			if(!OUtils.equalsStringValue(cfg.key, cstate.key)) {
 				throw new UnsupportedOperationException("Change sync key is not supported");
@@ -218,23 +220,28 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			if(!OUtils.equalsStringValue(cfg.coordinates, cstate.coordinates)) {
 				throw new UnsupportedOperationException("Change bbox is not supported");
 			}
-			for(String v : cfg.values) {
-				if(!cstate.type.contains(v)) {
-					cfg.ntype.add(v);		
-				}
-			}
-			for(String v : cfg.values) {
-				if(!cstate.values.contains(v)) {
-					if(!cfg.ntype.isEmpty()) {
-						throw new UnsupportedOperationException("Can't change type and values at the same time");
-					}
-					cfg.nvalues.add(v);		
-				}
-			}
-			if(!cfg.ntype.isEmpty()) {
+			if (cstate.type.isEmpty() && cstate.values.isEmpty()) {
 				cfg.nvalues.addAll(cfg.values);
-			} else if(!cfg.nvalues.isEmpty()) {
 				cfg.ntype.addAll(cfg.type);
+			} else {
+				for (String v : cfg.type) {
+					if (!cstate.type.contains(v)) {
+						cfg.ntype.add(v);
+					}
+				}
+				for (String v : cfg.values) {
+					if (!cstate.values.contains(v)) {
+						if (!cfg.ntype.isEmpty()) {
+							throw new UnsupportedOperationException("Can't change type and values at the same time");
+						}
+						cfg.nvalues.add(v);
+					}
+				}
+				if (!cfg.ntype.isEmpty()) {
+					cfg.nvalues.addAll(cfg.values);
+				} else if (!cfg.nvalues.isEmpty()) {
+					cfg.ntype.addAll(cfg.type);
+				}
 			}
 			r.add(cfg);
 		}
@@ -256,43 +263,55 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 
 	@Override
 	public OsmSyncBot call() throws Exception {
-		Map<String, Object> urls = getMap(F_CONFIG, F_URL);
-		this.opType = botObject.getStringMap(F_BLOCKCHAIN_CONFIG).get(F_TYPE);
-		this.placeManager = new PlaceManager(opType, blocksManager, botObject);
-		this.placesPerOperation = botObject.getField(placesPerOperation, F_BLOCKCHAIN_CONFIG, F_PLACES_PER_OPERATION);
-		this.operationsPerBlock = botObject.getField(operationsPerBlock, F_BLOCKCHAIN_CONFIG, F_OPERATIONS_PER_BLOCK);
-		
-		String overpassURL = urls.get(F_OVERPASS).toString();
-		ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
-				.setNameFormat(Thread.currentThread().getName() + "-%d").build();
-		this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 0),
-				namedThreadFactory);
-		String timestamp = OprUtil.downloadString(urls.get(F_TIMESTAMP).toString(), "Download current OSM timestamp");
-		timestamp = alignTimestamp(timestamp);
-		LOGGER.info(String.format("Start synchronizing: %s", timestamp));
 		try {
+			Map<String, Object> urls = getMap(F_CONFIG, F_URL);
+			this.opType = botObject.getStringMap(F_BLOCKCHAIN_CONFIG).get(F_TYPE);
+			this.placeManager = new PlaceManager(opType, blocksManager, botObject);
+			this.placesPerOperation = botObject.getField(placesPerOperation, F_BLOCKCHAIN_CONFIG,
+					F_PLACES_PER_OPERATION);
+			this.operationsPerBlock = botObject.getField(operationsPerBlock, F_BLOCKCHAIN_CONFIG,
+					F_OPERATIONS_PER_BLOCK);
+
+			String overpassURL = urls.get(F_OVERPASS).toString();
+			ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
+					.setNameFormat(Thread.currentThread().getName() + "-%d").build();
+			this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 0),
+					namedThreadFactory);
+			String timestamp = OprUtil.downloadString(urls.get(F_TIMESTAMP).toString(),
+					"Download current OSM timestamp");
+			timestamp = alignTimestamp(timestamp);
+			LOGGER.info(String.format("Start synchronizing: %s", timestamp));
+
 			Map<String, Object> schema = getMap(F_CONFIG, F_OSM_TAGS);
 			Map<String, Object> state = getMap(F_BOT_STATE, F_OSM_TAGS);
-			
+
 			Deque<Future<Long>> futures = new ConcurrentLinkedDeque<Future<Long>>();
 			List<SyncRequest> requests = calculateRequests(timestamp, schema, state);
-			for(SyncRequest r : requests) {
-				if(!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
+			for (SyncRequest r : requests) {
+				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
 					Publisher task = new Publisher(futures, overpassURL, r, null, false);
-					submitTask(String.format("> Start synchronizing %s new tag/values [%s] [%s] - %s", r.name, r.nvalues, r.ntype, r.date), 
-							task, futures);
-					generateEditOpForBotObject(r, botObject, blocksManager);
+					submitTask(String.format("> Start synchronizing %s new tag/values [%s] [%s] - %s", r.name,
+							r.nvalues, r.ntype, r.date), task, futures);
+					OpOperation op = generateEditOpForBotObject(r, botObject, blocksManager);
+//					blocksManager.addOperation(op);
 				}
-				if(!OUtils.equals(r.date, r.state.date)) {
+				if (!OUtils.equals(r.date, r.state.date)) {
 					Publisher task = new Publisher(futures, overpassURL, r, null, true);
-					submitTask(
-							String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.date, r.state.date), task, futures);
-					generateEditOpForBotObject(r.name, r.state.date, r.date, botObject, blocksManager);
+					submitTask(String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.date, r.state.date),
+							task, futures);
+					OpOperation op = generateEditOpForBotObject(r.name, r.state.date, r.date, botObject, blocksManager);
+//					blocksManager.addOperation(op);
 				}
 			}
 			LOGGER.info("Synchronization is finished");
+		} catch (Exception e) {
+			LOGGER.info("Synchronization has failed: " + e.getMessage(), e);
+			throw e;
 		} finally {
-			this.service.shutdown();
+			if (this.service != null) {
+				this.service.shutdown();
+				this.service = null;
+			}
 		}
 		return this;
 	}
@@ -342,55 +361,63 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 
 		@Override
 		public Long call() throws IOException {
-			if(!diff && request.coordinates == null && bbox == null) {
-				// calculate bbox to process in parallel
-				double xd = 360 / 8;
-				double yd = 180 / 4;
-				int split = 3;
-				for(double tx = -180; tx + xd <= 180; tx += xd) {
-					for(double ty = -90; ty +  yd <= -90; ty += yd) {
-						String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
-						String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, false, true);
-						BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of %s", bbox));
-						long cnt = Long.parseLong(r.readLine());
-						r.close();
-						LOGGER.info(String.format("Size %s %d", bbox, cnt));
-						if(cnt < SPLIT_QUERY_LIMIT) {
-							Publisher task = new Publisher(futures, reqUrl, request, bbox, false);
-							futures.add(service.submit(task));
-						} else {
-							double sxd = xd / split;
-							double syd = xd / split;
-							for(double ttx = tx; ttx + sxd <= tx + xd; ttx += sxd) {
-								for (double tty = ty; tty + syd <= ty + yd; tty += sxd) {
-									String nbbox = String.format("%f,%f,%f,%f", tty, ttx, tty + syd, tx + sxd);
-									Publisher task = new Publisher(futures, reqUrl, request, nbbox, false);
+			try {
+				if (!diff && request.coordinates == null && bbox == null) {
+					// calculate bbox to process in parallel
+					double xd = 360 / 8;
+					double yd = 180 / 4;
+					int split = 3;
+					for (double tx = -180; tx + xd <= 180; tx += xd) {
+						for (double ty = -90; ty + yd <= 90; ty += yd) {
+							String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
+							String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox,
+									false, true);
+							BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of %s", bbox));
+							String c = r.readLine();
+							Long cnt = c == null ? null : Long.parseLong(r.readLine());
+							r.close();
+							LOGGER.info(String.format("Size %s %s", bbox, c));
+							if (cnt != null && cnt < SPLIT_QUERY_LIMIT) {
+								if (cnt > 0) {
+									Publisher task = new Publisher(futures, overpassURL, request, bbox, false);
 									futures.add(service.submit(task));
 								}
+							} else {
+								double sxd = xd / split;
+								double syd = xd / split;
+								for (double ttx = tx; ttx + sxd <= tx + xd; ttx += sxd) {
+									for (double tty = ty; tty + syd <= ty + yd; tty += sxd) {
+										String nbbox = String.format("%f,%f,%f,%f", tty, ttx, tty + syd, tx + sxd);
+										Publisher task = new Publisher(futures, overpassURL, request, nbbox, false);
+										futures.add(service.submit(task));
+									}
+								}
 							}
+
 						}
-						
 					}
-				}
-				return 0l;
-			} else {
-				String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff, false);
-				try {
+					return 0l;
+				} else {
+					String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff,
+							false);
+
 					Metric m = mOverpassQuery.start();
-					Reader file = OprUtil.downloadGzipReader(reqUrl, String.format("Download overpass data %s", bbox == null ? "" : bbox));
+					Reader file = OprUtil.downloadGzipReader(reqUrl,
+							String.format("Download overpass data %s", bbox == null ? "" : bbox));
 					OsmParser osmParser = null;
 					osmParser = new OsmParser(file);
 					m.capture();
-					
+
 					m = mPublish.start();
 					publish(osmParser);
 					m.capture();
 					file.close();
-				} catch (Exception e) {
-					LOGGER.error(e.getMessage());
-					throw new IllegalStateException(e.getMessage(), e);
+
+					return opCounter;
 				}
-				return opCounter;	
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
+				throw new IllegalStateException(e.getMessage(), e);
 			}
 		}
 

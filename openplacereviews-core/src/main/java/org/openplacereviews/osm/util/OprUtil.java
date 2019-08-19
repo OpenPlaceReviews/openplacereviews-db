@@ -3,7 +3,6 @@ package org.openplacereviews.osm.util;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -26,7 +25,7 @@ public class OprUtil {
 		int cd = con.getResponseCode();
 		String rmsg = con.getResponseMessage();
 		tm = System.currentTimeMillis() - tm;
-		LOGGER.info(String.format("%s: %s - %d ms, %s %d", msg, urlReq, tm, cd, rmsg));
+		LOGGER.info(String.format("%s: %s - %d ms, %d %s", msg, urlReq, tm, cd, rmsg));
 		return con;
 	}
 	
