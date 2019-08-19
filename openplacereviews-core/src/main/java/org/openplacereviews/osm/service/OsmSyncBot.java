@@ -385,11 +385,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	
 
 	public String generateMatchIdFromOpObject(Map<String, Object> osmObj) {
-		Map<String, Object> ctx = new HashMap<>();
 		JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
 		OpExprEvaluator.EvaluationContext evaluationContext = new OpExprEvaluator.EvaluationContext(
 				null,
-				formatter.toJsonElement(ctx).getAsJsonObject(),
+				formatter.toJsonElement(osmObj).getAsJsonObject(),
 				null,
 				null,
 				null
@@ -561,6 +560,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			} catch (RuntimeException e) {
 				// extra logging to catch exception with objects
 				LOGGER.error(e.getMessage() + ": " + obj.getId() + " " + obj.getTags());
+				throw e;
 			}
 		}
 
