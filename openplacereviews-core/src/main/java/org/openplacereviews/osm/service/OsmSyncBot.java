@@ -534,28 +534,33 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		}
 
 		private void processEntity(OpOperation opOperation, Entity obj) throws FailedVerificationException {
-			PlaceObject po = getObjectByOsmEntity(obj);
-			if (po == null) {
-				OpObject newObj = generateNewOprObject(obj, createOsmObject(obj));
-				opOperation.addCreated(newObj);
-			} else {
-				TreeMap<String, Object> osmObj = createOsmObject(obj);
-				String matchId = generateMatchIdFromOpObject(osmObj);
-				String oldMatchId = generateMatchIdFromOpObject(po.osm);
-				if (!Objects.equals(matchId, oldMatchId)) {
-					OpObject newObj = generateNewOprObject(obj, osmObj);
+			try {
+				PlaceObject po = getObjectByOsmEntity(obj);
+				if (po == null) {
+					OpObject newObj = generateNewOprObject(obj, createOsmObject(obj));
 					opOperation.addCreated(newObj);
-					// separate operation to delete old object
-					OpOperation d = initOpOperation(opType);
-					generateEditDeleteOsmIdsForPlace(d, po);
-					generateHashAndSignAndAdd(d);
 				} else {
-					OpOperation d = initOpOperation(opType);
-					generateEditValuesForPlace(d, po, osmObj);
-					if(d.hasEdited()) {
+					TreeMap<String, Object> osmObj = createOsmObject(obj);
+					String matchId = generateMatchIdFromOpObject(osmObj);
+					String oldMatchId = generateMatchIdFromOpObject(po.osm);
+					if (!Objects.equals(matchId, oldMatchId)) {
+						OpObject newObj = generateNewOprObject(obj, osmObj);
+						opOperation.addCreated(newObj);
+						// separate operation to delete old object
+						OpOperation d = initOpOperation(opType);
+						generateEditDeleteOsmIdsForPlace(d, po);
 						generateHashAndSignAndAdd(d);
+					} else {
+						OpOperation d = initOpOperation(opType);
+						generateEditValuesForPlace(d, po, osmObj);
+						if (d.hasEdited()) {
+							generateHashAndSignAndAdd(d);
+						}
 					}
 				}
+			} catch (RuntimeException e) {
+				// extra logging to catch exception with objects
+				LOGGER.error(e.getMessage() + ": " + obj.getId() + " " + obj.getTags());
 			}
 		}
 

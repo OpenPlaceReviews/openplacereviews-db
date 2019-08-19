@@ -64,7 +64,8 @@ public class OprExprEvaluatorExt extends OpExprEvaluator {
 			if (obj1 instanceof Number && obj2 instanceof Number && obj3 instanceof Number) {
 				return OsmLocationTool.encode(((Number) obj1).intValue(), ((Number) obj2).doubleValue(), ((Number) obj3).doubleValue());
 			}
-			throw new UnsupportedOperationException(FUNCTION_PLACE_LOCATION + "support only Numbers");
+			throw new UnsupportedOperationException(
+					String.format(FUNCTION_PLACE_LOCATION + " supports only numbers: %s %s %s", obj1, obj2, obj3));
 		}
 		case FUNCTION_SIMPLE_NAME: {
 			obj1 = getStringArgument(functionName, args, 0);
