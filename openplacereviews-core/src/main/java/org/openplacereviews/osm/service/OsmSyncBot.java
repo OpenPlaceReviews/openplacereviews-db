@@ -1,12 +1,8 @@
 package org.openplacereviews.osm.service;
 
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
-import static org.openplacereviews.osm.util.ObjectGenerator.generateCreateOpObject;
-import static org.openplacereviews.osm.util.ObjectGenerator.generateEditOpForBotObject;
-import static org.openplacereviews.osm.util.ObjectGenerator.generateEditOpObject;
-import static org.openplacereviews.osm.util.ObjectGenerator.generateHashAndSign;
-import static org.openplacereviews.osm.util.ObjectGenerator.initOpOperation;
-
+import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_BOT;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
@@ -21,12 +17,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
@@ -39,6 +37,8 @@ import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.openplacereviews.opendb.ops.OpBlockChain;
+import org.openplacereviews.opendb.ops.OpBlockchainRules.ErrorType;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.ops.PerformanceMetrics;
@@ -46,12 +46,18 @@ import org.openplacereviews.opendb.ops.PerformanceMetrics.Metric;
 import org.openplacereviews.opendb.ops.PerformanceMetrics.PerformanceMetric;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.IOpenDBBot;
+import org.openplacereviews.opendb.service.LogOperationService;
+import org.openplacereviews.opendb.util.JsonFormatter;
 import org.openplacereviews.opendb.util.OUtils;
+import org.openplacereviews.opendb.util.OpExprEvaluator;
+import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
+import org.openplacereviews.osm.model.Entity.EntityType;
 import org.openplacereviews.osm.parser.OsmParser;
-import org.openplacereviews.osm.util.ObjectGenerator;
+import org.openplacereviews.osm.util.OprExprEvaluatorExt;
 import org.openplacereviews.osm.util.OprUtil;
+import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -67,13 +73,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	private static final PerformanceMetric mBlock = PerformanceMetrics.i().getMetric("opr.osm-sync.block");
 	private static final PerformanceMetric mOpAdd = PerformanceMetrics.i().getMetric("opr.osm-sync.opadd");
 
-	public static final String ATTR_SOURCE = "source";
-	public static final String ATTR_OLD_OSM_IDS = "old-osm-ids";
-	public static final String ATTR_OSM = "osm";
-	public static final String ATTR_TAGS = "tags";
-	public static final String ATTR_SET = "set";
-	public static final String ATTR_SOURCE_OSM_TAGS = "source.osm[0].tags.";
-
+	
+	public static final String INDEX_OSMID = "osmid";
+	public static final String F_MATCH_ID = "match-id";
 	
 	public static final String F_CONFIG = "config";
 	public static final String F_BLOCKCHAIN_CONFIG = "blockchain-config";
@@ -94,15 +96,18 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	
 	private long placesPerOperation = 250;
 	private long operationsPerBlock = 16;
-	private String opType;
 	private OpObject botObject;
+	private String opType;
+	private OpExprEvaluator matchIdExpr;
 	
 	@Autowired
 	private BlocksManager blocksManager;
-
-	private PlaceManager placeManager;
+	
+	@Autowired
+	private LogOperationService logSystem;
 
 	ThreadPoolExecutor service;
+
 
 	public OsmSyncBot(OpObject botObject) {
 		this.botObject = botObject;
@@ -205,11 +210,11 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		Iterator<Entry<String, Object>> i = schema.entrySet().iterator();
 		while (i.hasNext()) {
 			Entry<String, Object> e = i.next();
-			SyncRequest cfg = ObjectGenerator.parseSyncRequest(null, e.getValue());
+			SyncRequest cfg = parseSyncRequest(null, e.getValue());
 			cfg.name = e.getKey();
 			cfg.date = timestamp;
 			
-			SyncRequest cstate = ObjectGenerator.parseSyncRequest(cfg, state.get(cfg.name));
+			SyncRequest cstate = PlaceOpObjectHelper.parseSyncRequest(cfg, state.get(cfg.name));
 			cstate.name = e.getKey();
 			cfg.state = cstate;
 			
@@ -266,7 +271,8 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		try {
 			Map<String, Object> urls = getMap(F_CONFIG, F_URL);
 			this.opType = botObject.getStringMap(F_BLOCKCHAIN_CONFIG).get(F_TYPE);
-			this.placeManager = new PlaceManager(opType, blocksManager, botObject);
+			String matchId = botObject.getStringMap(F_CONFIG).get(F_MATCH_ID);
+			matchIdExpr = OprExprEvaluatorExt.parseExpression(matchId);
 			this.placesPerOperation = botObject.getField(placesPerOperation, F_BLOCKCHAIN_CONFIG,
 					F_PLACES_PER_OPERATION);
 			this.operationsPerBlock = botObject.getField(operationsPerBlock, F_BLOCKCHAIN_CONFIG,
@@ -292,15 +298,18 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					Publisher task = new Publisher(futures, overpassURL, r, null, false);
 					submitTask(String.format("> Start synchronizing %s new tag/values [%s] [%s] - %s", r.name,
 							r.nvalues, r.ntype, r.date), task, futures);
-					OpOperation op = generateEditOpForBotObject(r, botObject, blocksManager);
-					blocksManager.addOperation(op);
+					OpOperation op = initOpOperation(OP_BOT);
+					generateEditOpForBotObject(op, r, botObject);
+					generateHashAndSignAndAdd(op);
+					
 				}
 				if (!OUtils.equals(r.date, r.state.date)) {
 					Publisher task = new Publisher(futures, overpassURL, r, null, true);
 					submitTask(String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.date, r.state.date),
 							task, futures);
-					OpOperation op = generateEditOpForBotObject(r.name, r.state.date, r.date, botObject, blocksManager);
-					blocksManager.addOperation(op);
+					OpOperation op = initOpOperation(OP_BOT);
+					generateEditOpForBotObject(op, r.name, r.state.date, r.date, botObject);
+					generateHashAndSignAndAdd(op);
 				}
 			}
 			LOGGER.info("Synchronization is finished");
@@ -340,6 +349,69 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	public int progress() {
 		return (int) service.getCompletedTaskCount();
 	}
+	
+	public static class PlaceObject {
+		public OpObject obj;
+		public Map<String, Object> osm;
+		public int ind = 0;
+		public Long osmId; 
+		public String type;
+		public Entity e;
+	}
+	
+	public PlaceObject getObjectByOsmEntity(Entity e) {
+		Long osmId = e.getId();
+		String type = EntityType.valueOf(e).getName();
+		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
+		List<OpObject> r = blocksManager.getObjectsByIndex(opType, INDEX_OSMID, objectsSearchRequest,  osmId);
+		for(OpObject o : r) {
+			List<Map<String, Object>> osmObjs = o.getField(null, F_SOURCE, F_OSM);
+			for (int i = 0; i < osmObjs.size(); i++) {
+				Map<String, Object> osm  = osmObjs.get(i);
+				if (osmId.equals(osm.get(OpOperation.F_ID)) && type.equals(osm.get(OpOperation.F_TYPE))) {
+					PlaceObject po = new PlaceObject();
+					po.e = e;
+					po.obj = o;
+					po.ind = i;
+					po.osm = osm;
+					po.type = type;
+					po.osmId = osmId;
+					return po;
+				}
+			}
+		}
+		return null;
+	}
+	
+
+	public String generateMatchIdFromOpObject(Map<String, Object> osmObj) {
+		Map<String, Object> ctx = new HashMap<>();
+		JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
+		OpExprEvaluator.EvaluationContext evaluationContext = new OpExprEvaluator.EvaluationContext(
+				null,
+				formatter.toJsonElement(ctx).getAsJsonObject(),
+				null,
+				null,
+				null
+		);
+		return matchIdExpr.evaluateObject(evaluationContext).toString();
+	}
+	
+	public OpOperation initOpOperation(String opType) {
+		OpOperation opOperation = new OpOperation();
+		opOperation.setType(opType);
+		opOperation.setSignedBy(blocksManager.getServerUser());
+		return opOperation;
+	}
+	
+	public OpOperation generateHashAndSignAndAdd(OpOperation opOperation) throws FailedVerificationException {
+		JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
+		opOperation = formatter.parseOperation(formatter.opToJson(opOperation));
+		OpOperation op = blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
+		blocksManager.addOperation(op);
+		return op;
+	}
+
 
 	private class Publisher implements Callable<String> {
 
@@ -367,7 +439,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					// calculate bbox to process in parallel
 					double xd = 360 / 8;
 					double yd = 180 / 4;
-					int split = 3;
+					int split = 4;
 					for (double tx = -180; tx + xd <= 180; tx += xd) {
 						for (double ty = -90; ty + yd <= 90; ty += yd) {
 							String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
@@ -419,7 +491,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 							bbox == null ? "diff" : bbox, tm, placeCounter, placeCounter * 1000 / tm); 
 				}
 			} catch (Exception e) {
-				LOGGER.error(e.getMessage(), e);
+				logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, "osm-sync failed: " + e.getMessage(), e);
 				throw new IllegalStateException(e.getMessage(), e);
 			}
 		}
@@ -427,7 +499,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		private void publish(OsmParser osmParser) {
 			while (osmParser.hasNext()) {
 				try {
-					OpOperation opOperation = initOpOperation(opType, blocksManager);
+					OpOperation opOperation = initOpOperation(opType);
 					if (!diff) {
 						List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
 						for(Entity e : newEntities) {
@@ -446,7 +518,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					if(opOperation.hasCreated() || opOperation.hasEdited()) {
 						placeCounter = opOperation.getEdited().size() + opOperation.getCreated().size();
 						Metric m = mOpAdd.start();
-						blocksManager.addOperation(generateHashAndSign(opOperation, blocksManager));
+						generateHashAndSignAndAdd(opOperation);
 						m.capture();
 					}
 					if (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock) {
@@ -455,78 +527,63 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 						m.capture();
 					}
 				} catch (Exception e) {
-					LOGGER.error("Error while publishing", e);
+					logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, "osm-sync failed to publish ", e);
 					break;
 				}
 			}
 		}
 
-		private void processEntity(OpOperation opOperation, Entity obj) {
-			OpObject loadedObj = placeManager.getObjectByExtId(obj.getId());
-			if (loadedObj == null) {
-				OpObject newObj = generateCreateOpObject(obj);
+		private void processEntity(OpOperation opOperation, Entity obj) throws FailedVerificationException {
+			PlaceObject po = getObjectByOsmEntity(obj);
+			if (po == null) {
+				OpObject newObj = generateNewOprObject(obj, createOsmObject(obj));
 				opOperation.addCreated(newObj);
 			} else {
-				OpObject newObj = generateCreateOpObject(obj);
-				String matchId = placeManager.generateMatchIdFromOpObject(newObj);
-				String oldMatchId = placeManager.generateMatchIdFromOpObject(loadedObj);
+				TreeMap<String, Object> osmObj = createOsmObject(obj);
+				String matchId = generateMatchIdFromOpObject(osmObj);
+				String oldMatchId = generateMatchIdFromOpObject(po.osm);
 				if (!Objects.equals(matchId, oldMatchId)) {
-					opOperation.addDeleted(loadedObj.getId());
+					OpObject newObj = generateNewOprObject(obj, osmObj);
 					opOperation.addCreated(newObj);
+					// separate operation to delete old object
+					OpOperation d = initOpOperation(opType);
+					generateEditDeleteOsmIdsForPlace(d, po);
+					generateHashAndSignAndAdd(d);
+				} else {
+					OpOperation d = initOpOperation(opType);
+					generateEditValuesForPlace(d, po, osmObj);
+					if(d.hasEdited()) {
+						generateHashAndSignAndAdd(d);
+					}
 				}
 			}
 		}
 
-		private void processDiffEntity(OpOperation opOperation, DiffEntity diffEntity) {
-			if (DiffEntity.DiffEntityType.DELETE.equals(diffEntity.getType())) {
-				OpObject deleteObject =  placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
-				if (deleteObject != null) {
-					opOperation.addDeleted(deleteObject.getId());
-				}
-			} else if (DiffEntity.DiffEntityType.CREATE.equals(diffEntity.getType())) {
-
-				OpObject loadedObj = placeManager.getObjectByExtId(diffEntity.getNewNode().getId());
-				if (loadedObj == null) {
-					OpObject newObj = generateCreateOpObject(diffEntity.getNewNode());
-					opOperation.addCreated(newObj);
+		private void processDiffEntity(OpOperation opOperation, DiffEntity diffEntity) throws FailedVerificationException {
+			if (DiffEntity.DiffEntityType.DELETE == diffEntity.getType()) {
+				PlaceObject pdo = getObjectByOsmEntity(diffEntity.getOldEntity());
+				if(pdo != null) {
+					OpOperation d = initOpOperation(opType);
+					generateEditDeleteOsmIdsForPlace(d, pdo);
+					generateHashAndSignAndAdd(d);
 				} else {
-					OpObject newObj = generateCreateOpObject(diffEntity.getNewNode());
-					String matchId = placeManager.generateMatchIdFromOpObject(loadedObj);
-					String newMatchId = placeManager.generateMatchIdFromOpObject(newObj);
-					if (!Objects.equals(matchId, newMatchId)) {
-						opOperation.addDeleted(loadedObj.getId());
-						opOperation.addCreated(newObj);
-					}
+					logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, 
+							String.format("Couldn't find object %d: %s", diffEntity.getOldEntity().getId(), diffEntity.getOldEntity().getTags()), null);
 				}
-			} else if (DiffEntity.DiffEntityType.MODIFY.equals(diffEntity.getType())) {
-				OpObject edit = new OpObject();
-
-				if (diffEntity.getNewNode().getLatLon().equals(diffEntity.getOldNode().getLatLon())) {
-					OpObject loadedObject = placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
-					if (loadedObject != null) {
-						opOperation.addEdited(generateEditOpObject(edit, diffEntity, loadedObject.getId()));
-					}
-				} else {
-					if (diffEntity.getOldNode().getId() != diffEntity.getNewNode().getId()) {
-						OpObject loadedObject = placeManager.getObjectByExtId(diffEntity.getOldNode().getId());
-						if (loadedObject != null) {
-							opOperation.addDeleted(loadedObject.getId());
-						}
-					}
-					OpObject opObject = placeManager.getObjectByExtId(diffEntity.getNewNode().getId());
-					if (opObject == null) {
-						OpObject createObj = generateCreateOpObject(diffEntity.getNewNode());
-						opOperation.addCreated(createObj);
-					} else {
-						String matchId = placeManager.generateMatchIdFromOpObject(opObject);
-						OpObject newOpObject = generateCreateOpObject(diffEntity.getNewNode());
-						String newMatchId = placeManager.generateMatchIdFromOpObject(newOpObject);
-						if (!Objects.equals(matchId, newMatchId)) {
-							opOperation.addDeleted(opObject.getId());
-							opOperation.addCreated(newOpObject);
-						}
-					}
+			} else if (DiffEntity.DiffEntityType.CREATE == diffEntity.getType()) {
+				processEntity(opOperation, diffEntity.getNewEntity());
+			} else if (DiffEntity.DiffEntityType.MODIFY == diffEntity.getType()) {
+				PlaceObject prevObject = getObjectByOsmEntity(diffEntity.getOldEntity());
+				if(prevObject == null) {
+					logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, 
+							String.format("Couldn't find object %d: %s", diffEntity.getOldEntity().getId(), diffEntity.getOldEntity().getTags()), null);
+				} 
+				if(diffEntity.getOldEntity().getId() != diffEntity.getNewEntity().getId()) {
+					throw new UnsupportedOperationException(
+							String.format("Diff entity id should be equal %d != %d", diffEntity.getOldEntity().getId(), diffEntity.getNewEntity().getId()));
 				}
+				// not necessary to compare previous version 
+				processEntity(opOperation, diffEntity.getNewEntity());
 			}
 		}
 	}

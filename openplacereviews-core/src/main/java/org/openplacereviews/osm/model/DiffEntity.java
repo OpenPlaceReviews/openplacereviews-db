@@ -18,8 +18,8 @@ public class DiffEntity {
 	}
 
 	private DiffEntityType type;
-	private Entity newNode;
-	private Entity oldNode;
+	private Entity newEntity;
+	private Entity oldEntity;
 
 	public DiffEntity(DiffEntityType type) {
 		this.type = type;
@@ -33,19 +33,19 @@ public class DiffEntity {
 		this.type = type;
 	}
 
-	public Entity getNewNode() {
-		return newNode;
+	public Entity getNewEntity() {
+		return newEntity;
 	}
 
-	public void setNewNode(Entity newNode) {
-		this.newNode = newNode;
+	public void setNewEntity(Entity newNode) {
+		this.newEntity = newNode;
 	}
 
-	public Entity getOldNode() {
-		return oldNode;
+	public Entity getOldEntity() {
+		return oldEntity;
 	}
 
-	public void setOldNode(Entity oldNode) {
-		this.oldNode = oldNode;
+	public void setOldEntity(Entity oldNode) {
+		this.oldEntity = oldNode;
 	}
 }

@@ -51,7 +51,7 @@ public class OsmParser {
 		int counter = 0;
 		Entity entity = null;
 		DiffEntity diffEntity = null;
-		String actionSubTag = "";
+		boolean old = false;
 		String actionType = "";
 		boolean parseDiff = DiffEntity.class.equals(cl);
 		List<T> results = new ArrayList<>();
@@ -69,24 +69,22 @@ public class OsmParser {
 						diffEntity = new DiffEntity(DiffEntity.DiffEntityType.DELETE);
 					}
 				} else if (TAG_OLD.equals(elementName)) {
-					actionSubTag = TAG_OLD;
+					// diff
+					old = true;
 				} else if (TAG_NEW.equals(elementName)) {
-					actionSubTag = TAG_NEW;
-				}
-				if (EntityType.NODE.getName().equals(elementName)) {
+					// diff
+					old = false;
+				} if (EntityType.NODE.getName().equals(elementName)) {
 					double lat = Double.valueOf(getAttributeValue(ATTR_LATITUDE));
 					double lon = Double.valueOf(getAttributeValue(ATTR_LONGITUDE));
 					entity = new Node(lat, lon, id);
-					generateEntityInfo(entity);
-					if (parseDiff && TAG_OLD.equals(actionSubTag)) {
-						diffEntity.setOldNode(entity);
-					} else if (parseDiff && (TAG_NEW.equals(actionSubTag) || ATTR_TYPE_CREATE.equals(actionType))) {
-						diffEntity.setNewNode(entity);
-					}
+					parseEntityInfo(entity);
 				} else if (EntityType.WAY.getName().equals(elementName)) {
 					entity = new Way(id);
+					parseEntityInfo(entity);
 				} else if (EntityType.RELATION.getName().equals(elementName)) {
 					entity = new Relation(id);
+					parseEntityInfo(entity);
 				} else if (ATTR_MEMBER.equals(elementName)) {
 					entity = new Relation(id);
 					long ref = OUtils.parseLongSilently(getAttributeValue(ATTR_REF), -1);
@@ -98,15 +96,7 @@ public class OsmParser {
 				} else if (ATTR_TAG.equals(elementName)) {
 					String k = getAttributeValue(ATTR_TAG_K);
 					String v = getAttributeValue(ATTR_TAG_V);
-					if (!parseDiff) {
-						entity.putTag(k, v);
-					} else {
-						if (TAG_OLD.equals(actionSubTag)) {
-							diffEntity.getOldNode().putTag(k, v);
-						} else if (TAG_NEW.equals(actionSubTag) || actionType.equals(ATTR_TYPE_CREATE)) {
-							diffEntity.getNewNode().putTag(k, v);
-						}
-					}
+					entity.putTag(k, v);
 				}
 			} else if (event == XmlPullParser.END_TAG) {
 				// here we could close the tag
@@ -114,18 +104,24 @@ public class OsmParser {
 				if (parseDiff && TAG_ACTION.equals(elementName)) {
 					results.add((T) diffEntity);
 					diffEntity = null;
-					actionSubTag = "";
 					if (limit == ++counter) {
 						break;
 					}
-				} else if (!parseDiff && 
-						(EntityType.NODE.getName().equals(elementName) || 
+				} else if (  (EntityType.NODE.getName().equals(elementName) || 
 								EntityType.WAY.getName().equals(elementName) || 
 								EntityType.RELATION.getName().equals(elementName))) {
-					results.add((T) entity);
-					entity = null;
-					if (limit == ++counter) {
-						break;
+					if(!parseDiff) {
+						results.add((T) entity);
+						entity = null;
+						if (limit == ++counter) {
+							break;
+						}
+					} else {
+						if(old) {
+							diffEntity.setOldEntity(entity);
+						} else {
+							diffEntity.setNewEntity(entity);
+						}
 					}
 				}
 			}
@@ -133,7 +129,7 @@ public class OsmParser {
 		return results;
 	}
 
-	private void generateEntityInfo(Entity entity) {
+	private void parseEntityInfo(Entity entity) {
 		EntityInfo currentParsedEntity = new EntityInfo()
 				.setVersion(getAttributeValue(ATTR_VERSION))
 				.setTimestamp(getAttributeValue(ATTR_TIMESTAMP))
