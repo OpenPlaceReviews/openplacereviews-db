@@ -29,6 +29,7 @@ import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.model.Entity.EntityType;
 import org.openplacereviews.osm.model.EntityInfo;
+import org.openplacereviews.osm.model.LatLon;
 import org.openplacereviews.osm.parser.OsmLocationTool;
 import org.openplacereviews.osm.service.OsmSyncBot.PlaceObject;
 import org.openplacereviews.osm.service.OsmSyncBot.SyncRequest;
@@ -59,8 +60,9 @@ public class PlaceOpObjectHelper {
 		String te = EntityType.valueOf(entity).name().toLowerCase();
 		osmObject.put(F_TYPE, te);
 		osmObject.put(F_TAGS, entity.getTags());
-		osmObject.put(ATTR_LATITUDE, entity.getLatitude());
-		osmObject.put(ATTR_LONGITUDE, entity.getLongitude());
+		LatLon l = entity.getLatLon();
+		osmObject.put(ATTR_LATITUDE, l.getLatitude());
+		osmObject.put(ATTR_LONGITUDE, l.getLongitude());
 		if (entity.getEntityInfo() != null) {
 			generateEntityInfo(osmObject, entity.getEntityInfo());
 		}
