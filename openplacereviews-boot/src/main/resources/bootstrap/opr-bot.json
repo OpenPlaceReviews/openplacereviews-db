@@ -21,12 +21,12 @@
           "food" : {
       			"key" : "amenity",
       			"values" : ["cafe","bar","restaurant","biergarten","fast_food","food_court","ice_cream","pub"],
-      			"type" : ["node"]
+      			"type" : ["node", "way"]
           },
           "hotel" : {
       			"key" : "tourism",
       			"values" : ["hotel","motel","hostel","apartment","guest_house"],
-            "type" : ["node"]
+            "type" : ["node", "way"]
           }
         }
       },
