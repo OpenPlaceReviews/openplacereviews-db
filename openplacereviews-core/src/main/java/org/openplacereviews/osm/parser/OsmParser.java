@@ -1,11 +1,23 @@
 package org.openplacereviews.osm.parser;
 
-import org.kxml2.io.KXmlParser;
-import org.openplacereviews.opendb.util.OUtils;
-import org.openplacereviews.osm.model.*;
-import org.openplacereviews.osm.model.Entity.*;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
+import static org.openplacereviews.osm.model.Entity.ATTR_ID;
+import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
+import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.model.Entity.ATTR_REF;
+import static org.openplacereviews.osm.model.Entity.ATTR_TAG;
+import static org.openplacereviews.osm.model.Entity.ATTR_TAG_K;
+import static org.openplacereviews.osm.model.Entity.ATTR_TAG_V;
+import static org.openplacereviews.osm.model.EntityInfo.ATTR_ACTION;
+import static org.openplacereviews.osm.model.EntityInfo.ATTR_CHANGESET;
+import static org.openplacereviews.osm.model.EntityInfo.ATTR_TIMESTAMP;
+import static org.openplacereviews.osm.model.EntityInfo.ATTR_UID;
+import static org.openplacereviews.osm.model.EntityInfo.ATTR_USER;
+import static org.openplacereviews.osm.model.EntityInfo.ATTR_VERSION;
+import static org.openplacereviews.osm.model.EntityInfo.ATTR_VISIBLE;
+import static org.openplacereviews.osm.model.Relation.ATTR_MEMBER;
+import static org.openplacereviews.osm.model.Relation.ATTR_ROLE;
+import static org.openplacereviews.osm.model.Relation.ATTR_TYPE;
+import static org.openplacereviews.osm.model.Way.ATTR_ND;
 
 import java.io.File;
 import java.io.FileReader;
@@ -14,19 +26,28 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.openplacereviews.osm.model.DiffEntity.*;
-import static org.openplacereviews.osm.model.Entity.ATTR_ID;
-import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
-import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.model.Entity.ATTR_REF;
-import static org.openplacereviews.osm.model.Entity.ATTR_TAG;
-import static org.openplacereviews.osm.model.Entity.ATTR_TAG_K;
-import static org.openplacereviews.osm.model.Entity.ATTR_TAG_V;
-import static org.openplacereviews.osm.model.EntityInfo.*;
-import static org.openplacereviews.osm.model.Relation.*;
-import static org.openplacereviews.osm.model.Way.ATTR_ND;
+import org.kxml2.io.KXmlParser;
+import org.openplacereviews.opendb.util.OUtils;
+import org.openplacereviews.osm.model.DiffEntity;
+import org.openplacereviews.osm.model.Entity;
+import org.openplacereviews.osm.model.Entity.EntityType;
+import org.openplacereviews.osm.model.EntityInfo;
+import org.openplacereviews.osm.model.Node;
+import org.openplacereviews.osm.model.Relation;
+import org.openplacereviews.osm.model.Way;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
 
 public class OsmParser {
+
+	public static final String TAG_ACTION = "action";
+	public static final String TAG_OLD = "old";
+	public static final String TAG_NEW = "new";
+	public static final String TAG_REMARK = "remark";
+
+	public static final String ATTR_TYPE_MODIFY = "modify";
+	public static final String ATTR_TYPE_CREATE = "create";
+	public static final String ATTR_TYPE_DELETE = "delete";
 
 	private KXmlParser parser;
 	private int event;
@@ -60,7 +81,7 @@ public class OsmParser {
 				String elementName = parser.getName();
 				long id = OUtils.parseLongSilently(getAttributeValue(ATTR_ID), -1);
 				if (TAG_REMARK.equals(elementName)) {
-					throw new IOException("Overpass error: " + parser.getText());
+					throw new IOException("Overpass error: " + parser.nextText());
 				} else if (TAG_ACTION.equals(elementName)) {
 					actionType = getAttributeValue(ATTR_TYPE);
 					if (ATTR_TYPE_MODIFY.equals(actionType)) {

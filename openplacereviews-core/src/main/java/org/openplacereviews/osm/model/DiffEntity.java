@@ -2,14 +2,6 @@ package org.openplacereviews.osm.model;
 
 public class DiffEntity {
 
-	public static String TAG_ACTION = "action";
-	public static String TAG_OLD = "old";
-	public static String TAG_NEW = "new";
-
-	public static String ATTR_TYPE_MODIFY = "modify";
-	public static String ATTR_TYPE_CREATE = "create";
-	public static String ATTR_TYPE_DELETE = "delete";
-
 
 	public enum DiffEntityType {
 		MODIFY,

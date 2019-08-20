@@ -131,7 +131,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	public String generateRequestString(String overpassURL,
 			Collection<SyncRequest> req, String bboxParam, boolean diff, boolean cnt) throws UnsupportedEncodingException {
 		// check if works 'out meta; >; out geom;' vs 'out geom meta;';
-		String queryType = diff ? "diff" : "date";
+		String queryType = diff ? "adiff" : "date";
 		String requestTemplate = "[out:xml][timeout:1800][maxsize:1000000000][%s:%s]; %s out geom meta;";
 		if(cnt) {
 			requestTemplate = "[out:csv(::count;false)][timeout:1800][maxsize:1000000000][%s:%s]; %s out count;";
@@ -140,7 +140,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		StringBuilder ts = new StringBuilder();
 		String timestamp = null;
 		for (SyncRequest tag : req) {
-			String ntimestamp = "\"" + (diff ? (tag.state.date + "," + tag.date) : tag.date) + "\"";
+			String ntimestamp = "\"" + (diff ? (tag.state.date + "\",\"" + tag.date) : tag.date) + "\"";
 			if(timestamp == null) {
 				timestamp = ntimestamp;
 			} else if(OUtils.equals(ntimestamp, timestamp)) {
