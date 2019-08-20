@@ -3,6 +3,7 @@ package org.openplacereviews.osm.service;
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_BOT;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
@@ -26,13 +27,11 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -58,6 +57,7 @@ import org.openplacereviews.osm.util.OprExprEvaluatorExt;
 import org.openplacereviews.osm.util.OprUtil;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.xmlpull.v1.XmlPullParserException;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
@@ -105,7 +105,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	@Autowired
 	private LogOperationService logSystem;
 
-	ThreadPoolExecutor service;
+	private ThreadPoolExecutor service;
 
 
 	public OsmSyncBot(OpObject botObject) {
@@ -252,18 +252,36 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		return r;
 	}
 	
-	private void submitTask(String msg, Publisher task, Deque<Future<String>> futures)
-			throws InterruptedException, ExecutionException, TimeoutException {
+	private static class TaskResult { 
+		public TaskResult(String msg, Exception e) {
+			this.msg = msg;
+			this.e = e;
+		}
+		Exception e;
+		String msg;
+	}
+	
+	private void submitTask(String msg, Publisher task, Deque<Future<TaskResult>> futures)
+			throws Exception {
 		LOGGER.info(msg);
-		Future<String> f = service.submit(task);
-		f.get(WAIT_HOURS_TIMEOUT, TimeUnit.HOURS);
-		int i = 0;
+		Future<TaskResult> f = service.submit(task);
+		waitFuture(f);
 		while (!futures.isEmpty()) {
-			String msgF = futures.pop().get(WAIT_HOURS_TIMEOUT, TimeUnit.HOURS);
-			LOGGER.info(String.format("%d / %d: %s", i++, service.getTaskCount(), msgF));
+			waitFuture(futures.pop());
 		}
 	}
 	
+
+	private void waitFuture(Future<TaskResult> f) throws Exception {
+		TaskResult r = f.get(WAIT_HOURS_TIMEOUT, TimeUnit.HOURS);
+		if(r.e == null) {
+			LOGGER.error(String.format("%d / %d: %s", service.getCompletedTaskCount(), service.getTaskCount(), r.msg));
+			throw r.e;
+		} else {
+			LOGGER.info(String.format("%d / %d: %s", service.getCompletedTaskCount(), service.getTaskCount(), r.msg));
+		}
+		
+	}
 
 	@Override
 	public OsmSyncBot call() throws Exception {
@@ -290,7 +308,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			Map<String, Object> schema = getMap(F_CONFIG, F_OSM_TAGS);
 			Map<String, Object> state = getMap(F_BOT_STATE, F_OSM_TAGS);
 
-			Deque<Future<String>> futures = new ConcurrentLinkedDeque<Future<String>>();
+			Deque<Future<TaskResult>> futures = new ConcurrentLinkedDeque<Future<TaskResult>>();
 			List<SyncRequest> requests = calculateRequests(timestamp, schema, state);
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
@@ -411,16 +429,16 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	}
 
 
-	private class Publisher implements Callable<String> {
+	private class Publisher implements Callable<TaskResult> {
 
 		private long placeCounter;
 		private SyncRequest request;
 		private boolean diff;
 		private String overpassURL;
-		private Deque<Future<String>> futures;
+		private Deque<Future<TaskResult>> futures;
 		private String bbox;
 
-		public Publisher(Deque<Future<String>> futures, String overpassURL, SyncRequest request, 
+		public Publisher(Deque<Future<TaskResult>> futures, String overpassURL, SyncRequest request, 
 				String bbox, boolean diff) {
 			this.futures = futures;
 			this.overpassURL = overpassURL;
@@ -430,7 +448,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		}
 
 		@Override
-		public String call() throws IOException {
+		public TaskResult call() throws IOException {
 			try {
 				long tm = System.currentTimeMillis();
 				if (!diff && request.coordinates == null && bbox == null) {
@@ -467,8 +485,8 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 
 						}
 					}
-					return String.format("Proccessed split bbox coordinates %d ms - tasks %d", 
-							(System.currentTimeMillis() - tm), futures.size()); 
+					return new TaskResult(String.format("Proccessed split bbox coordinates %d ms - tasks %d", 
+							(System.currentTimeMillis() - tm), futures.size()), null); 
 				} else {
 					String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff,
 							false);
@@ -485,48 +503,44 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					m.capture();
 					file.close();
 					tm = System.currentTimeMillis() - tm + 1; 
-					return String.format("Proccessed places (%s): %d ms, %d places, %d places / sec",
-							bbox == null ? "diff" : bbox, tm, placeCounter, placeCounter * 1000 / tm); 
+					return new TaskResult(String.format("Proccessed places (%s): %d ms, %d places, %d places / sec",
+							bbox == null ? "diff" : bbox, tm, placeCounter, placeCounter * 1000 / tm), null); 
 				}
 			} catch (Exception e) {
 				logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, "osm-sync failed: " + e.getMessage(), e);
-				throw new IllegalStateException(e.getMessage(), e);
+				return new TaskResult(e.getMessage(), e);
 			}
 		}
 
-		private void publish(OsmParser osmParser) {
+		private void publish(OsmParser osmParser) throws FailedVerificationException, IOException, XmlPullParserException {
 			while (osmParser.hasNext()) {
-				try {
-					OpOperation opOperation = initOpOperation(opType);
-					if (!diff) {
-						List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
-						for(Entity e : newEntities) {
-							Metric m = mProcEntity.start();
-							processEntity(opOperation, e);
-							m.capture();
-						}
-					} else {
-						List<DiffEntity> places = osmParser.parseNextCoordinatePlaces(placesPerOperation, DiffEntity.class);
-						for(DiffEntity e : places) {
-							Metric m = mProcDiff.start();
-							processDiffEntity(opOperation, e);
-							m.capture();
-						}
-					}
-					if(opOperation.hasCreated() || opOperation.hasEdited()) {
-						placeCounter = opOperation.getEdited().size() + opOperation.getCreated().size();
-						Metric m = mOpAdd.start();
-						generateHashAndSignAndAdd(opOperation);
+				OpOperation opOperation = initOpOperation(opType);
+				if (!diff) {
+					List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
+					for (Entity e : newEntities) {
+						Metric m = mProcEntity.start();
+						processEntity(opOperation, e);
+						placeCounter++;
 						m.capture();
 					}
-					if (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock) {
-						Metric m = mBlock.start();
-						blocksManager.createBlock();
+				} else {
+					List<DiffEntity> places = osmParser.parseNextCoordinatePlaces(placesPerOperation, DiffEntity.class);
+					for (DiffEntity e : places) {
+						Metric m = mProcDiff.start();
+						processDiffEntity(opOperation, e);
+						placeCounter++;
 						m.capture();
 					}
-				} catch (Exception e) {
-					logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, "osm-sync failed to publish ", e);
-					break;
+				}
+				if (opOperation.hasCreated() || opOperation.hasEdited()) {
+					Metric m = mOpAdd.start();
+					generateHashAndSignAndAdd(opOperation);
+					m.capture();
+				}
+				if (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock) {
+					Metric m = mBlock.start();
+					blocksManager.createBlock();
+					m.capture();
 				}
 			}
 		}
