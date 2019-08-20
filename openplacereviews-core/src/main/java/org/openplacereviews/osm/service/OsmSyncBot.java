@@ -149,7 +149,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		if(cnt) {
 			requestTemplate = "[out:csv(::count;false)][timeout:1800][maxsize:1000000000][%s:%s]; %s out count;";
 		}
-		String subTagRequest = "%s[\"%s\"~\"%s\"]%s%s;";
+		String subTagRequest = "%s[\"%s\"=\"%s\"]%s%s;";
 		StringBuilder ts = new StringBuilder();
 		String timestamp = null;
 		for (SyncRequest tag : req) {
@@ -163,27 +163,22 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			List<String> tps = diff ? tag.type: tag.ntype;
 			List<String> values = diff ? tag.values: tag.nvalues;
 			for (String type : tps) {
-				StringBuilder tagsValues = new StringBuilder();
 				for (String strTag : values) {
-					if (tagsValues.length() == 0) {
-						tagsValues.append(strTag);
+					String bbox = tag.coordinates;
+					if(tag.coordinates == null && bboxParam == null) {
+						bbox = "";
+					} else if(bboxParam != null){
+						bbox = "(" + bboxParam +")";
 					} else {
-						tagsValues.append("|").append(strTag);
+						bbox = "(" + tag.coordinates +")";
 					}
+					ts.append(String.format(subTagRequest, type, tag.key, strTag, changed, bbox));
 				}
-				String bbox = tag.coordinates;
-				if(tag.coordinates == null && bboxParam == null) {
-					bbox = "";
-				} else if(bboxParam != null){
-					bbox = "(" + bboxParam +")";
-				} else {
-					bbox = "(" + tag.coordinates +")";
-				}
-				ts.append(String.format(subTagRequest, type, tag.key, tagsValues, changed, bbox));
+				
 			}
 		}
 		String request = String.format(requestTemplate, queryType, timestamp, ts.toString());
-		// LOGGER.info(String.format("Overpass query: %s", request));
+//		LOGGER.info(String.format("Overpass query: %s", request));
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
 		request = overpassURL+ "?data=" + request;
 		return request;
