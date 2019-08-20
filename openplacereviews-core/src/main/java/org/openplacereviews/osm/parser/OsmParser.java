@@ -59,7 +59,9 @@ public class OsmParser {
 			if (event == XmlPullParser.START_TAG) {
 				String elementName = parser.getName();
 				long id = OUtils.parseLongSilently(getAttributeValue(ATTR_ID), -1);
-				if (TAG_ACTION.equals(elementName)) {
+				if (TAG_REMARK.equals(elementName)) {
+					throw new IOException("Overpass error: " + parser.getText());
+				} else if (TAG_ACTION.equals(elementName)) {
 					actionType = getAttributeValue(ATTR_TYPE);
 					if (ATTR_TYPE_MODIFY.equals(actionType)) {
 						diffEntity = new DiffEntity(DiffEntity.DiffEntityType.MODIFY);
