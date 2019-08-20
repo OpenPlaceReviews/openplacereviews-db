@@ -43,6 +43,7 @@ import org.openplacereviews.opendb.ops.PerformanceMetrics;
 import org.openplacereviews.opendb.ops.PerformanceMetrics.Metric;
 import org.openplacereviews.opendb.ops.PerformanceMetrics.PerformanceMetric;
 import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.service.DBConsensusManager.DBStaleException;
 import org.openplacereviews.opendb.service.IOpenDBBot;
 import org.openplacereviews.opendb.service.LogOperationService;
 import org.openplacereviews.opendb.util.JsonFormatter;
@@ -90,15 +91,19 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	public static final String F_PLACES_PER_OPERATION = "places_per_operation";
 	public static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
 
-	private static final long WAIT_HOURS_TIMEOUT = 4;
-	private static final long SPLIT_QUERY_LIMIT = 10000;
+	private static final long TIMEOUT_WAIT_DB_STALE_MS = 5000;
+	private static final int TIMEOUT_DB_STALE_COUNT = 4;
+	private static final long TIMEOUT_OVERPASS_HOURS = 4;
+	private static final long SPLIT_QUERY_LIMIT_PLACES = 20000;
 	private static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
-
-	private static final long OVERPASS_MAX_ADIFF_MS = 3 * 60 * 60 * 1000l;
-	private static final long OVERPASS_MIN_DELAY_MS = 3 * 1000l;
 	static {
 		TIMESTAMP_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}
+	
+	private static final long OVERPASS_MAX_ADIFF_MS = 3 * 60 * 60 * 1000l;
+	private static final long OVERPASS_MIN_DELAY_MS = 3 * 1000l;
+
+	
 	
 	private long placesPerOperation = 250;
 	private long operationsPerBlock = 16;
@@ -298,7 +303,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	
 
 	private void waitFuture(Future<TaskResult> f) throws Exception {
-		TaskResult r = f.get(WAIT_HOURS_TIMEOUT, TimeUnit.HOURS);
+		TaskResult r = f.get(TIMEOUT_OVERPASS_HOURS, TimeUnit.HOURS);
 		if(r.e != null) {
 			LOGGER.error(String.format("%d / %d: %s", service.getCompletedTaskCount(), service.getTaskCount(), r.msg));
 			throw r.e;
@@ -407,11 +412,22 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		public Entity e;
 	}
 	
-	public PlaceObject getObjectByOsmEntity(Entity e) {
+	public PlaceObject getObjectByOsmEntity(Entity e) throws InterruptedException {
 		Long osmId = e.getId();
 		String type = EntityType.valueOf(e).getName();
 		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
-		List<OpObject> r = blocksManager.getObjectsByIndex(opType, INDEX_OSMID, objectsSearchRequest,  osmId);
+		List<OpObject> r = null;
+		int cnt = TIMEOUT_DB_STALE_COUNT;
+		while(r == null && cnt-- >= 0) {
+			try {
+				r = blocksManager.getObjectsByIndex(opType, INDEX_OSMID, objectsSearchRequest, osmId);
+			} catch (DBStaleException es) {
+				Thread.sleep(TIMEOUT_WAIT_DB_STALE_MS);
+				if(cnt == 0) {
+					throw es;
+				}
+			}
+		}
 		for(OpObject o : r) {
 			List<Map<String, Object>> osmObjs = o.getField(null, F_SOURCE, F_OSM);
 			for (int i = 0; i < osmObjs.size(); i++) {
@@ -497,7 +513,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 							Long cnt = c == null ? null : Long.parseLong(c);
 							r.close();
 							LOGGER.info(String.format("Size (%s) %s", bbox, c));
-							if (cnt != null && cnt < SPLIT_QUERY_LIMIT) {
+							if (cnt != null && cnt < SPLIT_QUERY_LIMIT_PLACES) {
 								if (cnt > 0) {
 									Publisher task = new Publisher(futures, overpassURL, request, bbox, false);
 									futures.add(service.submit(task));
@@ -543,7 +559,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			}
 		}
 
-		private void publish(OsmParser osmParser) throws FailedVerificationException, IOException, XmlPullParserException {
+		private void publish(OsmParser osmParser) throws FailedVerificationException, IOException, XmlPullParserException, InterruptedException {
 			while (osmParser.hasNext()) {
 				OpOperation opOperation = initOpOperation(opType);
 				if (!diff) {
@@ -576,7 +592,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			}
 		}
 
-		private void processEntity(OpOperation opOperation, Entity obj) throws FailedVerificationException {
+		private void processEntity(OpOperation opOperation, Entity obj) throws FailedVerificationException, InterruptedException {
 			try {
 				PlaceObject po = getObjectByOsmEntity(obj);
 				if (po == null) {
@@ -608,7 +624,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			}
 		}
 
-		private void processDiffEntity(OpOperation opOperation, DiffEntity diffEntity) throws FailedVerificationException {
+		private void processDiffEntity(OpOperation opOperation, DiffEntity diffEntity) throws FailedVerificationException, InterruptedException {
 			if (DiffEntity.DiffEntityType.DELETE == diffEntity.getType()) {
 				PlaceObject pdo = getObjectByOsmEntity(diffEntity.getOldEntity());
 				if(pdo != null) {
