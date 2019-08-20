@@ -6,7 +6,6 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -335,7 +334,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			LOGGER.info(String.format("Start synchronizing: %s", timestamp));
 			ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
 					.setNameFormat(Thread.currentThread().getName() + "-%d").build();
-			this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 0),
+			this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 1),
 					namedThreadFactory);
 
 			Map<String, Object> schema = getMap(F_CONFIG, F_OSM_TAGS);
@@ -478,12 +477,15 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		private long placeCounter;
 		private SyncRequest request;
 		private boolean diff;
+		private boolean useCount;
 		private String overpassURL;
 		private Deque<Future<TaskResult>> futures;
-		private String bbox;
+		private QuadRect bbox;
+		private int level = 0;
+		private String levelString = "";
 
 		public Publisher(Deque<Future<TaskResult>> futures, String overpassURL, SyncRequest request, 
-				String bbox, boolean diff) {
+				QuadRect bbox, boolean diff) {
 			this.futures = futures;
 			this.overpassURL = overpassURL;
 			this.request = request;
@@ -491,42 +493,52 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			this.diff = diff;
 		}
 		
-		private void splitRect(String p, int l, QuadRect qr, int sx, int sy) throws IOException {
+		public Publisher setUseCount(boolean useCount) {
+			this.useCount = useCount;
+			return this;
+		}
+		
+		public Publisher setLevel(int level) {
+			this.level = level;
+			return this;
+		}
+		
+		public Publisher setLevelString(String levelString) {
+			this.levelString = levelString;
+			return this;
+		}
+		
+		
+		private TaskResult split(long tm) throws IOException {
 			// calculate bbox to process in parallel
-			double xd = qr.width() / sx;
-			double yd = qr.height() / sy;
-			if(l > 6) {
+			int sx = 2, sy = 2;
+			if(bbox.width() >= 180) {
+				sx = 10;
+			}
+			if(bbox.height() >= 90) {
+				sy = 5;
+			}
+			double xd = bbox.width() / sx;
+			double yd = bbox.height() / sy;
+			if(level >= 7) {
 				throw new IllegalStateException("Split went too deep"); 
 			}
 			int i = 0;
-			for (double tx = qr.minX; tx + xd <= qr.maxX; tx += xd) {
-				for (double ty = qr.minY; ty + yd <= qr.maxY; ty += yd) {
+			for (double tx = bbox.minX; tx + xd <= bbox.maxX; tx += xd) {
+				for (double ty = bbox.minY; ty + yd <= bbox.maxY; ty += yd) {
 					i++;
-					String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
-					String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, false,
-							true);
-					Long cnt = null;
-					try {
-						BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of (%s)", bbox));
-						String c = r.readLine();
-						cnt = c == null ? null : Long.parseLong(c);
-						r.close();
-					} catch (IOException e) {
-						// LOGGER.warn(String.format("Split crash %s%d/%d, size %s :%s",  p, i, sx * sy, bbox, c))
-					}
-					if (cnt != null && cnt < SPLIT_QUERY_LIMIT_PLACES) {
-						LOGGER.info(String.format("Split %s%d/%d, size %s :%d",  p, i, sx * sy, bbox, cnt));
-						if (cnt > 0) {
-							Publisher task = new Publisher(futures, overpassURL, request, bbox, diff);
-							futures.add(service.submit(task));
-						}
-					} else {
-						LOGGER.info(String.format("Split %s%d/%d, further %s", p, i, sx * sy,  bbox));
-						QuadRect nqr = new QuadRect(tx, ty, tx + xd, ty + yd);
-						splitRect(p + i + ".", l + 1, nqr, 2, 2);
-					}
+					QuadRect nqr = new QuadRect(tx, ty, tx + xd, ty + yd);
+					Publisher task = new Publisher(futures, overpassURL, request, nqr, diff)
+							.setUseCount(useCount)
+							.setLevelString(String.format("%s%d/%d.", levelString, i, sx * sy))
+							.setLevel(level +1);
+					futures.add(service.submit(task));
 				}
 			}
+			return new TaskResult(
+					String.format("Split further %s into %d %s after %d ms ", 
+							levelString, sx * sy, bbox.toString(), 
+							System.currentTimeMillis() - tm), null);
 		}
 		
 
@@ -534,33 +546,65 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		public TaskResult call() throws IOException {
 			try {
 				long tm = System.currentTimeMillis();
-				if (!diff && request.coordinates == null && bbox == null) {
-					QuadRect qr = new QuadRect(-180, -90, 180, 90);
-					splitRect("", 1, qr, 8, 4);
-					return new TaskResult(String.format("Proccessed split bbox coordinates %d ms - tasks %d", 
-							(System.currentTimeMillis() - tm), futures.size()), null); 
-				} else {
-					String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff,
-							false);
-
-					Metric m = mOverpassQuery.start();
-					Reader file = OprUtil.downloadGzipReader(reqUrl,
-							String.format("Download overpass data (%s)", bbox == null ? "" : bbox));
-					OsmParser osmParser = null;
-					osmParser = new OsmParser(file);
-					m.capture();
-
-					m = mPublish.start();
-					publish(osmParser);
-					m.capture();
-					file.close();
-					tm = System.currentTimeMillis() - tm + 1; 
-					return new TaskResult(String.format("Proccessed places (%s): %d ms, %d places, %d places / sec",
-							bbox == null ? "diff" : bbox, tm, placeCounter, placeCounter * 1000 / tm), null); 
+				TaskResult res = null;	
+				if(bbox == null) {
+					bbox = new QuadRect(-180, -90, 180, 90);
+					if(!diff) {
+						return split(tm);
+					}
 				}
+				try {
+					res = proc();
+				} catch (IOException | DBStaleException e) {
+					// repeat and continue split
+				}
+				if(res == null) {
+					return split(tm);					
+				}
+				return res;
 			} catch (Exception e) {
 				logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, "osm-sync failed: " + e.getMessage(), e);
 				return new TaskResult(e.getMessage(), e);
+			}
+		}
+
+		private TaskResult proc() throws UnsupportedEncodingException, IOException, XmlPullParserException,
+				FailedVerificationException, InterruptedException {
+			long tm = System.currentTimeMillis();
+			String bboxStr = String.format("%f,%f,%f,%f", bbox.minY, bbox.minX, bbox.maxY, bbox.maxX);
+			String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bboxStr, diff, useCount);
+			Metric m = mOverpassQuery.start();
+			BufferedReader r = OprUtil.downloadGzipReader(reqUrl, 
+					String.format(String.format("%s overpass data (%s)", useCount ? "Count":"Download", bboxStr)));
+			if (useCount) {
+				String c = r.readLine();
+				m.capture();
+				Long cnt = c == null ? null : Long.parseLong(c);
+				r.close();
+				if (cnt != null && cnt < SPLIT_QUERY_LIMIT_PLACES) {
+					if(cnt > 0) {
+						Publisher task = new Publisher(futures, overpassURL, request, bbox, diff)
+								.setUseCount(false)
+								.setLevelString(levelString)
+								.setLevel(level);
+						futures.add(service.submit(task));
+					}
+					return new TaskResult(String.format("Proccessed count bbox %s coordinates %d ms",
+							bboxStr, (System.currentTimeMillis() - tm), futures.size()), null);
+				}
+				return null;
+			} else {
+				OsmParser osmParser = new OsmParser(r);
+				m.capture();
+				
+				m = mPublish.start();
+				publish(osmParser);
+				m.capture();
+				r.close();
+				tm = System.currentTimeMillis() - tm + 1; 
+				return new TaskResult(String.format("Proccessed places (%s): %d ms, %d places, %d places / sec",
+						bboxStr, tm, placeCounter, placeCounter * 1000 / tm), null);
+
 			}
 		}
 
