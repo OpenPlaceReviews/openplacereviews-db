@@ -491,10 +491,13 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			this.diff = diff;
 		}
 		
-		private void splitRect(String p, QuadRect qr, int sx, int sy) throws IOException {
+		private void splitRect(String p, int l, QuadRect qr, int sx, int sy) throws IOException {
 			// calculate bbox to process in parallel
 			double xd = qr.width() / sx;
 			double yd = qr.height() / sy;
+			if(l > 6) {
+				throw new IllegalStateException("Split went too deep"); 
+			}
 			int i = 0;
 			for (double tx = qr.minX; tx + xd <= qr.maxX; tx += xd) {
 				for (double ty = qr.minY; ty + yd <= qr.maxY; ty += yd) {
@@ -502,12 +505,17 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
 					String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, false,
 							true);
-					BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of (%s)", bbox));
-					String c = r.readLine();
-					Long cnt = c == null ? null : Long.parseLong(c);
-					r.close();
+					Long cnt = null;
+					try {
+						BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of (%s)", bbox));
+						String c = r.readLine();
+						cnt = c == null ? null : Long.parseLong(c);
+						r.close();
+					} catch (IOException e) {
+						// LOGGER.warn(String.format("Split crash %s%d/%d, size %s :%s",  p, i, sx * sy, bbox, c))
+					}
 					if (cnt != null && cnt < SPLIT_QUERY_LIMIT_PLACES) {
-						LOGGER.info(String.format("Split %s%d/%d, size %s :%s",  p, i, sx * sy, bbox, c));
+						LOGGER.info(String.format("Split %s%d/%d, size %s :%d",  p, i, sx * sy, bbox, cnt));
 						if (cnt > 0) {
 							Publisher task = new Publisher(futures, overpassURL, request, bbox, diff);
 							futures.add(service.submit(task));
@@ -515,7 +523,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					} else {
 						LOGGER.info(String.format("Split %s%d/%d, further %s", p, i, sx * sy,  bbox));
 						QuadRect nqr = new QuadRect(tx, ty, tx + xd, ty + yd);
-						splitRect(i +".", nqr, 2, 2);
+						splitRect(p + i + ".", l + 1, nqr, 2, 2);
 					}
 				}
 			}
@@ -528,7 +536,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				long tm = System.currentTimeMillis();
 				if (!diff && request.coordinates == null && bbox == null) {
 					QuadRect qr = new QuadRect(-180, -90, 180, 90);
-					splitRect("", qr, 8, 4);
+					splitRect("", 1, qr, 8, 4);
 					return new TaskResult(String.format("Proccessed split bbox coordinates %d ms - tasks %d", 
 							(System.currentTimeMillis() - tm), futures.size()), null); 
 				} else {
