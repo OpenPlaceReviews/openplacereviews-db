@@ -4,7 +4,7 @@
     "create" : [{
       "id" : ["osm-sync"],
       "api" : "org.openplacereviews.osm.service.OsmSyncBot",
-      "threads": 4,
+      "threads": 3,
       "blockchain-config": {
           "places_per_operation": 250,
           "operations_per_block": 16,
