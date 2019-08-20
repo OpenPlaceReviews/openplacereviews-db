@@ -291,20 +291,21 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			throws Exception {
 		LOGGER.info(msg);
 		Future<TaskResult> f = service.submit(task);
-		waitFuture(f);
+		int cnt = 0;
+		waitFuture(cnt++, f);
 		while (!futures.isEmpty()) {
-			waitFuture(futures.pop());
+			waitFuture(cnt++, futures.pop());
 		}
 	}
 	
 
-	private void waitFuture(Future<TaskResult> f) throws Exception {
+	private void waitFuture(int cnt, Future<TaskResult> f) throws Exception {
 		TaskResult r = f.get(TIMEOUT_OVERPASS_HOURS, TimeUnit.HOURS);
 		if(r.e != null) {
-			LOGGER.error(String.format("%d / %d: %s", service.getCompletedTaskCount(), service.getTaskCount(), r.msg));
+			LOGGER.error(String.format("%d / %d: %s", cnt, service.getTaskCount(), r.msg));
 			throw r.e;
 		} else {
-			LOGGER.info(String.format("%d / %d: %s", service.getCompletedTaskCount(), service.getTaskCount(), r.msg));
+			LOGGER.info(String.format("%d / %d: %s", cnt, service.getTaskCount(), r.msg));
 		}
 		
 	}
@@ -490,12 +491,14 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			this.diff = diff;
 		}
 		
-		private void splitRect(QuadRect qr, int sx, int sy) throws IOException {
+		private void splitRect(String p, QuadRect qr, int sx, int sy) throws IOException {
 			// calculate bbox to process in parallel
 			double xd = qr.width() / sx;
 			double yd = qr.height() / sy;
+			int i = 0;
 			for (double tx = qr.minX; tx + xd <= qr.maxX; tx += xd) {
 				for (double ty = qr.minY; ty + yd <= qr.maxY; ty += yd) {
+					i++;
 					String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
 					String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, false,
 							true);
@@ -504,15 +507,15 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					Long cnt = c == null ? null : Long.parseLong(c);
 					r.close();
 					if (cnt != null && cnt < SPLIT_QUERY_LIMIT_PLACES) {
-						LOGGER.info(String.format("Size (%s) %s", bbox, c));
+						LOGGER.info(String.format("Split %s%d/%d, size %s :%s",  p, i, sx * sy, bbox, c));
 						if (cnt > 0) {
 							Publisher task = new Publisher(futures, overpassURL, request, bbox, diff);
 							futures.add(service.submit(task));
 						}
 					} else {
-						LOGGER.info(String.format("Split further %s", bbox));
+						LOGGER.info(String.format("Split %s%d/%d, further %s", p, i, sx * sy,  bbox));
 						QuadRect nqr = new QuadRect(tx, ty, tx + xd, ty + yd);
-						splitRect(nqr, 2, 2);
+						splitRect(i +".", nqr, 2, 2);
 					}
 				}
 			}
@@ -525,7 +528,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				long tm = System.currentTimeMillis();
 				if (!diff && request.coordinates == null && bbox == null) {
 					QuadRect qr = new QuadRect(-180, -90, 180, 90);
-					splitRect(qr, 8, 4);
+					splitRect("", qr, 8, 4);
 					return new TaskResult(String.format("Proccessed split bbox coordinates %d ms - tasks %d", 
 							(System.currentTimeMillis() - tm), futures.size()), null); 
 				} else {
