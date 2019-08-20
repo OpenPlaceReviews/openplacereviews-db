@@ -344,7 +344,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			List<SyncRequest> requests = calculateRequests(timestamp, schema, state);
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
-					Publisher task = new Publisher(futures, overpassURL, r, null, false);
+					Publisher task = new Publisher(futures, overpassURL, r, null, false).setUseCount(true);
 					submitTask(String.format("> Start synchronizing %s new tag/values [%s] [%s] - %s", r.name,
 							r.nvalues, r.ntype, r.date), task, futures);
 					OpOperation op = initOpOperation(OP_BOT);
@@ -530,7 +530,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					QuadRect nqr = new QuadRect(tx, ty, tx + xd, ty + yd);
 					Publisher task = new Publisher(futures, overpassURL, request, nqr, diff)
 							.setUseCount(useCount)
-							.setLevelString(String.format("%s%d/%d.", levelString, i, sx * sy))
+							.setLevelString(String.format("%s(%d/%d)", levelString, i, sx * sy))
 							.setLevel(level +1);
 					futures.add(service.submit(task));
 				}
@@ -588,9 +588,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 								.setLevelString(levelString)
 								.setLevel(level);
 						futures.add(service.submit(task));
-					}
-					return new TaskResult(String.format("Proccessed count bbox %s coordinates %d ms",
-							bboxStr, (System.currentTimeMillis() - tm), futures.size()), null);
+					} 
+					return new TaskResult(String.format("Proccessed count (%s) bbox %s coordinates %d ms",
+							c, bboxStr, (System.currentTimeMillis() - tm), futures.size()), null);
 				}
 				return null;
 			} else {
