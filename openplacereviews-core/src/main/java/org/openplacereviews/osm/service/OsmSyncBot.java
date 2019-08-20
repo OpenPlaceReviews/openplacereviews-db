@@ -92,6 +92,13 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 
 	private static final long WAIT_HOURS_TIMEOUT = 4;
 	private static final long SPLIT_QUERY_LIMIT = 10000;
+	private static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
+
+	private static final long OVERPASS_MAX_ADIFF_MS = 3 * 60 * 60 * 1000l;
+	private static final long OVERPASS_MIN_DELAY_MS = 3 * 1000l;
+	static {
+		TIMESTAMP_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+	}
 	
 	private long placesPerOperation = 250;
 	private long operationsPerBlock = 16;
@@ -131,20 +138,21 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	public String generateRequestString(String overpassURL,
 			Collection<SyncRequest> req, String bboxParam, boolean diff, boolean cnt) throws UnsupportedEncodingException {
 		// check if works 'out meta; >; out geom;' vs 'out geom meta;';
-		String queryType = diff ? "adiff" : "date";
+		String queryType = diff ? "diff" : "date";
 		String requestTemplate = "[out:xml][timeout:1800][maxsize:1000000000][%s:%s]; %s out geom meta;";
 		if(cnt) {
 			requestTemplate = "[out:csv(::count;false)][timeout:1800][maxsize:1000000000][%s:%s]; %s out count;";
 		}
-		String subTagRequest = "%s[\"%s\"~\"%s\"]%s;";
+		String subTagRequest = "%s[\"%s\"~\"%s\"]%s%s;";
 		StringBuilder ts = new StringBuilder();
 		String timestamp = null;
 		for (SyncRequest tag : req) {
-			String ntimestamp = "\"" + (diff ? (tag.state.date + "\",\"" + tag.date) : tag.date) + "\"";
+			String ntmpDiff = "\"" + (diff ? (tag.state.date + "\",\"" + tag.date) : tag.date) + "\"";
+			String changed =  diff ? ("(changed:"+ntmpDiff +")") : "";
 			if(timestamp == null) {
-				timestamp = ntimestamp;
-			} else if(OUtils.equals(ntimestamp, timestamp)) {
-				throw new IllegalStateException(String.format("Timestmap %s != %s", ntimestamp, timestamp));
+				timestamp = ntmpDiff;
+			} else if(OUtils.equals(ntmpDiff, timestamp)) {
+				throw new IllegalStateException(String.format("Timestmap %s != %s", ntmpDiff, timestamp));
 			}
 			List<String> tps = diff ? tag.type: tag.ntype;
 			List<String> values = diff ? tag.values: tag.nvalues;
@@ -165,7 +173,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				} else {
 					bbox = "(" + tag.coordinates +")";
 				}
-				ts.append(String.format(subTagRequest, type, tag.key, tagsValues, bbox));
+				ts.append(String.format(subTagRequest, type, tag.key, tagsValues, changed, bbox));
 			}
 		}
 		String request = String.format(requestTemplate, queryType, timestamp, ts.toString());
@@ -175,16 +183,24 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		return request;
 	}
 	
+	
+	
 	private String alignTimestamp(String timestamp) {
 		try {
-			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
-			sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-			Date dt = sdf.parse(timestamp);
+			Date dt = TIMESTAMP_FORMAT.parse(timestamp);
 			Calendar i = Calendar.getInstance();
 			i.setTime(dt);
 			i.set(Calendar.SECOND, 0);
-			i.set(Calendar.MINUTE, 0);
-			return sdf.format(i.getTime());
+			int min = i.get(Calendar.MINUTE);
+			if(min > 30) {
+				i.set(Calendar.MINUTE, 30);
+			} else {
+				i.set(Calendar.MINUTE, 0);
+			}
+			if(dt.getTime() - i.getTimeInMillis() < OVERPASS_MIN_DELAY_MS) {
+				return null;
+			}
+			return TIMESTAMP_FORMAT.format(i.getTime());
 		} catch (ParseException e) {
 			return timestamp;
 		}
@@ -216,6 +232,15 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			SyncRequest cstate = PlaceOpObjectHelper.parseSyncRequest(cfg, state.get(cfg.name));
 			cstate.name = e.getKey();
 			cfg.state = cstate;
+			
+			try {
+				if(TIMESTAMP_FORMAT.parse(cstate.date).getTime() - TIMESTAMP_FORMAT.parse(cfg.date).getTime() > OVERPASS_MAX_ADIFF_MS) {
+					Date nd = new Date(TIMESTAMP_FORMAT.parse(cstate.date).getTime() + OVERPASS_MAX_ADIFF_MS);
+					cfg.date = TIMESTAMP_FORMAT.format(nd);
+				}
+			} catch (ParseException e1) {
+				throw new IllegalArgumentException(e1);
+			}
 			
 			// calculate diff to retrieve new objects
 			if(!OUtils.equalsStringValue(cfg.key, cstate.key)) {
@@ -274,7 +299,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 
 	private void waitFuture(Future<TaskResult> f) throws Exception {
 		TaskResult r = f.get(WAIT_HOURS_TIMEOUT, TimeUnit.HOURS);
-		if(r.e == null) {
+		if(r.e != null) {
 			LOGGER.error(String.format("%d / %d: %s", service.getCompletedTaskCount(), service.getTaskCount(), r.msg));
 			throw r.e;
 		} else {
@@ -296,14 +321,20 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					F_OPERATIONS_PER_BLOCK);
 
 			String overpassURL = urls.get(F_OVERPASS).toString();
+			String timestamp = OprUtil.downloadString(urls.get(F_TIMESTAMP).toString(),
+					"Download current OSM timestamp");
+			String atimestamp = alignTimestamp(timestamp);
+			if(atimestamp == null) {
+				LOGGER.info(String.format("Nothing to synchronize yet: %s", timestamp));
+				return this;
+			}
+			timestamp = atimestamp;
+			
+			LOGGER.info(String.format("Start synchronizing: %s", timestamp));
 			ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
 					.setNameFormat(Thread.currentThread().getName() + "-%d").build();
 			this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 0),
 					namedThreadFactory);
-			String timestamp = OprUtil.downloadString(urls.get(F_TIMESTAMP).toString(),
-					"Download current OSM timestamp");
-			timestamp = alignTimestamp(timestamp);
-			LOGGER.info(String.format("Start synchronizing: %s", timestamp));
 
 			Map<String, Object> schema = getMap(F_CONFIG, F_OSM_TAGS);
 			Map<String, Object> state = getMap(F_BOT_STATE, F_OSM_TAGS);
@@ -322,7 +353,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				}
 				if (!OUtils.equals(r.date, r.state.date)) {
 					Publisher task = new Publisher(futures, overpassURL, r, null, true);
-					submitTask(String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.date, r.state.date),
+					submitTask(String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.state.date, r.date),
 							task, futures);
 					OpOperation op = initOpOperation(OP_BOT);
 					generateEditOpForBotObject(op, r.name, r.state.date, r.date, botObject);
