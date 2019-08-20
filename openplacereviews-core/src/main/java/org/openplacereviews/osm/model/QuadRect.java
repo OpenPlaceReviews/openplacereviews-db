@@ -1,76 +1,76 @@
 package org.openplacereviews.osm.model;
 
 public class QuadRect {
-	public double left;
-	public double right;
-	public double top;
-	public double bottom;
+	public double minX;
+	public double maxX;
+	public double minY;
+	public double maxY;
 
-	public QuadRect(double left, double top, double right, double bottom) {
-		this.left = left;
-		this.right = right;
-		this.top = top;
-		this.bottom = bottom;
+	public QuadRect(double minX, double minY, double maxX, double maxY) {
+		this.minX = minX;
+		this.maxX = maxX;
+		this.minY = minY;
+		this.maxY = maxY;
 	}
 
 	public QuadRect(QuadRect a) {
-		this(a.left, a.top, a.right, a.bottom);
+		this(a.minX, a.minY, a.maxX, a.maxY);
 	}
 
 	public QuadRect() {
 	}
 
 	public double width() {
-		return right - left;
+		return maxX - minX;
 	}
 
 	public double height() {
-		return bottom - top;
+		return maxY - minY;
 	}
 
-	public boolean contains(double left, double top, double right, double bottom) {
-		return this.left < this.right && this.top < this.bottom && this.left <= left && this.top <= top && this.right >= right
-				&& this.bottom >= bottom;
+	public boolean contains(double minX, double minY, double maxX, double maxY) {
+		return this.minX < this.maxX && this.minY < this.maxY && this.minX <= minX && this.minY <= minY && this.maxX >= maxX
+				&& this.maxY >= maxY;
 	}
 
 	public boolean contains(QuadRect box) {
-		return contains(box.left, box.top, box.right, box.bottom);
+		return contains(box.minX, box.minY, box.maxX, box.maxY);
 	}
 
 	public static boolean intersects(QuadRect a, QuadRect b) {
-		return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+		return a.minX < b.maxX && b.minX < a.maxX && a.minY < b.maxY && b.minY < a.maxY;
 	}
 
 	public static boolean trivialOverlap(QuadRect a, QuadRect b) {
-		return !((a.right < b.left) || (a.left > b.right) || (a.top < b.bottom) || (a.bottom > b.top));
+		return !((a.maxX < b.minX) || (a.minX > b.maxX) || (a.minY < b.maxY) || (a.maxY > b.minY));
 	}
 
 	public double centerX() {
-		return (left + right) / 2;
+		return (minX + maxX) / 2;
 	}
 
 	public double centerY() {
-		return (top + bottom) / 2;
+		return (minY + maxY) / 2;
 	}
 
 	public void offset(double dx, double dy) {
-		left += dx;
-		top += dy;
-		right += dx;
-		bottom += dy;
+		minX += dx;
+		minY += dy;
+		maxX += dx;
+		maxY += dy;
 
 	}
 
 	public void inset(double dx, double  dy) {
-		left += dx;
-		top += dy;
-		right -= dx;
-		bottom -= dy;
+		minX += dx;
+		minY += dy;
+		maxX -= dx;
+		maxY -= dy;
 	}
 	
 	@Override
 	public String toString() {
-		return "[" + (float) left + "," + (float) top + " - " + (float) right + "," + (float) bottom + "]";
+		return "[" + (float) minX + "," + (float) minY + " - " + (float) maxX + "," + (float) maxY + "]";
 	}
 
 }

@@ -160,20 +160,18 @@ public class Way extends Entity {
 			for (Node n : nodes) {
 				if (qr == null) {
 					qr = new QuadRect();
-					qr.left = (float) n.getLongitude();
-					qr.right = (float) n.getLongitude();
-					qr.top = (float) n.getLatitude();
-					qr.bottom = (float) n.getLatitude();
+					qr.maxX = qr.minX = (float) n.getLongitude();
+					qr.maxY = qr.minY = (float) n.getLatitude();
 				}
-				if (n.getLongitude() < qr.left) {
-					qr.left = (float) n.getLongitude();
-				} else if (n.getLongitude() > qr.right) {
-					qr.right = (float) n.getLongitude();
+				if (n.getLongitude() < qr.minX) {
+					qr.minX = (float) n.getLongitude();
+				} else if (n.getLongitude() > qr.maxX) {
+					qr.maxX = (float) n.getLongitude();
 				}
-				if (n.getLatitude() > qr.top) {
-					qr.top = (float) n.getLatitude();
-				} else if (n.getLatitude() < qr.bottom) {
-					qr.bottom = (float) n.getLatitude();
+				if (n.getLatitude() > qr.maxY) {
+					qr.maxY = (float) n.getLatitude();
+				} else if (n.getLatitude() < qr.minY) {
+					qr.minY = (float) n.getLatitude();
 				}
 			}
 		}

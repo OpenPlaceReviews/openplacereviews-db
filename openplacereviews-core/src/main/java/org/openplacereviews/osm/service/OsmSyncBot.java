@@ -52,6 +52,7 @@ import org.openplacereviews.opendb.util.OpExprEvaluator;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
+import org.openplacereviews.osm.model.QuadRect;
 import org.openplacereviews.osm.model.Entity.EntityType;
 import org.openplacereviews.osm.parser.OsmParser;
 import org.openplacereviews.osm.util.OprExprEvaluatorExt;
@@ -493,45 +494,43 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			this.bbox = bbox;
 			this.diff = diff;
 		}
+		
+		private void splitRect(QuadRect qr, int sx, int sy) throws IOException {
+			// calculate bbox to process in parallel
+			double xd = qr.width() / sx;
+			double yd = qr.height() / sy;
+			for (double tx = qr.minX; tx + xd <= qr.maxX; tx += xd) {
+				for (double ty = qr.minY; ty + yd <= qr.maxY; ty += yd) {
+					String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
+					String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, false,
+							true);
+					BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of (%s)", bbox));
+					String c = r.readLine();
+					Long cnt = c == null ? null : Long.parseLong(c);
+					r.close();
+					if (cnt != null && cnt < SPLIT_QUERY_LIMIT_PLACES) {
+						LOGGER.info(String.format("Size (%s) %s", bbox, c));
+						if (cnt > 0) {
+							Publisher task = new Publisher(futures, overpassURL, request, bbox, diff);
+							futures.add(service.submit(task));
+						}
+					} else {
+						LOGGER.info(String.format("Split further %s", bbox));
+						QuadRect nqr = new QuadRect(tx, ty, tx + xd, ty + yd);
+						splitRect(nqr, 2, 2);
+					}
+				}
+			}
+		}
+		
 
 		@Override
 		public TaskResult call() throws IOException {
 			try {
 				long tm = System.currentTimeMillis();
 				if (!diff && request.coordinates == null && bbox == null) {
-					// calculate bbox to process in parallel
-					double xd = 360 / 8;
-					double yd = 180 / 4;
-					int split = 4;
-					for (double tx = -180; tx + xd <= 180; tx += xd) {
-						for (double ty = -90; ty + yd <= 90; ty += yd) {
-							String bbox = String.format("%f,%f,%f,%f", ty, tx, ty + yd, tx + xd);
-							String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox,
-									false, true);
-							BufferedReader r = OprUtil.downloadGzipReader(reqUrl, String.format("Check size of (%s)", bbox));
-							String c = r.readLine();
-							Long cnt = c == null ? null : Long.parseLong(c);
-							r.close();
-							LOGGER.info(String.format("Size (%s) %s", bbox, c));
-							if (cnt != null && cnt < SPLIT_QUERY_LIMIT_PLACES) {
-								if (cnt > 0) {
-									Publisher task = new Publisher(futures, overpassURL, request, bbox, false);
-									futures.add(service.submit(task));
-								}
-							} else {
-								double sxd = xd / split;
-								double syd = xd / split;
-								for (double ttx = tx; ttx + sxd <= tx + xd; ttx += sxd) {
-									for (double tty = ty; tty + syd <= ty + yd; tty += sxd) {
-										String nbbox = String.format("%f,%f,%f,%f", tty, ttx, tty + syd, tx + sxd);
-										Publisher task = new Publisher(futures, overpassURL, request, nbbox, false);
-										futures.add(service.submit(task));
-									}
-								}
-							}
-
-						}
-					}
+					QuadRect qr = new QuadRect(-180, -90, 180, 90);
+					splitRect(qr, 8, 4);
 					return new TaskResult(String.format("Proccessed split bbox coordinates %d ms - tasks %d", 
 							(System.currentTimeMillis() - tm), futures.size()), null); 
 				} else {
