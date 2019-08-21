@@ -22,8 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Executors;
@@ -101,7 +103,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	}
 	
 	private static final long OVERPASS_MAX_ADIFF_MS = 3 * 60 * 60 * 1000l;
-	private static final long OVERPASS_MIN_DELAY_MS = 3 * 1000l;
+	private static final int OVERPASS_MIN_DELAY_MIN = 3;
 
 	
 	
@@ -157,35 +159,54 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			Collection<SyncRequest> req, QuadRect bbox, boolean diff, boolean cnt) throws UnsupportedEncodingException {
 		// check if works 'out meta; >; out geom;' vs 'out geom meta;';
 		String queryType = diff ? "diff" : "date";
-		String requestTemplate = "[out:xml][timeout:1800][maxsize:8000000000][%s:%s]; ( %s ); out geom meta;";
+		String sizeLimit = "[timeout:1800]"; // [maxsize:8000000000]
+		String requestTemplate = "[out:xml]"+sizeLimit+"[%s:%s]; %s ( %s ); out geom meta;";
 		if(cnt) {
-			requestTemplate = "[out:csv(::count;false)][timeout:1800][maxsize:8000000000][%s:%s]; ( %s ); out count;";
+			requestTemplate = "[out:csv(::count;false)]"+sizeLimit+"[%s:%s]; %s ( %s ); out count;";
 		}
+		
 		StringBuilder ts = new StringBuilder();
-		String timestamp = null;
+		String timestamp = "";
+		Set<String> changedTypes = new TreeSet<>();
+		String bboxs = "";
+		if (bbox != null && (bbox.width() < 360 || bbox.height() < 180)) {
+			bboxs = String.format("(%f,%f,%f,%f)", bbox.minY, bbox.minX, bbox.maxY, bbox.maxX);
+		}
 		for (SyncRequest tag : req) {
-			String ntmpDiff = "\"" + (diff ? (tag.state.date + "\",\"" + tag.date) : tag.date) + "\"";
-			String changed =  diff ? ("(changed:"+ntmpDiff +")") : "";
-			if(timestamp == null) {
-				timestamp = ntmpDiff;
-			} else if(OUtils.equals(ntmpDiff, timestamp)) {
-				throw new IllegalStateException(String.format("Timestmap %s != %s", ntmpDiff, timestamp));
-			}
 			List<String> tps = diff ? tag.type: tag.ntype;
 			List<String> values = diff ? tag.values: tag.nvalues;
-			String bboxs = "";
-			if (bbox != null && (bbox.width() < 360 || bbox.height() < 180)) {
-				bboxs = String.format("(%f,%f,%f,%f)", bbox.minY, bbox.minX, bbox.maxY, bbox.maxX);
+			String setName = "";
+			if(diff) {
+				String ntmpDiff = "\"" + (diff ? (tag.state.date + "\",\"" + tag.date) : tag.date) + "\"";
+				setName = ".a";
+				changedTypes.addAll(tps);
+				if (timestamp.length() == 0) {
+					timestamp = ntmpDiff;
+				} else if(OUtils.equals(ntmpDiff, timestamp)) {
+					throw new IllegalStateException(String.format("Timestmap %s != %s", ntmpDiff, timestamp));
+				}
+				
 			}
+			
 			for (String type : tps) {
 				for (String vl : values) {
 					String tagFilter = "[" + tag.key + "=" + vl + "]";
-					String reqFilter = type + changed + tagFilter + bboxs + ";";
+					String reqFilter = type + setName + tagFilter + bboxs + ";";
 					ts.append(reqFilter);
 				}
 			}
 		}
-		String request = String.format(requestTemplate, queryType, timestamp, ts.toString());
+		StringBuilder changedS = new StringBuilder();
+		if(changedTypes.size() > 0) {
+			changedS.append("(");
+			for(String tp : changedTypes) {
+				changedS.append(" ").append(tp).append("(changed:").append(timestamp).append(")");
+				changedS.append(bboxs).append(";");
+			}
+			changedS.append(")->.a; ");
+		}
+
+		String request = String.format(requestTemplate, queryType, timestamp, changedS.toString(), ts.toString());
 		LOGGER.info(String.format("Overpass query: %s", request));
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
 		request = overpassURL+ "?data=" + request;
@@ -200,13 +221,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			Calendar i = Calendar.getInstance();
 			i.setTime(dt);
 			i.set(Calendar.SECOND, 0);
-			int min = i.get(Calendar.MINUTE);
-			if(min > 30) {
-				i.set(Calendar.MINUTE, 30);
-			} else {
-				i.set(Calendar.MINUTE, 0);
-			}
-			if(dt.getTime() - i.getTimeInMillis() < OVERPASS_MIN_DELAY_MS) {
+			i.add(Calendar.MINUTE, -OVERPASS_MIN_DELAY_MIN);
+			i.set(Calendar.MINUTE, (i.get(Calendar.MINUTE) / 15) * 15);
+			if(dt.getTime() - i.getTimeInMillis() < OVERPASS_MIN_DELAY_MIN) {
 				return null;
 			}
 			return TIMESTAMP_FORMAT.format(i.getTime());
@@ -243,7 +260,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			cfg.state = cstate;
 			
 			try {
-				if(TIMESTAMP_FORMAT.parse(cstate.date).getTime() - TIMESTAMP_FORMAT.parse(cfg.date).getTime() > OVERPASS_MAX_ADIFF_MS) {
+				if(TIMESTAMP_FORMAT.parse(cfg.date).getTime() - TIMESTAMP_FORMAT.parse(cstate.date).getTime() > OVERPASS_MAX_ADIFF_MS) {
 					Date nd = new Date(TIMESTAMP_FORMAT.parse(cstate.date).getTime() + OVERPASS_MAX_ADIFF_MS);
 					cfg.date = TIMESTAMP_FORMAT.format(nd);
 				}
