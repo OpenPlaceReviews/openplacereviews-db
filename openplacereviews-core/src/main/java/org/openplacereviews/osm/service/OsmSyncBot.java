@@ -137,18 +137,30 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		public SyncRequest state;
 		public String name;
 		public boolean empty;
+		
+		public QuadRect coordinates() {
+			if(coordinates == null || coordinates.length() == 0) {
+				return null;
+			}
+			QuadRect qr = new QuadRect();
+			String[] s = coordinates.split(",");
+			qr.minY = Double.parseDouble(s[0]);
+			qr.minX = Double.parseDouble(s[1]);
+			qr.maxY = Double.parseDouble(s[2]);
+			qr.maxX = Double.parseDouble(s[3]);
+			return qr;
+		}
 	}
 	
 
 	public String generateRequestString(String overpassURL,
-			Collection<SyncRequest> req, String bboxParam, boolean diff, boolean cnt) throws UnsupportedEncodingException {
+			Collection<SyncRequest> req, QuadRect bbox, boolean diff, boolean cnt) throws UnsupportedEncodingException {
 		// check if works 'out meta; >; out geom;' vs 'out geom meta;';
 		String queryType = diff ? "diff" : "date";
 		String requestTemplate = "[out:xml][timeout:1800][maxsize:8000000000][%s:%s]; ( %s ); out geom meta;";
 		if(cnt) {
 			requestTemplate = "[out:csv(::count;false)][timeout:1800][maxsize:8000000000][%s:%s]; ( %s ); out count;";
 		}
-		String subTagRequest = "%s[\"%s\"=\"%s\"]%s%s;";
 		StringBuilder ts = new StringBuilder();
 		String timestamp = null;
 		for (SyncRequest tag : req) {
@@ -161,19 +173,16 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			}
 			List<String> tps = diff ? tag.type: tag.ntype;
 			List<String> values = diff ? tag.values: tag.nvalues;
+			String bboxs = "";
+			if (bbox != null && (bbox.width() < 180 || bbox.height() < 360)) {
+				bboxs = String.format("(%f,%f,%f,%f)", bbox.minY, bbox.minX, bbox.maxY, bbox.maxX);
+			}
 			for (String type : tps) {
-				for (String strTag : values) {
-					String bbox = tag.coordinates;
-					if(tag.coordinates == null && bboxParam == null) {
-						bbox = "";
-					} else if(bboxParam != null){
-						bbox = "(" + bboxParam +")";
-					} else {
-						bbox = "(" + tag.coordinates +")";
-					}
-					ts.append(String.format(subTagRequest, type, tag.key, strTag, changed, bbox));
+				for (String vl : values) {
+					String tagFilter = "[" + tag.key + "=" + vl + "]";
+					String reqFilter = type + changed + tagFilter + bboxs;
+					ts.append(reqFilter);
 				}
-				
 			}
 		}
 		String request = String.format(requestTemplate, queryType, timestamp, ts.toString());
@@ -344,7 +353,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			List<SyncRequest> requests = calculateRequests(timestamp, schema, state);
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
-					Publisher task = new Publisher(futures, overpassURL, r, null, false).setUseCount(true);
+					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), false).setUseCount(true);
 					submitTask(String.format("> Start synchronizing %s new tag/values [%s] [%s] - %s", r.name,
 							r.nvalues, r.ntype, r.date), task, futures);
 					OpOperation op = initOpOperation(OP_BOT);
@@ -353,7 +362,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					
 				}
 				if (!OUtils.equals(r.date, r.state.date)) {
-					Publisher task = new Publisher(futures, overpassURL, r, null, true);
+					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), true);
 					submitTask(String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.state.date, r.date),
 							task, futures);
 					OpOperation op = initOpOperation(OP_BOT);
@@ -571,11 +580,11 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		private TaskResult proc() throws UnsupportedEncodingException, IOException, XmlPullParserException,
 				FailedVerificationException, InterruptedException {
 			long tm = System.currentTimeMillis();
-			String bboxStr = String.format("%f,%f,%f,%f", bbox.minY, bbox.minX, bbox.maxY, bbox.maxX);
-			String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bboxStr, diff, useCount);
+			
+			String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff, useCount);
 			Metric m = mOverpassQuery.start();
 			BufferedReader r = OprUtil.downloadGzipReader(reqUrl, 
-					String.format(String.format("%s overpass data (%s)", useCount ? "Count":"Download", bboxStr)));
+					String.format(String.format("%s overpass data %s", useCount ? "Count":"Download", bbox)));
 			if (useCount) {
 				String c = r.readLine();
 				m.capture();
@@ -590,7 +599,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 						futures.add(service.submit(task));
 					} 
 					return new TaskResult(String.format("Proccessed count (%s) bbox %s coordinates %d ms",
-							c, bboxStr, (System.currentTimeMillis() - tm), futures.size()), null);
+							c, bbox, (System.currentTimeMillis() - tm), futures.size()), null);
 				}
 				return null;
 			} else {
@@ -602,8 +611,8 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				m.capture();
 				r.close();
 				tm = System.currentTimeMillis() - tm + 1; 
-				return new TaskResult(String.format("Proccessed places (%s): %d ms, %d places, %d places / sec",
-						bboxStr, tm, placeCounter, placeCounter * 1000 / tm), null);
+				return new TaskResult(String.format("Proccessed places %s: %d ms, %d places, %d places / sec",
+						bbox, tm, placeCounter, placeCounter * 1000 / tm), null);
 
 			}
 		}
