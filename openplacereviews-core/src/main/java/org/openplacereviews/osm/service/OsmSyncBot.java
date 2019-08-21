@@ -315,7 +315,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			List<SyncRequest> requests = calculateRequests(timestamp, schema, state);
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
-					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), false).setUseCount(true);
+					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), false); //.setUseCount(true);
 					String msg = String.format(" %s new tag/values [%s] [%s] - %s", r.name, r.nvalues, r.ntype, r.date);
 					submitTaskAndWait("Synchronization started: " + msg, task, futures);
 					if(isInterrupted()) {
@@ -448,10 +448,10 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			// calculate bbox to process in parallel
 			int sx = 2, sy = 2;
 			if(bbox.width() >= 180) {
-				sx = diff ? 10 : 20;
+				sx = diff ? 10 : 40;
 			}
 			if(bbox.height() >= 90) {
-				sy = diff ? 4 : 10;
+				sy = diff ? 4 : 20;
 			}
 			double xd = bbox.width() / sx;
 			double yd = bbox.height() / sy;
