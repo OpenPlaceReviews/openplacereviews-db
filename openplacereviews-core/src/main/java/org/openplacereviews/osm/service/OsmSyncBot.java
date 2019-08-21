@@ -174,7 +174,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			List<String> tps = diff ? tag.type: tag.ntype;
 			List<String> values = diff ? tag.values: tag.nvalues;
 			String bboxs = "";
-			if (bbox != null && (bbox.width() < 180 || bbox.height() < 360)) {
+			if (bbox != null && (bbox.width() < 360 || bbox.height() < 180)) {
 				bboxs = String.format("(%f,%f,%f,%f)", bbox.minY, bbox.minX, bbox.maxY, bbox.maxX);
 			}
 			for (String type : tps) {
@@ -316,10 +316,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	private void waitFuture(int cnt, Future<TaskResult> f) throws Exception {
 		TaskResult r = f.get(TIMEOUT_OVERPASS_HOURS, TimeUnit.HOURS);
 		if(r.e != null) {
-			LOGGER.error(String.format("%d / %d: %s", cnt, service.getTaskCount(), r.msg));
+			LOGGER.error(String.format("%d / %d: %s", cnt, total(), r.msg));
 			throw r.e;
 		} else {
-			LOGGER.info(String.format("%d / %d: %s", cnt, service.getTaskCount(), r.msg));
+			LOGGER.info(String.format("%d / %d: %s", cnt, total(), r.msg));
 		}
 		
 	}
@@ -360,9 +360,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), false).setUseCount(true);
-					submitTask(String.format("> Start synchronizing %s new tag/values [%s] [%s] - %s", r.name,
-							r.nvalues, r.ntype, r.date), task, futures);
+					String msg = String.format(" %s new tag/values [%s] [%s] - %s", r.name, r.nvalues, r.ntype, r.date);
+					submitTask("Synchronization started: " + msg, task, futures);
 					if(isInterrupted()) {
+						LOGGER.info("Synchronization interrupted: " + msg);
 						return this;
 					}
 					OpOperation op = initOpOperation(OP_BOT);
@@ -372,9 +373,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				}
 				if (!OUtils.equals(r.date, r.state.date)) {
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), true);
-					submitTask(String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.state.date, r.date),
-							task, futures);
+					String msg = String.format(" diff %s [%s]->[%s]", r.name, r.state.date, r.date);
+					submitTask("Synchronization started: " + msg, task, futures);
 					if(isInterrupted()) {
+						LOGGER.info("Synchronization interrupted: " + msg);
 						return this;
 					}
 					OpOperation op = initOpOperation(OP_BOT);
@@ -538,10 +540,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			// calculate bbox to process in parallel
 			int sx = 2, sy = 2;
 			if(bbox.width() >= 180) {
-				sx = diff ? 5 : 20;
+				sx = diff ? 10 : 20;
 			}
 			if(bbox.height() >= 90) {
-				sy = diff ? 5 : 10;
+				sy = diff ? 4 : 10;
 			}
 			double xd = bbox.width() / sx;
 			double yd = bbox.height() / sy;
@@ -557,6 +559,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 							.setUseCount(useCount)
 							.setLevelString(String.format("%s(%d/%d)", levelString, i, sx * sy))
 							.setLevel(level +1);
+					if(service == null) {
+						break;
+					}
 					futures.add(service.submit(task));
 				}
 			}
