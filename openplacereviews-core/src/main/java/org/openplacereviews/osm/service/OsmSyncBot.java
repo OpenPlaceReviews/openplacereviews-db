@@ -189,7 +189,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		}
 
 		String request = String.format(requestTemplate, queryType, timestamp, changedS.toString(), ts.toString());
-		// LOGGER.info(String.format("Overpass query: %s", request));
+		LOGGER.info(String.format("Overpass query: %s", request));
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
 		request = overpassURL+ "?data=" + request;
 		return request;
