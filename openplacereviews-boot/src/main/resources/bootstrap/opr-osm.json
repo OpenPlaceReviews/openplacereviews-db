@@ -5,7 +5,6 @@
 			"id" : ["opr.place"],
 			"comment" : "Operation to hold osm places",
 			"version" : 0,
-			"arity" : 0,
 			"fields": {
 				"id": "openplacereview id",
 				"osmId": "id of osm place",
