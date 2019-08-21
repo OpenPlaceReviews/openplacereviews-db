@@ -180,7 +180,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			for (String type : tps) {
 				for (String vl : values) {
 					String tagFilter = "[" + tag.key + "=" + vl + "]";
-					String reqFilter = type + changed + tagFilter + bboxs;
+					String reqFilter = type + changed + tagFilter + bboxs + ";";
 					ts.append(reqFilter);
 				}
 			}
@@ -522,10 +522,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			// calculate bbox to process in parallel
 			int sx = 2, sy = 2;
 			if(bbox.width() >= 180) {
-				sx = 20;
+				sx = diff ? 5 : 20;
 			}
 			if(bbox.height() >= 90) {
-				sy = 10;
+				sx = diff ? 5 : 10;
 			}
 			double xd = bbox.width() / sx;
 			double yd = bbox.height() / sy;
