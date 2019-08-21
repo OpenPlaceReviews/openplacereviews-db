@@ -1,0 +1,30 @@
+[
+	{
+		"type" : "sys.signup",
+		"signed_by": "openplacereviews",
+		"create": [{
+			"id": ["openplacereviews"],
+			"name" : "openplacereviews",
+			"algo": "EC",
+			"auth_method": "provided",
+			"pubkey": "base64:X.509:MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEn6GkOTN3SYc+OyCYCpqPzKPALvUgfUVNDJ+6eyBlCHI1/gKcVqzHLwaO90ksb29RYBiF4fW/PqHcECNzwJB+QA=="
+		}],
+		"hash": "json:sha256:439715024c856dd93b4bf45bb0c592621d1f6c0905078a4e73cf73d400ff2a1b",
+		"signature": "ECDSA:base64:MEYCIQDa+wCjXGRxUsTDUMHCTX8kwofiSvlfK2IqjfO7mP5wjAIhAI4x4T1X43qhpTpmcHxHZo2bgHw1mGiCGXeX4NjJBaDB"
+	},
+	
+	{
+		"create":[{
+			"algo":"EC",
+			"id":["openplacereviews","web"],
+			"pubkey":"base64:X.509:MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEwQe9jAQYhjk9E3uo4JZdl3bz+e9XluzAKW63s3UO2DRLac0bgVHihVK7/9ldXpGkwgSLKf7CPwO2ABz/NtVY2Q=="
+		}],
+		"hash":"json:sha256:f9997b6322ff3e2b27768d1eed57a70baa03547927837445118a3c731e5604bb",
+		"ref":{
+			"s":["sys.signup","openplacereviews"]
+		},
+		"signature":"ECDSA:base64:MEUCIGLJxvU8fCYpWBRyrQfhrXP9LuaylnqU3lm0t5G9sB8aAiEA++USwM28PHtAEtLDq/I3NR4ztxOvfRmp9fBXuSc1VM4=",
+		"signed_by":"openplacereviews",
+		"type":"sys.login"
+	}
+]

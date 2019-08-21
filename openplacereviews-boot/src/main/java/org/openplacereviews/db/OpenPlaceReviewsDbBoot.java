@@ -3,6 +3,7 @@ package org.openplacereviews.db;
 import org.openplacereviews.opendb.OpenDBServer;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.CommandLineRunner;
@@ -24,6 +25,10 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 
 	@Autowired
 	public BlocksManager blocksManager;
+	
+	@Value("${opendb.mgmt.user}")
+	public String opendbMgmtUser; 
+	
 
 	public static void main(String[] args) {
 		System.setProperty("spring.devtools.restart.enabled", "false");
@@ -37,18 +42,15 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	}
 	
 	public void preStartApplication() {
-		List<String> bootstrapList =
-				Arrays.asList("opr-0-test-user", BlocksManager.BOOT_STD_OPS_DEFINTIONS, BlocksManager.BOOT_STD_ROLES,
-						"opr-0-test-grant", BlocksManager.BOOT_STD_VALIDATION, "opr-osm", "opr-bot");
+		String usr = opendbMgmtUser.substring(opendbMgmtUser.indexOf(':') + 1);
+ 		List<String> bootstrapList =
+				Arrays.asList("opr-0-"+usr+"-user", BlocksManager.BOOT_STD_OPS_DEFINTIONS, BlocksManager.BOOT_STD_ROLES,
+						"opr-0-"+usr+"-grant", BlocksManager.BOOT_STD_VALIDATION, "opr-osm", "opr-bot");
 		blocksManager.setBootstrapList(bootstrapList);
 	}
 
 	@Override
 	public void run(ApplicationArguments args) {
-		boolean isImport = args.getOptionNames().contains("import");
-		if (isImport && args.getOptionValues("import").get(0).equals("true")) {
-			
-		}
 	}
 
 }
