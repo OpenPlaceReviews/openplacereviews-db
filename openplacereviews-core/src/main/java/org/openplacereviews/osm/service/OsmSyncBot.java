@@ -156,7 +156,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	
 
 	public String generateRequestString(String overpassURL,
-			Collection<SyncRequest> req, QuadRect bbox, boolean diff, boolean cnt) throws UnsupportedEncodingException {
+			Collection<SyncRequest> reqs, QuadRect bbox, boolean diff, boolean cnt) throws UnsupportedEncodingException {
 		// check if works 'out meta; >; out geom;' vs 'out geom meta;';
 		String queryType = diff ? "diff" : "date";
 		String sizeLimit = "[timeout:1800]"; // [maxsize:8000000000]
@@ -172,25 +172,25 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		if (bbox != null && (bbox.width() < 360 || bbox.height() < 180)) {
 			bboxs = String.format("(%f,%f,%f,%f)", bbox.minY, bbox.minX, bbox.maxY, bbox.maxX);
 		}
-		for (SyncRequest tag : req) {
-			List<String> tps = diff ? tag.type: tag.ntype;
-			List<String> values = diff ? tag.values: tag.nvalues;
+		for (SyncRequest req : reqs) {
+			List<String> tps = diff ? req.type: req.ntype;
+			List<String> values = diff ? req.values: req.nvalues;
 			String setName = "";
+			String ntimestamp = "\"" + req.date + "\"";
 			if(diff) {
-				String ntmpDiff = "\"" + (diff ? (tag.state.date + "\",\"" + tag.date) : tag.date) + "\"";
+				ntimestamp = "\"" + req.state.date + "\",\"" + req.date + "\"";
 				setName = ".a";
 				changedTypes.addAll(tps);
-				if (timestamp.length() == 0) {
-					timestamp = ntmpDiff;
-				} else if(OUtils.equals(ntmpDiff, timestamp)) {
-					throw new IllegalStateException(String.format("Timestmap %s != %s", ntmpDiff, timestamp));
-				}
-				
+			}
+			if (timestamp.length() == 0) {
+				timestamp = ntimestamp;
+			} else if(!OUtils.equals(ntimestamp, timestamp)) {
+				throw new IllegalStateException(String.format("Timestamp %s != %s", ntimestamp, timestamp));
 			}
 			
 			for (String type : tps) {
 				for (String vl : values) {
-					String tagFilter = "[" + tag.key + "=" + vl + "]";
+					String tagFilter = "[" + req.key + "=" + vl + "]";
 					String reqFilter = type + setName + tagFilter + bboxs + ";";
 					ts.append(reqFilter);
 				}
@@ -207,7 +207,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		}
 
 		String request = String.format(requestTemplate, queryType, timestamp, changedS.toString(), ts.toString());
-		LOGGER.info(String.format("Overpass query: %s", request));
+		// LOGGER.info(String.format("Overpass query: %s", request));
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
 		request = overpassURL+ "?data=" + request;
 		return request;
