@@ -144,9 +144,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			Collection<SyncRequest> req, String bboxParam, boolean diff, boolean cnt) throws UnsupportedEncodingException {
 		// check if works 'out meta; >; out geom;' vs 'out geom meta;';
 		String queryType = diff ? "diff" : "date";
-		String requestTemplate = "[out:xml][timeout:1800][maxsize:1000000000][%s:%s]; %s out geom meta;";
+		String requestTemplate = "[out:xml][timeout:1800][maxsize:1000000000][%s:%s]; ( %s ); out geom meta;";
 		if(cnt) {
-			requestTemplate = "[out:csv(::count;false)][timeout:1800][maxsize:1000000000][%s:%s]; %s out count;";
+			requestTemplate = "[out:csv(::count;false)][timeout:1800][maxsize:1000000000][%s:%s]; ( %s ); out count;";
 		}
 		String subTagRequest = "%s[\"%s\"=\"%s\"]%s%s;";
 		StringBuilder ts = new StringBuilder();
@@ -177,7 +177,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			}
 		}
 		String request = String.format(requestTemplate, queryType, timestamp, ts.toString());
-//		LOGGER.info(String.format("Overpass query: %s", request));
+		LOGGER.info(String.format("Overpass query: %s", request));
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
 		request = overpassURL+ "?data=" + request;
 		return request;
@@ -513,10 +513,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			// calculate bbox to process in parallel
 			int sx = 2, sy = 2;
 			if(bbox.width() >= 180) {
-				sx = 10;
+				sx = 20;
 			}
 			if(bbox.height() >= 90) {
-				sy = 5;
+				sy = 10;
 			}
 			double xd = bbox.width() / sx;
 			double yd = bbox.height() / sy;
