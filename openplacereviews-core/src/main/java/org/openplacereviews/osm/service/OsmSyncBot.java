@@ -553,7 +553,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		}
 		
 		
-		private TaskResult split(long tm) throws IOException {
+		private TaskResult split(long tm, String reason) throws IOException {
 			// calculate bbox to process in parallel
 			int sx = 2, sy = 2;
 			if(bbox.width() >= 180) {
@@ -583,9 +583,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				}
 			}
 			return new TaskResult(
-					String.format("Split further %s into %d %s after %d ms ", 
+					String.format("Split further %s into %d %s after %d ms: %s ", 
 							levelString, sx * sy, bbox.toString(), 
-							System.currentTimeMillis() - tm), null);
+							System.currentTimeMillis() - tm, reason), null);
 		}
 		
 
@@ -593,20 +593,23 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		public TaskResult call() throws IOException {
 			try {
 				long tm = System.currentTimeMillis();
+				String splitReason = "";
 				TaskResult res = null;	
 				if(bbox == null) {
 					bbox = new QuadRect(-180, -90, 180, 90);
 					if(!diff) {
-						return split(tm);
+						return split(tm, splitReason);
 					}
 				}
+				
 				try {
 					res = proc();
 				} catch (IOException | DBStaleException e) {
 					// repeat and continue split
+					splitReason = e.getMessage() + " (" + e.getClass() + ") ";
 				}
 				if(res == null) {
-					return split(tm);					
+					return split(tm, splitReason);					
 				}
 				return res;
 			} catch (Exception e) {

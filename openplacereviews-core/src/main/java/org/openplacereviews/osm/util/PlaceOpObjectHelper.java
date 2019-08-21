@@ -99,7 +99,7 @@ public class PlaceOpObjectHelper {
 		TreeSet<String> removedTags = new TreeSet<>(oldM.keySet());
 		removedTags.removeAll(newM.keySet());
 		for(String removedTag : removedTags) {
-			change.put(field + removedTag, OpBlockChain.OP_CHANGE_APPEND);
+			change.put(field + removedTag, OpBlockChain.OP_CHANGE_DELETE);
 			current.put(field + removedTag, oldM.get(removedTag));
 		}
 		for(String tag : newM.keySet()) {
