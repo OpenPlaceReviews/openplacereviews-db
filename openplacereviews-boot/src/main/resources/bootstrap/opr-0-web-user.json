@@ -9,8 +9,8 @@
 			"auth_method": "provided",
 			"pubkey": "base64:X.509:MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEn6GkOTN3SYc+OyCYCpqPzKPALvUgfUVNDJ+6eyBlCHI1/gKcVqzHLwaO90ksb29RYBiF4fW/PqHcECNzwJB+QA=="
 		}],
-		"hash": "json:sha256:439715024c856dd93b4bf45bb0c592621d1f6c0905078a4e73cf73d400ff2a1b",
-		"signature": "ECDSA:base64:MEYCIQDa+wCjXGRxUsTDUMHCTX8kwofiSvlfK2IqjfO7mP5wjAIhAI4x4T1X43qhpTpmcHxHZo2bgHw1mGiCGXeX4NjJBaDB"
+		"hash": "json:sha256:7ad8b434ccec84089730db9625aa0f2df92bce6503df536082616a31e4e9cddb",
+		"signature": "ECDSA:base64:MEUCIGYeIWhRJo9Dpu1bWBuQwAMoWtfp+ZfDsY0gf5TV42/LAiEAx2P81byVnFUIaP+N60L65vSlri2i0zcgT0JHlOt7fqg="
 	},
 	
 	{
