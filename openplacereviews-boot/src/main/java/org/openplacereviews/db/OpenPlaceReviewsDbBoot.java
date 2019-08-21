@@ -44,8 +44,11 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	public void preStartApplication() {
 		String usr = opendbMgmtUser.substring(opendbMgmtUser.indexOf(':') + 1);
  		List<String> bootstrapList =
-				Arrays.asList("opr-0-"+usr+"-user", BlocksManager.BOOT_STD_OPS_DEFINTIONS, BlocksManager.BOOT_STD_ROLES,
-						"opr-0-"+usr+"-grant", BlocksManager.BOOT_STD_VALIDATION, "opr-osm", "opr-bot");
+				Arrays.asList("opr-0-" + usr + "-user", BlocksManager.BOOT_STD_OPS_DEFINTIONS,
+						BlocksManager.BOOT_STD_ROLES, 
+						"opr-0-" + usr + "-grant", 
+						BlocksManager.BOOT_STD_VALIDATION, "opr-osm", 
+						"opr-0-" + usr + "-bot");
 		blocksManager.setBootstrapList(bootstrapList);
 	}
 
