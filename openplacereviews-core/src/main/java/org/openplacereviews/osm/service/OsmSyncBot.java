@@ -297,11 +297,17 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	
 	private void submitTask(String msg, Publisher task, Deque<Future<TaskResult>> futures)
 			throws Exception {
+		if(service == null) {
+			return;
+		}
 		LOGGER.info(msg);
 		Future<TaskResult> f = service.submit(task);
 		int cnt = 0;
 		waitFuture(cnt++, f);
 		while (!futures.isEmpty()) {
+			if(isInterrupted()) {
+				break;
+			}
 			waitFuture(cnt++, futures.pop());
 		}
 	}
@@ -319,7 +325,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	}
 
 	@Override
-	public OsmSyncBot call() throws Exception {
+	public synchronized OsmSyncBot call() throws Exception {
 		try {
 			Map<String, Object> urls = getMap(F_CONFIG, F_URL);
 			this.opType = botObject.getStringMap(F_BLOCKCHAIN_CONFIG).get(F_TYPE);
@@ -356,6 +362,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), false).setUseCount(true);
 					submitTask(String.format("> Start synchronizing %s new tag/values [%s] [%s] - %s", r.name,
 							r.nvalues, r.ntype, r.date), task, futures);
+					if(isInterrupted()) {
+						return this;
+					}
 					OpOperation op = initOpOperation(OP_BOT);
 					generateEditOpForBotObject(op, r, botObject);
 					generateHashAndSignAndAdd(op);
@@ -365,6 +374,9 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), true);
 					submitTask(String.format("> Start synchronizing diff %s [%s]->[%s]", r.name, r.state.date, r.date),
 							task, futures);
+					if(isInterrupted()) {
+						return this;
+					}
 					OpOperation op = initOpOperation(OP_BOT);
 					generateEditOpForBotObject(op, r.name, r.state.date, r.date, botObject);
 					generateHashAndSignAndAdd(op);
@@ -383,6 +395,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		return this;
 	}
 
+	public boolean isInterrupted() {
+		return this.service == null;
+	}
+	
 	@Override
 	public String getTaskDescription() {
 		return "Synchronising with OpenStreetMap";
@@ -400,12 +416,12 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 
 	@Override
 	public int total() {
-		return (int) service.getTaskCount();
+		return service  == null ? 0 : (int) service.getTaskCount();
 	}
 
 	@Override
 	public int progress() {
-		return (int) service.getCompletedTaskCount();
+		return service == null ? 0 : (int) service.getCompletedTaskCount();
 	}
 	
 	public static class PlaceObject {
@@ -525,7 +541,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				sx = diff ? 5 : 20;
 			}
 			if(bbox.height() >= 90) {
-				sx = diff ? 5 : 10;
+				sy = diff ? 5 : 10;
 			}
 			double xd = bbox.width() / sx;
 			double yd = bbox.height() / sy;
@@ -709,6 +725,17 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				processEntity(opOperation, diffEntity.getNewEntity());
 			}
 		}
+	}
+
+
+	@Override
+	public boolean interrupt() {
+		if(this.service != null) {
+			this.service.shutdownNow();
+			this.service = null;
+			return true;
+		}
+		return false;
 	}
 
 
