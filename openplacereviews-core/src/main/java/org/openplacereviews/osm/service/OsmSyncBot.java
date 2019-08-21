@@ -1,8 +1,14 @@
 package org.openplacereviews.osm.service;
 
-import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_BOT;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.createOsmObject;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateEditDeleteOsmIdsForPlace;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateEditOpForBotObject;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateEditValuesForPlace;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateNewOprObject;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.parseSyncRequest;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -28,16 +34,11 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockChain;
-import org.openplacereviews.opendb.ops.OpBlockchainRules.ErrorType;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.ops.PerformanceMetrics;
@@ -45,16 +46,14 @@ import org.openplacereviews.opendb.ops.PerformanceMetrics.Metric;
 import org.openplacereviews.opendb.ops.PerformanceMetrics.PerformanceMetric;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.DBConsensusManager.DBStaleException;
-import org.openplacereviews.opendb.service.IOpenDBBot;
-import org.openplacereviews.opendb.service.LogOperationService;
 import org.openplacereviews.opendb.util.JsonFormatter;
 import org.openplacereviews.opendb.util.OUtils;
 import org.openplacereviews.opendb.util.OpExprEvaluator;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.DiffEntity;
 import org.openplacereviews.osm.model.Entity;
-import org.openplacereviews.osm.model.QuadRect;
 import org.openplacereviews.osm.model.Entity.EntityType;
+import org.openplacereviews.osm.model.QuadRect;
 import org.openplacereviews.osm.parser.OsmParser;
 import org.openplacereviews.osm.util.OprExprEvaluatorExt;
 import org.openplacereviews.osm.util.OprUtil;
@@ -62,9 +61,7 @@ import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.xmlpull.v1.XmlPullParserException;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
-public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
+public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 
 	private static final Log LOGGER = LogFactory.getLog(OsmSyncBot.class);
 	
@@ -80,7 +77,6 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	public static final String F_MATCH_ID = "match-id";
 	
 	public static final String F_CONFIG = "config";
-	public static final String F_BLOCKCHAIN_CONFIG = "blockchain-config";
 	public static final String F_BOT_STATE = "bot-state";
 	public static final String F_OSM_TAGS = "osm-tags";
 	public static final String F_DATE = "date";
@@ -88,14 +84,8 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	public static final String F_URL = "url";
 	public static final String F_TIMESTAMP = "overpass_timestamp";
 	public static final String F_OVERPASS = "overpass";
-	public static final String F_THREADS = "threads";
 	
-	public static final String F_PLACES_PER_OPERATION = "places_per_operation";
-	public static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
-
-	private static final long TIMEOUT_WAIT_DB_STALE_MS = 5000;
-	private static final int TIMEOUT_DB_STALE_COUNT = 4;
-	private static final long TIMEOUT_OVERPASS_HOURS = 4;
+	
 	private static final long SPLIT_QUERY_LIMIT_PLACES = 20000;
 	private static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
 	static {
@@ -107,23 +97,14 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 
 	
 	
-	private long placesPerOperation = 250;
-	private long operationsPerBlock = 16;
-	private OpObject botObject;
-	private String opType;
 	private OpExprEvaluator matchIdExpr;
 	
 	@Autowired
 	private BlocksManager blocksManager;
 	
-	@Autowired
-	private LogOperationService logSystem;
-
-	private ThreadPoolExecutor service;
-
 
 	public OsmSyncBot(OpObject botObject) {
-		this.botObject = botObject;
+		super(botObject);
 	}
 	
 	public static class SyncRequest {
@@ -304,55 +285,15 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		return r;
 	}
 	
-	private static class TaskResult { 
-		public TaskResult(String msg, Exception e) {
-			this.msg = msg;
-			this.e = e;
-		}
-		Exception e;
-		String msg;
-	}
-	
-	private void submitTask(String msg, Publisher task, Deque<Future<TaskResult>> futures)
-			throws Exception {
-		if(service == null) {
-			return;
-		}
-		LOGGER.info(msg);
-		Future<TaskResult> f = service.submit(task);
-		int cnt = 0;
-		waitFuture(cnt++, f);
-		while (!futures.isEmpty()) {
-			if(isInterrupted()) {
-				break;
-			}
-			waitFuture(cnt++, futures.pop());
-		}
-	}
-	
-
-	private void waitFuture(int cnt, Future<TaskResult> f) throws Exception {
-		TaskResult r = f.get(TIMEOUT_OVERPASS_HOURS, TimeUnit.HOURS);
-		if(r.e != null) {
-			LOGGER.error(String.format("%d / %d: %s", cnt, total(), r.msg));
-			throw r.e;
-		} else {
-			LOGGER.info(String.format("%d / %d: %s", cnt, total(), r.msg));
-		}
-		
-	}
 
 	@Override
 	public synchronized OsmSyncBot call() throws Exception {
 		try {
 			Map<String, Object> urls = getMap(F_CONFIG, F_URL);
-			this.opType = botObject.getStringMap(F_BLOCKCHAIN_CONFIG).get(F_TYPE);
+			
 			String matchId = botObject.getStringMap(F_CONFIG).get(F_MATCH_ID);
 			matchIdExpr = OprExprEvaluatorExt.parseExpression(matchId);
-			this.placesPerOperation = botObject.getField(placesPerOperation, F_BLOCKCHAIN_CONFIG,
-					F_PLACES_PER_OPERATION);
-			this.operationsPerBlock = botObject.getField(operationsPerBlock, F_BLOCKCHAIN_CONFIG,
-					F_OPERATIONS_PER_BLOCK);
+			
 
 			String overpassURL = urls.get(F_OVERPASS).toString();
 			String timestamp = OprUtil.downloadString(urls.get(F_TIMESTAMP).toString(),
@@ -363,13 +304,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				return this;
 			}
 			timestamp = atimestamp;
+			super.initVars();
 			
 			LOGGER.info(String.format("Start synchronizing: %s", timestamp));
-			ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
-					.setNameFormat(Thread.currentThread().getName() + "-%d").build();
-			this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 1),
-					namedThreadFactory);
-
+			
 			Map<String, Object> schema = getMap(F_CONFIG, F_OSM_TAGS);
 			Map<String, Object> state = getMap(F_BOT_STATE, F_OSM_TAGS);
 
@@ -379,7 +317,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), false).setUseCount(true);
 					String msg = String.format(" %s new tag/values [%s] [%s] - %s", r.name, r.nvalues, r.ntype, r.date);
-					submitTask("Synchronization started: " + msg, task, futures);
+					submitTaskAndWait("Synchronization started: " + msg, task, futures);
 					if(isInterrupted()) {
 						LOGGER.info("Synchronization interrupted: " + msg);
 						return this;
@@ -392,7 +330,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				if (!OUtils.equals(r.date, r.state.date)) {
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), true);
 					String msg = String.format(" diff %s [%s]->[%s]", r.name, r.state.date, r.date);
-					submitTask("Synchronization started: " + msg, task, futures);
+					submitTaskAndWait("Synchronization started: " + msg, task, futures);
 					if(isInterrupted()) {
 						LOGGER.info("Synchronization interrupted: " + msg);
 						return this;
@@ -407,18 +345,11 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			LOGGER.info("Synchronization has failed: " + e.getMessage(), e);
 			throw e;
 		} finally {
-			if (this.service != null) {
-				this.service.shutdown();
-				this.service = null;
-			}
+			super.shutdown();
 		}
 		return this;
 	}
 
-	public boolean isInterrupted() {
-		return this.service == null;
-	}
-	
 	@Override
 	public String getTaskDescription() {
 		return "Synchronising with OpenStreetMap";
@@ -427,21 +358,6 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 	@Override
 	public String getTaskName() {
 		return "osm-sync";
-	}
-
-	@Override
-	public int taskCount() {
-		return 1;
-	}
-
-	@Override
-	public int total() {
-		return service  == null ? 0 : (int) service.getTaskCount();
-	}
-
-	@Override
-	public int progress() {
-		return service == null ? 0 : (int) service.getCompletedTaskCount();
 	}
 	
 	public static class PlaceObject {
@@ -453,22 +369,11 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		public Entity e;
 	}
 	
-	public PlaceObject getObjectByOsmEntity(Entity e) throws InterruptedException {
+	public PlaceObject getObjectByOsmEntity(Entity e) throws InterruptedException, DBStaleException {
 		Long osmId = e.getId();
 		String type = EntityType.valueOf(e).getName();
 		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
-		List<OpObject> r = null;
-		int cnt = TIMEOUT_DB_STALE_COUNT;
-		while(r == null && cnt-- >= 0) {
-			try {
-				r = blocksManager.getObjectsByIndex(opType, INDEX_OSMID, objectsSearchRequest, osmId);
-			} catch (DBStaleException es) {
-				Thread.sleep(TIMEOUT_WAIT_DB_STALE_MS);
-				if(cnt == 0) {
-					throw es;
-				}
-			}
-		}
+		List<OpObject> r = blocksManager.getObjectsByIndex(opType, INDEX_OSMID, objectsSearchRequest, osmId);
 		for(OpObject o : r) {
 			List<Map<String, Object>> osmObjs = o.getField(null, F_SOURCE, F_OSM);
 			for (int i = 0; i < osmObjs.size(); i++) {
@@ -501,22 +406,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 		return matchIdExpr.evaluateObject(evaluationContext).toString();
 	}
 	
-	public OpOperation initOpOperation(String opType) {
-		OpOperation opOperation = new OpOperation();
-		opOperation.setType(opType);
-		opOperation.setSignedBy(blocksManager.getServerUser());
-		return opOperation;
-	}
 	
-	public OpOperation generateHashAndSignAndAdd(OpOperation opOperation) throws FailedVerificationException {
-		JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
-		opOperation = formatter.parseOperation(formatter.opToJson(opOperation));
-		OpOperation op = blocksManager.generateHashAndSign(opOperation, blocksManager.getServerLoginKeyPair());
-		blocksManager.addOperation(op);
-		return op;
-	}
-
-
 	private class Publisher implements Callable<TaskResult> {
 
 		private long placeCounter;
@@ -577,14 +467,10 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 							.setUseCount(useCount)
 							.setLevelString(String.format("%s(%d/%d)", levelString, i, sx * sy))
 							.setLevel(level +1);
-					if(service == null) {
-						break;
-					}
-					futures.add(service.submit(task));
+					submitTask(null, task, futures);
 				}
 			}
-			return new TaskResult(
-					String.format("Split further %s into %d %s after %d ms: %s ", 
+			return new TaskResult(String.format("Split further %s into %d %s after %d ms: %s ", 
 							levelString, sx * sy, bbox.toString(), 
 							System.currentTimeMillis() - tm, reason), null);
 		}
@@ -605,17 +491,19 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 				
 				try {
 					res = proc();
-				} catch (IOException | DBStaleException e) {
+				} catch (IOException e) {
 					// repeat and continue split
 					splitReason = e.getMessage() + " (" + e.getClass() + ") ";
+				} catch (DBStaleException e) {
+					// repeat because of db stale exception
+					submitTask(null, this, futures);
 				}
 				if(res == null) {
 					return split(tm, splitReason);					
 				}
 				return res;
 			} catch (Exception e) {
-				logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, "osm-sync failed: " + e.getMessage(), e);
-				return new TaskResult(e.getMessage(), e);
+				return errorResult(e.getMessage(), e);
 			}
 		}
 
@@ -638,7 +526,7 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 								.setUseCount(false)
 								.setLevelString(levelString)
 								.setLevel(level);
-						futures.add(service.submit(task));
+						submitTask(null, task, futures);
 					} 
 					return new TaskResult(String.format("Proccessed count (%s) bbox %s coordinates %d ms",
 							c, bbox, (System.currentTimeMillis() - tm), futures.size()), null);
@@ -732,16 +620,15 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 					generateEditDeleteOsmIdsForPlace(d, pdo);
 					generateHashAndSignAndAdd(d);
 				} else {
-					logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, 
-							String.format("Couldn't find object %d: %s", diffEntity.getOldEntity().getId(), diffEntity.getOldEntity().getTags()), null);
+					logError(String.format("Couldn't find object %d: %s", diffEntity.getOldEntity().getId(), diffEntity.getOldEntity().getTags()));
+					
 				}
 			} else if (DiffEntity.DiffEntityType.CREATE == diffEntity.getType()) {
 				processEntity(opOperation, diffEntity.getNewEntity());
 			} else if (DiffEntity.DiffEntityType.MODIFY == diffEntity.getType()) {
 				PlaceObject prevObject = getObjectByOsmEntity(diffEntity.getOldEntity());
 				if(prevObject == null) {
-					logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, 
-							String.format("Couldn't find object %d: %s", diffEntity.getOldEntity().getId(), diffEntity.getOldEntity().getTags()), null);
+					logError( String.format("Couldn't find object %d: %s", diffEntity.getOldEntity().getId(), diffEntity.getOldEntity().getTags()));
 				} 
 				if(diffEntity.getOldEntity().getId() != diffEntity.getNewEntity().getId()) {
 					throw new UnsupportedOperationException(
@@ -752,17 +639,5 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			}
 		}
 	}
-
-
-	@Override
-	public boolean interrupt() {
-		if(this.service != null) {
-			this.service.shutdownNow();
-			this.service = null;
-			return true;
-		}
-		return false;
-	}
-
 
 }
