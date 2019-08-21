@@ -176,7 +176,8 @@ public class OsmSyncBot implements IOpenDBBot<OsmSyncBot> {
 			List<String> tps = diff ? req.type: req.ntype;
 			List<String> values = diff ? req.values: req.nvalues;
 			String setName = "";
-			String ntimestamp = "\"" + req.date + "\"";
+			// retrieve new data on state date
+			String ntimestamp = "\"" + req.state.date + "\"";
 			if(diff) {
 				ntimestamp = "\"" + req.state.date + "\",\"" + req.date + "\"";
 				setName = ".a";
