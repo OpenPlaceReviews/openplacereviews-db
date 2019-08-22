@@ -141,21 +141,22 @@ public class PlaceOpObjectHelper {
 		if (o != null) {
 			Map<String, Object> value = (Map<String, Object>) o;
 			sr.date = (String) value.get("date");
-			sr.coordinates = (String) value.get("bbox");
+			sr.bbox = (String) value.get("bbox");
 			sr.key = (String) value.get("key");
 			sr.type = (List<String>) value.get("type");
 			sr.values = (List<String>) value.get("values");
 		} else {
 			sr.empty = true;
-			sr.coordinates = cp.coordinates;
+			sr.bbox = cp.bbox;
 			sr.key = cp.key;
 			sr.date = cp.date;
 		}
 		return sr;
 	}
 
-	public static OpOperation generateEditOpForBotObject(OpOperation opOperation, SyncRequest r, OpObject botObject) throws FailedVerificationException {
-		
+	public static OpOperation generateEditOpForBotObject(OpOperation opOperation, SyncRequest r, OpObject botObject)
+			throws FailedVerificationException {
+
 		OpObject editObject = new OpObject();
 		editObject.setId(botObject.getId().get(0));
 
@@ -164,23 +165,39 @@ public class PlaceOpObjectHelper {
 		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".values", set(r.values));
 		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".type", set(r.type));
 		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".date", set(r.date));
-		if (r.coordinates != null) {
-			change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".bbox", set(r.coordinates));
+		if (r.bbox != null) {
+			change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".bbox", set(r.bbox));
 		}
 		editObject.putObjectValue(F_CHANGE, change);
-		if(!r.state.empty) {
-			TreeMap<String, Object> current = new TreeMap<>();
-			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".key", r.state.key);
+		TreeMap<String, Object> current = new TreeMap<>();
+		current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".key", r.state.key);
+		if(r.state.values.size() > 0) {
 			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".values", r.state.values);
-			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".type", r.state.type);
-			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".date", r.state.date);
-			if (r.coordinates != null) {
-				current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".bbox", r.coordinates);
-			}
-			editObject.putObjectValue(F_CURRENT, current);	
 		}
+		if(r.state.type.size() > 0) {
+			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".type", r.state.type);
+		}
+		current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".date", r.state.date);
+		if (r.bbox != null) {
+			current.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".bbox", r.bbox);
+		}
+		editObject.putObjectValue(F_CURRENT, current);
 		opOperation.addEdited(editObject);
 
+		return opOperation;
+	}
+	
+	public static OpOperation generateEditBeginObject(OpOperation opOperation, SyncRequest r, OpObject botObject) throws FailedVerificationException {
+		OpObject editObject = new OpObject();
+		editObject.setId(botObject.getId().get(0));
+		TreeMap<String, Object> change = new TreeMap<>();
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".key", set(r.key));
+		change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".date", set(r.date));
+		if (r.bbox != null) {
+			change.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + r.name + ".bbox", set(r.bbox));
+		}
+		editObject.putObjectValue(F_CHANGE, change);
+		opOperation.addEdited(editObject);
 		return opOperation;
 	}
 	

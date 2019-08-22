@@ -69,7 +69,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	private static final PerformanceMetric mPublish = PerformanceMetrics.i().getMetric("opr.osm-sync.publish");
 	private static final PerformanceMetric mProcDiff = PerformanceMetrics.i().getMetric("opr.osm-sync.proc-diff");
 	private static final PerformanceMetric mProcEntity = PerformanceMetrics.i().getMetric("opr.osm-sync.proc-e");
-	private static final PerformanceMetric mBlock = PerformanceMetrics.i().getMetric("opr.osm-sync.block");
 	private static final PerformanceMetric mOpAdd = PerformanceMetrics.i().getMetric("opr.osm-sync.opadd");
 
 	
@@ -112,7 +111,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		public String key;
 		public List<String> values = new ArrayList<String>();
 		public List<String> type = new ArrayList<String>();
-		public String coordinates;
+		public String bbox;
 		
 		List<String> nvalues = new ArrayList<String>();
 		List<String> ntype = new ArrayList<String>();
@@ -122,11 +121,11 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		public boolean empty;
 		
 		public QuadRect coordinates() {
-			if(coordinates == null || coordinates.length() == 0) {
+			if(bbox == null || bbox.length() == 0) {
 				return null;
 			}
 			QuadRect qr = new QuadRect();
-			String[] s = coordinates.split(",");
+			String[] s = bbox.split(",");
 			qr.minY = Double.parseDouble(s[0]);
 			qr.minX = Double.parseDouble(s[1]);
 			qr.maxY = Double.parseDouble(s[2]);
@@ -254,7 +253,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			if(!OUtils.equalsStringValue(cfg.key, cstate.key)) {
 				throw new UnsupportedOperationException("Change sync key is not supported");
 			}
-			if(!OUtils.equalsStringValue(cfg.coordinates, cstate.coordinates)) {
+			if(!OUtils.equalsStringValue(cfg.bbox, cstate.bbox)) {
 				throw new UnsupportedOperationException("Change bbox is not supported");
 			}
 			if (cstate.type.isEmpty() && cstate.values.isEmpty()) {
@@ -315,6 +314,11 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			List<SyncRequest> requests = calculateRequests(timestamp, schema, state);
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
+					if(r.state.empty) {
+						OpOperation op = initOpOperation(OP_BOT);
+						PlaceOpObjectHelper.generateEditBeginObject(op, r, botObject);
+						generateHashAndSignAndAdd(op);
+					}
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), false); //.setUseCount(true);
 					String msg = String.format(" %s new tag/values [%s] [%s] - %s", r.name, r.nvalues, r.ntype, r.date);
 					submitTaskAndWait("Synchronization started: " + msg, task, futures);
@@ -447,11 +451,14 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		private TaskResult split(long tm, String reason) throws IOException {
 			// calculate bbox to process in parallel
 			int sx = 2, sy = 2;
+			if(level < 3 && !diff) {
+				sx = sy = 4;
+			}
 			if(bbox.width() >= 180) {
-				sx = diff ? 10 : 40;
+				sx = 10 ;
 			}
 			if(bbox.height() >= 90) {
-				sy = diff ? 4 : 20;
+				sy = 4;
 			}
 			double xd = bbox.width() / sx;
 			double yd = bbox.height() / sy;
@@ -570,11 +577,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				if (opOperation.hasCreated() || opOperation.hasEdited()) {
 					Metric m = mOpAdd.start();
 					generateHashAndSignAndAdd(opOperation);
-					m.capture();
-				}
-				if (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock) {
-					Metric m = mBlock.start();
-					blocksManager.createBlock();
 					m.capture();
 				}
 			}

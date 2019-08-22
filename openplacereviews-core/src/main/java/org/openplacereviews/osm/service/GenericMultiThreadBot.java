@@ -2,7 +2,9 @@ package org.openplacereviews.osm.service;
 
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
 
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -13,8 +15,11 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockchainRules.ErrorType;
+import org.openplacereviews.opendb.ops.PerformanceMetrics.Metric;
+import org.openplacereviews.opendb.ops.PerformanceMetrics.PerformanceMetric;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
+import org.openplacereviews.opendb.ops.PerformanceMetrics;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.IOpenDBBot;
 import org.openplacereviews.opendb.service.LogOperationService;
@@ -31,10 +36,14 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 	public static final String F_BLOCKCHAIN_CONFIG = "blockchain-config";
 	public static final String F_PLACES_PER_OPERATION = "places_per_operation";
 	public static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
+	public static final String F_OPERATIONS_MIN_BLOCK_CAPACITY = "min_block_capacity";
 	public static final String F_THREADS = "threads";
-
+	private static final PerformanceMetric mBlock = PerformanceMetrics.i().getMetric("opr.osm-sync.block");
+	
+	private List<TaskResult> successfulResults = new ArrayList<>();
 	protected long placesPerOperation = 250;
 	protected long operationsPerBlock = 16;
+	protected double blockCapacity = 0.8;
 	protected OpObject botObject;
 	protected String opType;
 	
@@ -95,7 +104,14 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 			LOGGER.error(String.format("%d / %d: %s", cnt, total(), r.msg));
 			throw r.e;
 		} else {
+			successfulResults.add(r);
 			LOGGER.info(String.format("%d / %d: %s", cnt, total(), r.msg));
+		}
+		if (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock && 
+				blocksManager.getQueueCapacity() >= blockCapacity) {
+			Metric m = mBlock.start();
+			blocksManager.createBlock(blockCapacity);
+			m.capture();
 		}
 		
 	}
@@ -119,6 +135,10 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		return this.service == null;
 	}
 	
+	public List<TaskResult> getSuccessfulResults() {
+		return successfulResults;
+	}
+	
 	@Override
 	public abstract String getTaskDescription();
 
@@ -132,12 +152,12 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 
 	@Override
 	public int total() {
-		return 1 + (service  == null ? 0 : (int) service.getTaskCount());
+		return 1 + (service  == null ? 1 : (int) service.getTaskCount());
 	}
 
 	@Override
 	public int progress() {
-		return 1 + (service == null ? 0 : (int) service.getCompletedTaskCount());
+		return 1 + (service == null ? 1 : (int) service.getCompletedTaskCount());
 	}
 	
 	public TaskResult errorResult(String msg, Exception e) {
@@ -155,15 +175,18 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 				F_PLACES_PER_OPERATION);
 		this.operationsPerBlock = botObject.getField(operationsPerBlock, F_BLOCKCHAIN_CONFIG,
 				F_OPERATIONS_PER_BLOCK);
+		this.blockCapacity = botObject.getField(blockCapacity, F_BLOCKCHAIN_CONFIG,
+				F_OPERATIONS_PER_BLOCK);
 		ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
 				.setNameFormat(Thread.currentThread().getName() + "-%d").build();
 		this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 1),
 				namedThreadFactory);
+		successfulResults.clear();
 	}
 	
 	protected void shutdown() {
 		if (this.service != null) {
-			this.service.shutdown();
+			this.service.shutdownNow();
 			this.service = null;
 		}
 	}
