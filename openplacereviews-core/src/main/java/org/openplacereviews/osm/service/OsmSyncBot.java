@@ -227,18 +227,18 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		return mp;
 	}
 	
-	private List<SyncRequest> calculateRequests(String timestamp, Map<String, Object> schema, Map<String, Object> state) {
+	private List<SyncRequest> calculateRequests(Map<String, Object> schema, Map<String, Object> state) {
 		List<SyncRequest> r = new ArrayList<OsmSyncBot.SyncRequest>();
 		Iterator<Entry<String, Object>> i = schema.entrySet().iterator();
 		while (i.hasNext()) {
 			Entry<String, Object> e = i.next();
 			SyncRequest cfg = parseSyncRequest(null, e.getValue());
 			cfg.name = e.getKey();
-			cfg.date = timestamp;
 			
 			SyncRequest cstate = PlaceOpObjectHelper.parseSyncRequest(cfg, state.get(cfg.name));
 			cstate.name = e.getKey();
 			cfg.state = cstate;
+			cfg.date = cstate.date;
 			
 			try {
 				if(TIMESTAMP_FORMAT.parse(cfg.date).getTime() - TIMESTAMP_FORMAT.parse(cstate.date).getTime() > OVERPASS_MAX_ADIFF_MS) {
@@ -311,11 +311,15 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			Map<String, Object> state = getMap(F_BOT_STATE, F_OSM_TAGS);
 
 			Deque<Future<TaskResult>> futures = new ConcurrentLinkedDeque<Future<TaskResult>>();
-			List<SyncRequest> requests = calculateRequests(timestamp, schema, state);
+			List<SyncRequest> requests = calculateRequests(schema, state);
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
+					if(r.date == null) {
+						r.date = timestamp;
+					}
 					if(r.state.empty) {
 						OpOperation op = initOpOperation(OP_BOT);
+						r.state.date = r.date;
 						PlaceOpObjectHelper.generateEditBeginObject(op, r, botObject);
 						generateHashAndSignAndAdd(op);
 					}
@@ -331,7 +335,8 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					generateHashAndSignAndAdd(op);
 					
 				}
-				if (!OUtils.equals(r.date, r.state.date)) {
+				if (!OUtils.equals(timestamp, r.state.date)) {
+					r.date = timestamp;
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), true);
 					String msg = String.format(" diff %s [%s]->[%s]", r.name, r.state.date, r.date);
 					submitTaskAndWait("Synchronization started: " + msg, task, futures);

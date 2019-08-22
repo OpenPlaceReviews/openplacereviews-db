@@ -143,8 +143,12 @@ public class PlaceOpObjectHelper {
 			sr.date = (String) value.get("date");
 			sr.bbox = (String) value.get("bbox");
 			sr.key = (String) value.get("key");
-			sr.type = (List<String>) value.get("type");
-			sr.values = (List<String>) value.get("values");
+			if(value.get("type") != null) {
+				sr.type = (List<String>) value.get("type");
+			}
+			if(value.get("values") != null) {
+				sr.values = (List<String>) value.get("values");
+			}
 		} else {
 			sr.empty = true;
 			sr.bbox = cp.bbox;
