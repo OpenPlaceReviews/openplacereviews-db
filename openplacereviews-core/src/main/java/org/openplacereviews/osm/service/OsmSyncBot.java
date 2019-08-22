@@ -240,15 +240,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			cfg.state = cstate;
 			cfg.date = cstate.date;
 			
-			try {
-				if(TIMESTAMP_FORMAT.parse(cfg.date).getTime() - TIMESTAMP_FORMAT.parse(cstate.date).getTime() > OVERPASS_MAX_ADIFF_MS) {
-					Date nd = new Date(TIMESTAMP_FORMAT.parse(cstate.date).getTime() + OVERPASS_MAX_ADIFF_MS);
-					cfg.date = TIMESTAMP_FORMAT.format(nd);
-				}
-			} catch (ParseException e1) {
-				throw new IllegalArgumentException(e1);
-			}
-			
 			// calculate diff to retrieve new objects
 			if(!OUtils.equalsStringValue(cfg.key, cstate.key)) {
 				throw new UnsupportedOperationException("Change sync key is not supported");
@@ -295,17 +286,17 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			
 
 			String overpassURL = urls.get(F_OVERPASS).toString();
-			String timestamp = OprUtil.downloadString(urls.get(F_TIMESTAMP).toString(),
+			String ctimestamp = OprUtil.downloadString(urls.get(F_TIMESTAMP).toString(),
 					"Download current OSM timestamp");
-			String atimestamp = alignTimestamp(timestamp);
+			String atimestamp = alignTimestamp(ctimestamp);
 			if(atimestamp == null) {
-				LOGGER.info(String.format("Nothing to synchronize yet: %s", timestamp));
+				LOGGER.info(String.format("Nothing to synchronize yet: %s", ctimestamp));
 				return this;
 			}
-			timestamp = atimestamp;
+			ctimestamp = atimestamp;
 			super.initVars();
 			
-			LOGGER.info(String.format("Start synchronizing: %s", timestamp));
+			LOGGER.info(String.format("Start synchronizing: %s", ctimestamp));
 			
 			Map<String, Object> schema = getMap(F_CONFIG, F_OSM_TAGS);
 			Map<String, Object> state = getMap(F_BOT_STATE, F_OSM_TAGS);
@@ -315,7 +306,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
 					if(r.date == null) {
-						r.date = timestamp;
+						r.date = ctimestamp;
 					}
 					if(r.state.empty) {
 						OpOperation op = initOpOperation(OP_BOT);
@@ -335,8 +326,17 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					generateHashAndSignAndAdd(op);
 					
 				}
-				if (!OUtils.equals(timestamp, r.state.date)) {
-					r.date = timestamp;
+				if (!OUtils.equals(ctimestamp, r.state.date)) {
+					r.date = ctimestamp;
+					try {
+						if(TIMESTAMP_FORMAT.parse(r.date).getTime() - TIMESTAMP_FORMAT.parse(r.state.date).getTime() > OVERPASS_MAX_ADIFF_MS) {
+							Date nd = new Date(TIMESTAMP_FORMAT.parse(r.date).getTime() + OVERPASS_MAX_ADIFF_MS);
+							r.date = TIMESTAMP_FORMAT.format(nd);
+						}
+					} catch (ParseException e1) {
+						throw new IllegalArgumentException(e1);
+					}
+					r.date = ctimestamp;
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), true);
 					String msg = String.format(" diff %s [%s]->[%s]", r.name, r.state.date, r.date);
 					submitTaskAndWait("Synchronization started: " + msg, task, futures);
