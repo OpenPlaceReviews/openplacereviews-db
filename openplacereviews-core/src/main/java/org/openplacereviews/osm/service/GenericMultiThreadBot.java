@@ -59,6 +59,11 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		this.botObject = botObject;
 	}
 	
+	@Override
+	public void updateConfig(OpObject config) {
+		this.botObject = config;
+	}
+	
 	
 	protected static class TaskResult { 
 		public TaskResult(String msg, Exception e) {
@@ -176,7 +181,7 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		this.operationsPerBlock = botObject.getField(operationsPerBlock, F_BLOCKCHAIN_CONFIG,
 				F_OPERATIONS_PER_BLOCK);
 		this.blockCapacity = botObject.getField(blockCapacity, F_BLOCKCHAIN_CONFIG,
-				F_OPERATIONS_PER_BLOCK);
+				F_OPERATIONS_MIN_BLOCK_CAPACITY);
 		ThreadFactory namedThreadFactory = new ThreadFactoryBuilder()
 				.setNameFormat(Thread.currentThread().getName() + "-%d").build();
 		this.service = (ThreadPoolExecutor) Executors.newFixedThreadPool(botObject.getIntValue(F_THREADS, 1),
