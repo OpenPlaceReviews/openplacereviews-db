@@ -38,6 +38,7 @@ opendb:
         {"name": "osmid", "field": ["source.osm.id"], "sqlmapping":"array", "sqltype": "bigint[]", "index":"GIN"}]
       }
   files-backup:
+    overpass-cache: ${OVERPASS_CACHE_DIR:overpass_cache}
     directory: ${FILE_BLOCKS_DIR:blocks}
   block-create:
     minSecondsInterval: 120

@@ -68,6 +68,7 @@ import org.openplacereviews.osm.util.OprExprEvaluatorExt;
 import org.openplacereviews.osm.util.OprUtil;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.xmlpull.v1.XmlPullParserException;
 
 public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
@@ -93,7 +94,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	public static final String F_OVERPASS = "overpass";
 	
 	// public static final String OVERPASS_CACHE_FOLDER = null;
-	public static final String OVERPASS_CACHE_FOLDER = "overpass_cache";
 	
 	
 	private static final long SPLIT_QUERY_LIMIT_PLACES = 20000;
@@ -106,6 +106,8 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	private static final int OVERPASS_MIN_DELAY_MIN = 3;
 
 	
+	@Value("${files-backup.overpass-cache}")
+	public String OVERPASS_CACHE_FOLDER;
 	
 	private OpExprEvaluator matchIdExpr;
 	
@@ -144,9 +146,12 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			return qr;
 		}
 
-		public String getCacheId(QuadRect b, boolean diff) {
+		public String getCacheId(QuadRect b, boolean diff, boolean cnt) {
 			String r = diff ? "diff_": "req_" ;
-			r += key + "/";
+			if(cnt) {
+				r += "cnt_";
+			}
+			r += name + "/";
 			r += date;
 			if (diff) {
 				r += "-" + state.date;
@@ -550,8 +555,8 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			String msg  = String.format("%s overpass data %s", useCount ? "Count":"Download", bbox);
 			BufferedReader r;
 			File cacheFile = null;
-			if(OVERPASS_CACHE_FOLDER != null) {
-				String cid = request.getCacheId(bbox, diff);
+			if(OUtils.isEmpty(OVERPASS_CACHE_FOLDER)) {
+				String cid = request.getCacheId(bbox, diff, useCount);
 				cacheFile = new File(OVERPASS_CACHE_FOLDER, cid + ".osm.gz");
 				if(!cacheFile.exists()) {
 					r = OprUtil.downloadGzipReader(reqUrl, msg);
