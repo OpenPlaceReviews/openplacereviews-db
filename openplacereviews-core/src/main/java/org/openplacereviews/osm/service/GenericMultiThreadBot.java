@@ -64,8 +64,16 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 			this.msg = msg;
 			this.e = e;
 		}
+		
+		public TaskResult(String msg, int cnt, Exception e) {
+			this.msg = msg;
+			this.e = e;
+			this.counter = cnt;
+		}
+		
 		Exception e;
 		String msg;
+		int counter;
 	}
 	
 	protected Future<TaskResult> submitTask(String msg, Callable<TaskResult> task, Deque<Future<TaskResult>> futures) {
@@ -77,34 +85,41 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		return f;
 	}
 	
-	protected void submitTaskAndWait(String msg, Callable<TaskResult> task, Deque<Future<TaskResult>> futures)
+	protected int submitTaskAndWait(String msg, Callable<TaskResult> task, Deque<Future<TaskResult>> futures)
 			throws Exception {
 		if(service == null) {
-			return;
+			return 0;
 		}
 		if(msg != null) {
 			LOGGER.info(msg);
 		}
 		Future<TaskResult> f = service.submit(task);
 		int cnt = 0;
-		waitFuture(cnt++, f);
+		int processed = 0;
+		TaskResult r = waitFuture(cnt++, processed, f, futures);
+		processed += r.counter;
 		while (!futures.isEmpty()) {
 			if(isInterrupted()) {
 				break;
 			}
-			waitFuture(cnt++, futures.pop());
+			r = waitFuture(cnt++, processed, futures.pop(), futures);
+			processed += r.counter;
 		}
+		return processed;
 	}
 	
 
-	private void waitFuture(int cnt, Future<TaskResult> f) throws Exception {
+	private TaskResult waitFuture(int id, int overall,  Future<TaskResult> f, 
+			Deque<Future<TaskResult>> futures) throws Exception {
 		TaskResult r = f.get(TIMEOUT_OVERPASS_HOURS, TimeUnit.HOURS);
+		int tot = id + futures.size();
+		String msg = String.format("%d / %d (%d + %d): %s", id, tot, overall, r.counter, r.msg);
 		if(r.e != null) {
-			LOGGER.error(String.format("%d / %d: %s", cnt, total(), r.msg));
+			LOGGER.error(msg);
 			throw r.e;
 		} else {
 			successfulResults.add(r);
-			LOGGER.info(String.format("%d / %d: %s", cnt, total(), r.msg));
+			LOGGER.info(msg);
 		}
 		if (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock && 
 				blocksManager.getQueueCapacity() >= blockCapacity) {
@@ -112,6 +127,7 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 			blocksManager.createBlock(blockCapacity);
 			m.capture();
 		}
+		return r;
 		
 	}
 	

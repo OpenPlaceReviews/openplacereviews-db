@@ -377,7 +377,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					generateHashAndSignAndAdd(op);
 				}
 			}
-			LOGGER.info("Synchronization is finished");
+			LOGGER.info("Synchronization is finished ");
 		} catch (Exception e) {
 			LOGGER.info("Synchronization has failed: " + e.getMessage(), e);
 			throw e;
@@ -447,7 +447,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	private class Publisher implements Callable<TaskResult> {
 
 		
-		private long placeCounter;
+		private int placeCounter;
 		private SyncRequest request;
 		private boolean diff;
 		private boolean useCount;
@@ -550,7 +550,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		private TaskResult proc() throws Exception {
 			long tm = System.currentTimeMillis();
 			
-			String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff, useCount);
 			Metric m = mOverpassQuery.start();
 			String msg  = String.format("%s overpass data %s", useCount ? "Count":"Download", bbox);
 			BufferedReader r;
@@ -559,7 +558,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				String cid = request.getCacheId(bbox, diff, useCount);
 				cacheFile = new File(overpassCacheFolder, cid + ".osm.gz");
 				if(!cacheFile.exists()) {
-					r = OprUtil.downloadGzipReader(reqUrl, msg);
+					r = downloadOverpass(msg);
 					cacheFile.getParentFile().mkdirs();
 					OutputStreamWriter w = new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(cacheFile)));
 					IOUtils.copy(r, w);
@@ -569,7 +568,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				GZIPInputStream gzis = new GZIPInputStream(new FileInputStream(cacheFile));
 				r = new BufferedReader(new InputStreamReader(gzis));
 			} else {
-				r = OprUtil.downloadGzipReader(reqUrl, msg);
+				r = downloadOverpass(msg);
 			}
 			if (useCount) {
 				String c = r.readLine();
@@ -585,7 +584,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 						submitTask(null, task, futures);
 					} 
 					return new TaskResult(String.format("Proccessed count (%s) bbox %s coordinates %d ms",
-							c, bbox, (System.currentTimeMillis() - tm), futures.size()), null);
+							c, bbox, (System.currentTimeMillis() - tm), futures.size()), 0, null);
 				}
 				return null;
 			} else {
@@ -598,17 +597,24 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					m.capture();
 					r.close();
 					tm = System.currentTimeMillis() - tm + 1;
-				} catch(Exception e) {
-					if(cacheFile != null) {
+				} catch (IOException e) {
+					if (cacheFile != null) {
 						r.close();
 						cacheFile.delete();
 					}
 					throw e;
 				}
 				return new TaskResult(String.format("Proccessed places %s: %d ms, %d places, %d places / sec",
-						bbox, tm, placeCounter, placeCounter * 1000 / tm), null);
+						bbox, tm, placeCounter, placeCounter * 1000 / tm), placeCounter, null);
 
 			}
+		}
+
+		private BufferedReader downloadOverpass(String msg) throws UnsupportedEncodingException, IOException {
+			BufferedReader r;
+			String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff, useCount);
+			r = OprUtil.downloadGzipReader(reqUrl, msg);
+			return r;
 		}
 
 		private void publish(OsmParser osmParser) throws FailedVerificationException, IOException, XmlPullParserException, InterruptedException {
@@ -666,7 +672,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				}
 			} catch (RuntimeException e) {
 				// extra logging to catch exception with objects
-				LOGGER.error(e.getMessage() + ": " + obj.getId() + " " + obj.getTags());
+				if(obj != null) {
+					LOGGER.error(e.getMessage() + ": " + obj.getId() + " " + obj.getTags());
+				}
 				throw e;
 			}
 		}

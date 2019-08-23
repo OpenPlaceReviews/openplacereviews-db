@@ -84,12 +84,15 @@ public class OsmParser {
 					throw new IOException("Overpass error: " + parser.nextText());
 				} else if (TAG_ACTION.equals(elementName)) {
 					actionType = getAttributeValue(ATTR_TYPE);
+					
 					if (ATTR_TYPE_MODIFY.equals(actionType)) {
 						diffEntity = new DiffEntity(DiffEntity.DiffEntityType.MODIFY);
 					} else if (ATTR_TYPE_CREATE.equals(actionType)) {
 						diffEntity = new DiffEntity(DiffEntity.DiffEntityType.CREATE);
+						old = false;
 					} else if (ATTR_TYPE_DELETE.equals(actionType)) {
 						diffEntity = new DiffEntity(DiffEntity.DiffEntityType.DELETE);
+						old = true;
 					}
 				} else if (TAG_OLD.equals(elementName)) {
 					// diff
