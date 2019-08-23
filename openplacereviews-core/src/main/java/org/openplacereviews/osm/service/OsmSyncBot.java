@@ -106,8 +106,8 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	private static final int OVERPASS_MIN_DELAY_MIN = 3;
 
 	
-	@Value("${files-backup.overpass-cache}")
-	public String OVERPASS_CACHE_FOLDER;
+	@Value("${opendb.files-backup.overpass-cache}")
+	private String overpassCacheFolder;
 	
 	private OpExprEvaluator matchIdExpr;
 	
@@ -555,9 +555,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			String msg  = String.format("%s overpass data %s", useCount ? "Count":"Download", bbox);
 			BufferedReader r;
 			File cacheFile = null;
-			if(OUtils.isEmpty(OVERPASS_CACHE_FOLDER)) {
+			if(OUtils.isEmpty(overpassCacheFolder)) {
 				String cid = request.getCacheId(bbox, diff, useCount);
-				cacheFile = new File(OVERPASS_CACHE_FOLDER, cid + ".osm.gz");
+				cacheFile = new File(overpassCacheFolder, cid + ".osm.gz");
 				if(!cacheFile.exists()) {
 					r = OprUtil.downloadGzipReader(reqUrl, msg);
 					cacheFile.getParentFile().mkdirs();
