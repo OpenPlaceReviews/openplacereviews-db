@@ -555,7 +555,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			String msg  = String.format("%s overpass data %s", useCount ? "Count":"Download", bbox);
 			BufferedReader r;
 			File cacheFile = null;
-			if(OUtils.isEmpty(overpassCacheFolder)) {
+			if(!OUtils.isEmpty(overpassCacheFolder)) {
 				String cid = request.getCacheId(bbox, diff, useCount);
 				cacheFile = new File(overpassCacheFolder, cid + ".osm.gz");
 				if(!cacheFile.exists()) {
