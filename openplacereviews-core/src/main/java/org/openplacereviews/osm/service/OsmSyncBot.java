@@ -20,6 +20,7 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -144,13 +145,15 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		}
 
 		public String getCacheId(QuadRect b, boolean diff) {
-			String r = diff ? "req_" : "diff_";
+			String r = diff ? "diff_": "req_" ;
 			r += key + "/";
 			r += date;
 			if (diff) {
 				r += "-" + state.date;
 			}
-			r += "-" + String.format("%f,%f,%f,%f", b.minY, b.minX, b.maxY, b.maxX)+ "_";
+			DecimalFormat df = new DecimalFormat("0.#");
+			r += "_" + String.format("%s,%s,%s,%s", 
+					df.format(b.minY), df.format(b.minX), df.format(b.maxY), df.format(b.maxX));
 			return r.replace(':', '_');
 		}
 	}
