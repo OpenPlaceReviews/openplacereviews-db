@@ -11,7 +11,12 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateNewOprOb
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.parseSyncRequest;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -35,7 +40,10 @@ import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Future;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockChain;
@@ -70,7 +78,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	private static final PerformanceMetric mProcDiff = PerformanceMetrics.i().getMetric("opr.osm-sync.proc-diff");
 	private static final PerformanceMetric mProcEntity = PerformanceMetrics.i().getMetric("opr.osm-sync.proc-e");
 	private static final PerformanceMetric mOpAdd = PerformanceMetrics.i().getMetric("opr.osm-sync.opadd");
-
 	
 	public static final String INDEX_OSMID = "osmid";
 	public static final String F_MATCH_ID = "match-id";
@@ -83,6 +90,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	public static final String F_URL = "url";
 	public static final String F_TIMESTAMP = "overpass_timestamp";
 	public static final String F_OVERPASS = "overpass";
+	
+	// public static final String OVERPASS_CACHE_FOLDER = null;
+	public static final String OVERPASS_CACHE_FOLDER = "overpass_cache";
 	
 	
 	private static final long SPLIT_QUERY_LIMIT_PLACES = 20000;
@@ -131,6 +141,17 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			qr.maxY = Double.parseDouble(s[2]);
 			qr.maxX = Double.parseDouble(s[3]);
 			return qr;
+		}
+
+		public String getCacheId(QuadRect b, boolean diff) {
+			String r = diff ? "req_" : "diff_";
+			r += key + "/";
+			r += date;
+			if (diff) {
+				r += "-" + state.date;
+			}
+			r += "-" + String.format("%f,%f,%f,%f", b.minY, b.minX, b.maxY, b.maxX)+ "_";
+			return r.replace(':', '_');
 		}
 	}
 	
@@ -330,13 +351,12 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					r.date = ctimestamp;
 					try {
 						if(TIMESTAMP_FORMAT.parse(r.date).getTime() - TIMESTAMP_FORMAT.parse(r.state.date).getTime() > OVERPASS_MAX_ADIFF_MS) {
-							Date nd = new Date(TIMESTAMP_FORMAT.parse(r.date).getTime() + OVERPASS_MAX_ADIFF_MS);
+							Date nd = new Date(TIMESTAMP_FORMAT.parse(r.state.date).getTime() + OVERPASS_MAX_ADIFF_MS);
 							r.date = TIMESTAMP_FORMAT.format(nd);
 						}
 					} catch (ParseException e1) {
 						throw new IllegalArgumentException(e1);
 					}
-					r.date = ctimestamp;
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), true);
 					String msg = String.format(" diff %s [%s]->[%s]", r.name, r.state.date, r.date);
 					submitTaskAndWait("Synchronization started: " + msg, task, futures);
@@ -418,6 +438,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	
 	private class Publisher implements Callable<TaskResult> {
 
+		
 		private long placeCounter;
 		private SyncRequest request;
 		private boolean diff;
@@ -500,7 +521,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 						return split(tm, splitReason);
 					}
 				}
-				
 				try {
 					res = proc();
 				} catch (IOException e) {
@@ -519,14 +539,30 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			}
 		}
 
-		private TaskResult proc() throws UnsupportedEncodingException, IOException, XmlPullParserException,
-				FailedVerificationException, InterruptedException {
+		private TaskResult proc() throws Exception {
 			long tm = System.currentTimeMillis();
 			
 			String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff, useCount);
 			Metric m = mOverpassQuery.start();
-			BufferedReader r = OprUtil.downloadGzipReader(reqUrl, 
-					String.format(String.format("%s overpass data %s", useCount ? "Count":"Download", bbox)));
+			String msg  = String.format("%s overpass data %s", useCount ? "Count":"Download", bbox);
+			BufferedReader r;
+			File cacheFile = null;
+			if(OVERPASS_CACHE_FOLDER != null) {
+				String cid = request.getCacheId(bbox, diff);
+				cacheFile = new File(OVERPASS_CACHE_FOLDER, cid + ".osm.gz");
+				if(!cacheFile.exists()) {
+					r = OprUtil.downloadGzipReader(reqUrl, msg);
+					cacheFile.getParentFile().mkdirs();
+					OutputStreamWriter w = new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(cacheFile)));
+					IOUtils.copy(r, w);
+					r.close();
+					w.close();
+				}
+				GZIPInputStream gzis = new GZIPInputStream(new FileInputStream(cacheFile));
+				r = new BufferedReader(new InputStreamReader(gzis));
+			} else {
+				r = OprUtil.downloadGzipReader(reqUrl, msg);
+			}
 			if (useCount) {
 				String c = r.readLine();
 				m.capture();
@@ -545,14 +581,22 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				}
 				return null;
 			} else {
-				OsmParser osmParser = new OsmParser(r);
-				m.capture();
-				
-				m = mPublish.start();
-				publish(osmParser);
-				m.capture();
-				r.close();
-				tm = System.currentTimeMillis() - tm + 1; 
+				try {
+					OsmParser osmParser = new OsmParser(r);
+					m.capture();
+
+					m = mPublish.start();
+					publish(osmParser);
+					m.capture();
+					r.close();
+					tm = System.currentTimeMillis() - tm + 1;
+				} catch(Exception e) {
+					if(cacheFile != null) {
+						r.close();
+						cacheFile.delete();
+					}
+					throw e;
+				}
 				return new TaskResult(String.format("Proccessed places %s: %d ms, %d places, %d places / sec",
 						bbox, tm, placeCounter, placeCounter * 1000 / tm), null);
 
