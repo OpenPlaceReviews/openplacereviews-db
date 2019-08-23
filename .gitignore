@@ -34,7 +34,6 @@ build/
 bin
 */build
 /local.properties
-blocks/
 .idea
 docker-compose.yml
 env.sh
