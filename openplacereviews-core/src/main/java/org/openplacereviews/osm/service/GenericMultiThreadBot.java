@@ -59,12 +59,6 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		this.botObject = botObject;
 	}
 	
-	@Override
-	public void updateConfig(OpObject config) {
-		this.botObject = config;
-	}
-	
-	
 	protected static class TaskResult { 
 		public TaskResult(String msg, Exception e) {
 			this.msg = msg;
@@ -175,6 +169,11 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 	}
 	
 	protected void initVars() {
+		OpObject nbot = blocksManager.getBlockchain().getObjectByName(botObject.getParentType(), botObject.getId());
+		if(nbot == null) {
+			throw new IllegalStateException("Can't retrieve bot object state");
+		}
+		botObject = nbot;
 		this.opType = botObject.getStringMap(F_BLOCKCHAIN_CONFIG).get(F_TYPE);
 		this.placesPerOperation = botObject.getField(placesPerOperation, F_BLOCKCHAIN_CONFIG,
 				F_PLACES_PER_OPERATION);
