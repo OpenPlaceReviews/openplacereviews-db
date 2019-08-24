@@ -24,28 +24,13 @@
       			"type" : ["node", "way"]
           },
           "hotel" : {
-      			"key" : "tourism",
+      			"key" : "amenity",
       			"values" : ["hotel","motel","hostel","apartment","guest_house"],
-            "type" : ["node", "way"]
+            	"type" : ["node", "way"]
           }
         }
       },
       "bot-state" : {
-        "osm-tags-example": {
-          "food" : {
-            "date": "",
-            "key" : "amenity",
-            "values" : ["cafe", "bar", "restaurant", "biergarten", "fast_food", "food_court", "ice-cream"],
-            "bbox": "",
-            "type" : ["node"] },
-          "hotel" : {
-            "date": "",
-            "key" : "tourism",
-            "values" : ["hotel", "motel", "hostel", "apartment", "guest_house"],
-            "bbox": "",
-            "type" : ["node"]
-          }
-        }
       }
     }]
   }
