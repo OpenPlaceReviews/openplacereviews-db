@@ -121,7 +121,7 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 			successfulResults.add(r);
 			LOGGER.info(msg);
 		}
-		if (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock && 
+		while (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock && 
 				blocksManager.getQueueCapacity() >= blockCapacity) {
 			Metric m = mBlock.start();
 			blocksManager.createBlock(blockCapacity);
