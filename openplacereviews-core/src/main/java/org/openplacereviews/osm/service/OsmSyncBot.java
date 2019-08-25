@@ -570,9 +570,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			} else {
 				r = downloadOverpass(msg);
 			}
+			m.capture();
 			if (useCount) {
 				String c = r.readLine();
-				m.capture();
 				Long cnt = c == null ? null : Long.parseLong(c);
 				r.close();
 				if (cnt != null && cnt < SPLIT_QUERY_LIMIT_PLACES) {
@@ -590,8 +590,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			} else {
 				try {
 					OsmParser osmParser = new OsmParser(r);
-					m.capture();
-
 					m = mPublish.start();
 					publish(osmParser);
 					m.capture();
