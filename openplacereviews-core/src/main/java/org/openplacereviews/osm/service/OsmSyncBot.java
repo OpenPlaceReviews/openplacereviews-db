@@ -69,6 +69,7 @@ import org.openplacereviews.osm.util.OprUtil;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
 import org.xmlpull.v1.XmlPullParserException;
 
 public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
@@ -104,6 +105,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	
 	private static final long OVERPASS_MAX_ADIFF_MS = 3 * 60 * 60 * 1000l;
 	private static final int OVERPASS_MIN_DELAY_MIN = 3;
+	private static final long DB_STALE_TIMEOUT_MS = 5000;
 
 	
 	@Value("${opendb.files-backup.overpass-cache}")
@@ -534,8 +536,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				} catch (IOException e) {
 					// repeat and continue split
 					splitReason = e.getMessage() + " (" + e.getClass() + ") ";
-				} catch (DBStaleException e) {
+				} catch (DBStaleException | DataAccessException e) {
 					// repeat because of db stale exception
+					Thread.sleep(DB_STALE_TIMEOUT_MS);
 					submitTask(null, this, futures);
 				}
 				if(res == null) {
