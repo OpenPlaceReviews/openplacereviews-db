@@ -24,7 +24,7 @@
       			"type" : ["node", "way"]
           },
           "hotel" : {
-      			"key" : "amenity",
+      			"key" : "tourism",
       			"values" : ["hotel","motel","hostel","apartment","guest_house"],
             	"type" : ["node", "way"]
           }
