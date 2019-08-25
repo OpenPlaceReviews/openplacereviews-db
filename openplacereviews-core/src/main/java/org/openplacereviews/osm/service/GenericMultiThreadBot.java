@@ -33,6 +33,7 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 
 	private static final Log LOGGER = LogFactory.getLog(GenericMultiThreadBot.class);
 	private static final long TIMEOUT_OVERPASS_HOURS = 4;
+	private static final long TIMEOUT_BLOCK_CREATION_MS = 15000;
 	public static final String F_BLOCKCHAIN_CONFIG = "blockchain-config";
 	public static final String F_PLACES_PER_OPERATION = "places_per_operation";
 	public static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
@@ -108,6 +109,11 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		return processed;
 	}
 	
+	protected void waitBlockCreation() throws InterruptedException {
+		while(blockCreateNeeded(3)) {
+			Thread.sleep(TIMEOUT_BLOCK_CREATION_MS);
+		}
+	}
 
 	private TaskResult waitFuture(int id, int overall,  Future<TaskResult> f, 
 			Deque<Future<TaskResult>> futures) throws Exception {
@@ -121,14 +127,18 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 			successfulResults.add(r);
 			LOGGER.info(msg);
 		}
-		while (blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock && 
-				blocksManager.getQueueCapacity() >= blockCapacity) {
+		while (blockCreateNeeded(1)) {
 			Metric m = mBlock.start();
 			blocksManager.createBlock(blockCapacity);
 			m.capture();
 		}
 		return r;
 		
+	}
+
+	private boolean blockCreateNeeded(int factor) {
+		return blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock * factor && 
+				blocksManager.getQueueCapacity() >= blockCapacity * factor;
 	}
 	
 	public OpOperation initOpOperation(String opType) {

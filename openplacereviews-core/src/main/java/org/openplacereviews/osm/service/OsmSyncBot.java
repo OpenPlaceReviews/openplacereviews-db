@@ -532,11 +532,12 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					}
 				}
 				try {
+					waitBlockCreation();
 					res = proc();
 				} catch (IOException e) {
 					// repeat and continue split
 					splitReason = e.getMessage() + " (" + e.getClass() + ") ";
-				} catch (DBStaleException | DataAccessException e) {
+				} catch (DBStaleException | DataAccessException | InterruptedException e) {
 					// repeat because of db stale exception
 					Thread.sleep(DB_STALE_TIMEOUT_MS);
 					submitTask(null, this, futures);
