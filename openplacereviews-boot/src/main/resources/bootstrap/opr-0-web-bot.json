@@ -16,7 +16,7 @@
         	"overpass_timestamp" : "http://builder.osmand.net:8083/api/timestamp",
         	"overpass": "http://builder.osmand.net:8083/api/interpreter"
       	},
-        "match-id" : "set:all(opr:place_loc(6, .lat, .lon), str:first_non_empty(.tags.amenity, .tags.leisure), opr:simple_name(.tags.name))",
+        "match-id" : "set:all(opr:place_loc(6, .lat, .lon), .osm_tag, .osm_value, opr:simple_name(.tags.name))",
         "osm-tags" : {
           "food" : {
       			"key" : "amenity",

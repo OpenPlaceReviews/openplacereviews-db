@@ -39,6 +39,8 @@ public class PlaceOpObjectHelper {
 	public static final String F_OLD_OSM_IDS = "old-osm-ids";
 	public static final String F_OSM = "osm";
 	public static final String F_TAGS = "tags";
+	public static final String F_OSM_TAG = "osm_tag";
+	public static final String F_OSM_VALUE = "osm_value";
 	public static final String F_VERSION = "version";
 	public static final String F_CHANGESET = "changeset";
 	public static final String F_TIMESTAMP = "timestamp";
@@ -54,11 +56,13 @@ public class PlaceOpObjectHelper {
 		return create;
 	}
 
-	public static TreeMap<String, Object> createOsmObject(Entity entity) {
+	public static TreeMap<String, Object> createOsmObject(String osmTag, Entity entity) {
 		TreeMap<String, Object> osmObject = new TreeMap<>();
 		osmObject.put(F_ID, entity.getId());
 		String te = EntityType.valueOf(entity).name().toLowerCase();
 		osmObject.put(F_TYPE, te);
+		osmObject.put(F_OSM_TAG, osmTag);
+		osmObject.put(F_OSM_VALUE, entity.getTags().get(osmTag));
 		osmObject.put(F_TAGS, entity.getTags());
 		LatLon l = entity.getLatLon();
 		osmObject.put(ATTR_LATITUDE, l.getLatitude());

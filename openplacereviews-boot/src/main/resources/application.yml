@@ -35,7 +35,8 @@ opendb:
       obj_grants: { "types" : ["sys.grant"], "keysize":2 }
       obj_system: { "types": ["sys.validate", "sys.operation", "sys.role"], "keysize":1 }
       obj_opr_places: { "types": ["opr.place"], "keysize":2 , "columns": [
-        {"name": "osmid", "field": ["source.osm.id"], "sqlmapping":"array", "sqltype": "bigint[]", "index":"GIN"}]
+        {"name": "osmid", "field": ["source.osm.id"], "sqlmapping":"array", 
+        "cache-runtime" : true, "cache-db" : true, "sqltype": "bigint[]", "index":"GIN"}]
       }
   files-backup:
     overpass-cache: ${OVERPASS_CACHE_DIR:overpass_cache}

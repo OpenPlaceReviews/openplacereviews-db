@@ -1,14 +1,7 @@
 package org.openplacereviews.osm.service;
 
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_BOT;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.createOsmObject;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateEditDeleteOsmIdsForPlace;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateEditOpForBotObject;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateEditValuesForPlace;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateNewOprObject;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.parseSyncRequest;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -406,9 +399,10 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		public Long osmId; 
 		public String type;
 		public Entity e;
+		public String osmKey;
 	}
 	
-	public PlaceObject getObjectByOsmEntity(Entity e) throws InterruptedException, DBStaleException {
+	public PlaceObject getObjectByOsmEntity(String key, Entity e) throws InterruptedException, DBStaleException {
 		Long osmId = e.getId();
 		String type = EntityType.valueOf(e).getName();
 		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
@@ -417,7 +411,8 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			List<Map<String, Object>> osmObjs = o.getField(null, F_SOURCE, F_OSM);
 			for (int i = 0; i < osmObjs.size(); i++) {
 				Map<String, Object> osm  = osmObjs.get(i);
-				if (osmId.equals(osm.get(OpOperation.F_ID)) && type.equals(osm.get(OpOperation.F_TYPE))) {
+				if (osmId.equals(osm.get(OpOperation.F_ID)) && type.equals(osm.get(OpOperation.F_TYPE))
+						&& key.equals(osm.get(F_OSM_TAG))) {
 					PlaceObject po = new PlaceObject();
 					po.e = e;
 					po.obj = o;
@@ -425,6 +420,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					po.osm = osm;
 					po.type = type;
 					po.osmId = osmId;
+					po.osmKey = key;
 					return po;
 				}
 			}
@@ -595,7 +591,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				try {
 					OsmParser osmParser = new OsmParser(r);
 					m = mPublish.start();
-					publish(osmParser);
+					publish(request.key, osmParser);
 					m.capture();
 					r.close();
 					tm = System.currentTimeMillis() - tm + 1;
@@ -619,14 +615,15 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			return r;
 		}
 
-		private void publish(OsmParser osmParser) throws FailedVerificationException, IOException, XmlPullParserException, InterruptedException {
+		private void publish(String key, OsmParser osmParser) throws FailedVerificationException, IOException, XmlPullParserException, InterruptedException {
 			while (osmParser.hasNext()) {
-				OpOperation opOperation = initOpOperation(opType);
+				OpOperation addOp = initOpOperation(opType);
+				OpOperation editOp = initOpOperation(opType);
 				if (!diff) {
 					List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
 					for (Entity e : newEntities) {
 						Metric m = mProcEntity.start();
-						processEntity(opOperation, e);
+						processEntity(key, addOp, editOp, e);
 						placeCounter++;
 						m.capture();
 					}
@@ -634,42 +631,41 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					List<DiffEntity> places = osmParser.parseNextCoordinatePlaces(placesPerOperation, DiffEntity.class);
 					for (DiffEntity e : places) {
 						Metric m = mProcDiff.start();
-						processDiffEntity(opOperation, e);
+						processDiffEntity(key, addOp, editOp, e);
 						placeCounter++;
 						m.capture();
 					}
 				}
-				if (opOperation.hasCreated() || opOperation.hasEdited()) {
+				if (addOp.hasCreated()) {
 					Metric m = mOpAdd.start();
-					generateHashAndSignAndAdd(opOperation);
+					generateHashAndSignAndAdd(addOp);
+					m.capture();
+				}
+				if(editOp.hasEdited()) {
+					Metric m = mOpAdd.start();
+					generateHashAndSignAndAdd(editOp);
 					m.capture();
 				}
 			}
 		}
 
-		private void processEntity(OpOperation opOperation, Entity obj) throws FailedVerificationException, InterruptedException {
+		private void processEntity(String key, OpOperation addOp, OpOperation editOp, Entity obj) throws FailedVerificationException, InterruptedException {
 			try {
-				PlaceObject po = getObjectByOsmEntity(obj);
+				PlaceObject po = getObjectByOsmEntity(key, obj);
 				if (po == null) {
-					OpObject newObj = generateNewOprObject(obj, createOsmObject(obj));
-					opOperation.addCreated(newObj);
+					OpObject newObj = generateNewOprObject(obj, createOsmObject(key, obj));
+					addOp.addCreated(newObj);
 				} else {
-					TreeMap<String, Object> osmObj = createOsmObject(obj);
+					TreeMap<String, Object> osmObj = createOsmObject(key, obj);
 					String matchId = generateMatchIdFromOpObject(osmObj);
 					String oldMatchId = generateMatchIdFromOpObject(po.osm);
 					if (!Objects.equals(matchId, oldMatchId)) {
 						OpObject newObj = generateNewOprObject(obj, osmObj);
-						opOperation.addCreated(newObj);
+						addOp.addCreated(newObj);
 						// separate operation to delete old object
-						OpOperation d = initOpOperation(opType);
-						generateEditDeleteOsmIdsForPlace(d, po);
-						generateHashAndSignAndAdd(d);
+						generateEditDeleteOsmIdsForPlace(editOp, po);
 					} else {
-						OpOperation d = initOpOperation(opType);
-						generateEditValuesForPlace(d, po, osmObj);
-						if (d.hasEdited()) {
-							generateHashAndSignAndAdd(d);
-						}
+						generateEditValuesForPlace(editOp, po, osmObj);
 					}
 				}
 			} catch (RuntimeException e) {
@@ -681,21 +677,19 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			}
 		}
 
-		private void processDiffEntity(OpOperation opOperation, DiffEntity diffEntity) throws FailedVerificationException, InterruptedException {
+		private void processDiffEntity(String key, OpOperation addOp, OpOperation editOp, DiffEntity diffEntity) throws FailedVerificationException, InterruptedException {
 			if (DiffEntity.DiffEntityType.DELETE == diffEntity.getType()) {
-				PlaceObject pdo = getObjectByOsmEntity(diffEntity.getOldEntity());
+				PlaceObject pdo = getObjectByOsmEntity(key, diffEntity.getOldEntity());
 				if(pdo != null) {
-					OpOperation d = initOpOperation(opType);
-					generateEditDeleteOsmIdsForPlace(d, pdo);
-					generateHashAndSignAndAdd(d);
+					generateEditDeleteOsmIdsForPlace(editOp, pdo);
 				} else {
 					logError(String.format("Couldn't find object %d: %s", diffEntity.getOldEntity().getId(), diffEntity.getOldEntity().getTags()));
 					
 				}
 			} else if (DiffEntity.DiffEntityType.CREATE == diffEntity.getType()) {
-				processEntity(opOperation, diffEntity.getNewEntity());
+				processEntity(key, addOp, editOp, diffEntity.getNewEntity());
 			} else if (DiffEntity.DiffEntityType.MODIFY == diffEntity.getType()) {
-				PlaceObject prevObject = getObjectByOsmEntity(diffEntity.getOldEntity());
+				PlaceObject prevObject = getObjectByOsmEntity(key, diffEntity.getOldEntity());
 				if(prevObject == null) {
 					logError( String.format("Couldn't find object %d: %s", diffEntity.getOldEntity().getId(), diffEntity.getOldEntity().getTags()));
 				} 
@@ -704,7 +698,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 							String.format("Diff entity id should be equal %d != %d", diffEntity.getOldEntity().getId(), diffEntity.getNewEntity().getId()));
 				}
 				// not necessary to compare previous version 
-				processEntity(opOperation, diffEntity.getNewEntity());
+				processEntity(key, addOp, editOp, diffEntity.getNewEntity());
 			}
 		}
 	}
