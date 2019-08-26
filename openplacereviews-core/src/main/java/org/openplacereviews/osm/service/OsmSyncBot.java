@@ -591,10 +591,16 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				try {
 					OsmParser osmParser = new OsmParser(r);
 					m = mPublish.start();
-					publish(request.key, osmParser);
+					List<OpOperation> opsToAdd = publish(request.key, osmParser);
 					m.capture();
 					r.close();
 					tm = System.currentTimeMillis() - tm + 1;
+					for(OpOperation o : opsToAdd) {
+						waitBlockCreation();
+						m = mOpAdd.start();
+						generateHashAndSignAndAdd(o);
+						m.capture();
+					}
 				} catch (IOException e) {
 					if (cacheFile != null) {
 						r.close();
@@ -615,7 +621,8 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			return r;
 		}
 
-		private void publish(String key, OsmParser osmParser) throws FailedVerificationException, IOException, XmlPullParserException, InterruptedException {
+		private List<OpOperation> publish(String key, OsmParser osmParser) throws FailedVerificationException, IOException, XmlPullParserException, InterruptedException {
+			List<OpOperation> opsToAdd = new ArrayList<OpOperation>();
 			while (osmParser.hasNext()) {
 				OpOperation addOp = initOpOperation(opType);
 				OpOperation editOp = initOpOperation(opType);
@@ -637,16 +644,13 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					}
 				}
 				if (addOp.hasCreated()) {
-					Metric m = mOpAdd.start();
-					generateHashAndSignAndAdd(addOp);
-					m.capture();
+					opsToAdd.add(addOp);
 				}
 				if(editOp.hasEdited()) {
-					Metric m = mOpAdd.start();
-					generateHashAndSignAndAdd(editOp);
-					m.capture();
+					opsToAdd.add(editOp);
 				}
 			}
+			return opsToAdd;
 		}
 
 		private void processEntity(String key, OpOperation addOp, OpOperation editOp, Entity obj) throws FailedVerificationException, InterruptedException {
