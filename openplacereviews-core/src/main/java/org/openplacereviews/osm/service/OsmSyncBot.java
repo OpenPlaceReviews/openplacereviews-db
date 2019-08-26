@@ -615,7 +615,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			List<OpOperation> opsToAdd = new ArrayList<OpOperation>();
 			while (osmParser.hasNext()) {
 				OpOperation addOp = initOpOperation(opType);
-				OpOperation editOp = initOpOperation(opType);
+				OpOperation editOp = addOp;
 				if (!diff) {
 					List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
 					for (Entity e : newEntities) {
@@ -633,12 +633,12 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 						m.capture();
 					}
 				}
-				if (addOp.hasCreated()) {
+				if (addOp.hasCreated() || addOp.hasEdited()) {
 					opsToAdd.add(addOp);
 				}
-				if(editOp.hasEdited()) {
-					opsToAdd.add(editOp);
-				}
+//				if(editOp.hasCreated() || editOp.hasEdited()) {
+//					opsToAdd.add(editOp);
+//				}
 			}
 			return opsToAdd;
 		}
