@@ -18,7 +18,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Deque;
@@ -160,7 +159,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	
 
 	public String generateRequestString(String overpassURL,
-			Collection<SyncRequest> reqs, QuadRect bbox, boolean diff, boolean cnt) throws UnsupportedEncodingException {
+			SyncRequest req, QuadRect bbox, boolean diff, boolean cnt) throws UnsupportedEncodingException {
 		// check if works 'out meta; >; out geom;' vs 'out geom meta;';
 		String queryType = diff ? "diff" : "date";
 		String sizeLimit = "[timeout:1800]"; // [maxsize:8000000000]
@@ -170,35 +169,26 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		}
 		
 		StringBuilder ts = new StringBuilder();
-		String timestamp = "";
 		Set<String> changedTypes = new TreeSet<>();
 		String bboxs = "";
 		if (bbox != null && (bbox.width() < 360 || bbox.height() < 180)) {
 			bboxs = String.format("(%f,%f,%f,%f)", bbox.minY, bbox.minX, bbox.maxY, bbox.maxX);
 		}
-		for (SyncRequest req : reqs) {
-			List<String> tps = diff ? req.type: req.ntype;
-			List<String> values = diff ? req.values: req.nvalues;
-			String setName = "";
-			// retrieve new data on state date
-			String ntimestamp = "\"" + req.state.date + "\"";
-			if(diff) {
-				ntimestamp = "\"" + req.state.date + "\",\"" + req.date + "\"";
-				setName = ".a";
-				changedTypes.addAll(tps);
-			}
-			if (timestamp.length() == 0) {
-				timestamp = ntimestamp;
-			} else if(!OUtils.equals(ntimestamp, timestamp)) {
-				throw new IllegalStateException(String.format("Timestamp %s != %s", ntimestamp, timestamp));
-			}
-			
-			for (String type : tps) {
-				for (String vl : values) {
-					String tagFilter = "[" + req.key + "=" + vl + "]";
-					String reqFilter = type + setName + tagFilter + bboxs + ";";
-					ts.append(reqFilter);
-				}
+		List<String> tps = diff ? req.type : req.ntype;
+		List<String> values = diff ? req.values : req.nvalues;
+		String setName = "";
+		// retrieve new data on state date
+		String timestamp = "\"" + req.state.date + "\"";
+		if (diff) {
+			timestamp = "\"" + req.state.date + "\",\"" + req.date + "\"";
+			setName = ".a";
+			changedTypes.addAll(tps);
+		}
+		for (String type : tps) {
+			for (String vl : values) {
+				String tagFilter = "[" + req.key + "=" + vl + "]";
+				String reqFilter = type + setName + tagFilter + bboxs + ";";
+				ts.append(reqFilter);
 			}
 		}
 		StringBuilder changedS = new StringBuilder();
@@ -505,7 +495,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					Publisher task = new Publisher(futures, overpassURL, request, nqr, diff)
 							.setUseCount(useCount)
 							.setLevelString(String.format("%s(%d/%d)", levelString, i, sx * sy))
-							.setLevel(level +1);
+							.setLevel(level + 1);
 					submitTask(null, task, futures);
 				}
 			}
@@ -616,7 +606,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 
 		private BufferedReader downloadOverpass(String msg) throws UnsupportedEncodingException, IOException {
 			BufferedReader r;
-			String reqUrl = generateRequestString(overpassURL, Collections.singletonList(request), bbox, diff, useCount);
+			String reqUrl = generateRequestString(overpassURL, request, bbox, diff, useCount);
 			r = OprUtil.downloadGzipReader(reqUrl, msg);
 			return r;
 		}
