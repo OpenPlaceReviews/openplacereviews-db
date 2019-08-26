@@ -96,7 +96,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		TIMESTAMP_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}
 	
-	private static final long OVERPASS_MAX_ADIFF_MS = 3 * 60 * 60 * 1000l;
+	private static final long OVERPASS_MAX_ADIFF_MS = 1 * 60 * 60 * 1000l;
 	private static final int OVERPASS_MIN_DELAY_MIN = 3;
 	private static final long DB_STALE_TIMEOUT_MS = 5000;
 
