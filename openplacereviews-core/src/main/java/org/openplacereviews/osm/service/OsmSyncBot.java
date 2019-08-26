@@ -654,7 +654,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					String matchId = generateMatchIdFromOpObject(osmObj);
 					String oldMatchId = generateMatchIdFromOpObject(po.osm);
 					if (!Objects.equals(matchId, oldMatchId)) {
-						LOGGER.info(String.format("Match id has chnaged [%s] != [%s]: %s", oldMatchId, matchId,
+						LOGGER.info(String.format("Match id has changed [%s] != [%s]: %s", oldMatchId, matchId,
 								osmObj));
 						OpObject newObj = generateNewOprObject(obj, osmObj);
 						addOp.addCreated(newObj);
