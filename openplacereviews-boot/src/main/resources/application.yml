@@ -41,11 +41,6 @@ opendb:
   files-backup:
     overpass-cache: ${OVERPASS_CACHE_DIR:overpass_cache}
     directory: ${FILE_BLOCKS_DIR:blocks}
-  block-create:
-    minSecondsInterval: 120
-    minQueueSize: 10
-    maxSecondsInterval: 3600
-    minCapacity: 0.7
 
 management:
   endpoints:
