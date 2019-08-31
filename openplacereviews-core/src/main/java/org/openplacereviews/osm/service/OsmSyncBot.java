@@ -40,6 +40,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockChain;
+import org.openplacereviews.opendb.ops.OpIndexColumn;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.ops.PerformanceMetrics;
@@ -396,7 +397,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		Long osmId = e.getId();
 		String type = EntityType.valueOf(e).getName();
 		OpBlockChain.ObjectsSearchRequest objectsSearchRequest = new OpBlockChain.ObjectsSearchRequest();
-		List<OpObject> r = blocksManager.getObjectsByIndex(opType, INDEX_OSMID, objectsSearchRequest, osmId);
+		OpIndexColumn ind = blocksManager.getIndex(opType, INDEX_OSMID);
+		blocksManager.getBlockchain().fetchObjectsByIndex(opType, ind, objectsSearchRequest, osmId);
+		List<OpObject> r = objectsSearchRequest.result;
 		for(OpObject o : r) {
 			List<Map<String, Object>> osmObjs = o.getField(null, F_SOURCE, F_OSM);
 			for (int i = 0; i < osmObjs.size(); i++) {

@@ -1,6 +1,8 @@
 package org.openplacereviews.osm.parser;
 
 import com.google.openlocationcode.OpenLocationCode;
+import com.google.openlocationcode.OpenLocationCode.CodeArea;
+
 import org.apache.commons.lang3.RandomStringUtils;
 import org.openplacereviews.osm.model.LatLon;
 
@@ -24,8 +26,7 @@ public class OsmLocationTool {
 	 * @return
 	 */
 	public static String encode(double latitude, double longitude) {
-		String code = OpenLocationCode.encode(latitude, longitude, CODE_LENGTH);
-		return code.substring(0, CODE_LENGTH);
+		return encode(CODE_LENGTH, latitude, longitude);
 	}
 
 	public static String encode( int codeLength, double latitude, double longitude) {
@@ -33,13 +34,37 @@ public class OsmLocationTool {
 		return code.substring(0, codeLength);
 	}
 
+	
+	public static void main(String[] args) {
+		System.out.println(toString("8FW4V8"));
+		System.out.println(toString("9C3XGV"));
+		System.out.println(toString("87G8P2"));
+		String s = encode(4, -179.5, 0.5);
+		String alphabet = OpenLocationCode.CODE_ALPHABET;
+		
+		System.out.println(s + " " + toString("789C") + " " + OpenLocationCode.CODE_ALPHABET.length());
+	}
+
+	private static String toString(String s) {
+		CodeArea c = decode(s);
+		return String.format("(lat:%f,lon:%f) [w:%f, h:%f)", 
+				c.getCenterLatitude(), c.getCenterLongitude(),
+				c.getLongitudeWidth(), c.getLatitudeHeight());
+	}
+	
 	/**
 	 * Decode input in {@link CodeArea} object.
 	 * @param code
 	 * @return
 	 */
 	public static CodeArea decode(String code) {
-		return OpenLocationCode.decode(code + "00+");
+		while(code.length() < 8) {
+			code += "00";
+		}
+		if(code.length() < 9) {
+			code += "+";
+		}
+		return OpenLocationCode.decode(code);
 	}
 
 	/**
