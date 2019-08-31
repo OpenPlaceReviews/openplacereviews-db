@@ -35,18 +35,8 @@ public class OsmLocationTool {
 	}
 
 	
-	public static void main(String[] args) {
-		System.out.println(toString("8FW4V8"));
-		System.out.println(toString("9C3XGV"));
-		System.out.println(toString("87G8P2"));
-		String s = encode(4, -179.5, 0.5);
-		String alphabet = OpenLocationCode.CODE_ALPHABET;
-		
-		System.out.println(s + " " + toString("789C") + " " + OpenLocationCode.CODE_ALPHABET.length());
-	}
 
-	private static String toString(String s) {
-		CodeArea c = decode(s);
+	public static String toString(CodeArea c) {
 		return String.format("(lat:%f,lon:%f) [w:%f, h:%f)", 
 				c.getCenterLatitude(), c.getCenterLongitude(),
 				c.getLongitudeWidth(), c.getLatitudeHeight());
