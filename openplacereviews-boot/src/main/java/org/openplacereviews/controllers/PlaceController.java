@@ -81,7 +81,7 @@ public class PlaceController {
 	}
 	
 	@GetMapping(path = "/geojson-by-id")
-	public ResponseEntity<String> serverLogin(HttpSession session, 
+	public ResponseEntity<String> tileData(HttpSession session, 
 			@RequestParam(required = false) String tileId) {
 		OpBlockChain blc = blocksManager.getBlockchain();
 		ObjectsSearchRequest r = new ObjectsSearchRequest();

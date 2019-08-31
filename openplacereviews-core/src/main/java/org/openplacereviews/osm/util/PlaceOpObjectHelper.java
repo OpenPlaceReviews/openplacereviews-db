@@ -55,6 +55,24 @@ public class PlaceOpObjectHelper {
 		create.putObjectValue(F_SOURCE, source);
 		return create;
 	}
+	
+	public static OpOperation generateSetOperation(OpOperation op, List<String> id, 
+			String field, String oldValue, String newValue) {
+		OpObject editObject = new OpObject();
+		editObject.putObjectValue(F_ID, id);
+		Map<String, Object> changeTagMap = new TreeMap<>();
+		Map<String, Object> currentTagMap = new TreeMap<>();
+		changeTagMap.put(field, set(newValue));
+		if(oldValue != null) {
+			currentTagMap.put(field, oldValue);
+		}
+		if (!changeTagMap.isEmpty()) {
+			editObject.putObjectValue(F_CHANGE, changeTagMap);
+			editObject.putObjectValue(F_CURRENT, currentTagMap);
+			op.addEdited(editObject);
+		}
+		return op;
+	}
 
 	public static TreeMap<String, Object> createOsmObject(String osmTag, Entity entity) {
 		TreeMap<String, Object> osmObject = new TreeMap<>();

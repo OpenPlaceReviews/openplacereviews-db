@@ -1,15 +1,39 @@
 [
 	{
-		"type" : "sys.operation",
-		"create": [{
-			"id" : ["opr.place"],
-			"comment" : "Operation to hold osm places",
-			"version" : 0,
-			"fields": {
-				"id": "openplacereview id",
-				"osmId": "id of osm place",
-				"tags": "place tags"
+		"type": "sys.operation",
+		"create": [
+			{
+				"id": [
+					"opr.place"
+				],
+				"comment": "Operation to hold osm places",
+				"version": 0,
+				"fields": {
+					"id": "openplacereview id",
+					"osmId": "id of osm place",
+					"tags": "place tags"
+				}
 			}
-		}]
+		]
+	},
+	{
+		"type": "sys.bot",
+		"create": [
+			{
+				"id": [
+					"opr-type"
+				],
+				"api": "org.openplacereviews.osm.service.PlaceTypeBot",
+				"threads": 1,
+				"blockchain-config": {
+					"places_per_operation": 250,
+					"operations_per_block": 16,
+					"type": "opr.place"
+				},
+				"version": 1,
+				"config": {},
+				"bot-state": {}
+			}
+		]
 	}
 ]

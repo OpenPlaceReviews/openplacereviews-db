@@ -39,6 +39,13 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 	public static final String F_OPERATIONS_PER_BLOCK = "operations_per_block";
 	public static final String F_OPERATIONS_MIN_BLOCK_CAPACITY = "min_block_capacity";
 	public static final String F_THREADS = "threads";
+	
+	public static final String F_CONFIG = "config";
+	public static final String F_BOT_STATE = "bot-state";
+	public static final String F_OSM_TAGS = "osm-tags";
+	public static final String F_DATE = "date";
+	
+	
 	private static final PerformanceMetric mBlock = PerformanceMetrics.i().getMetric("opr.osm-sync.block");
 	
 	private List<TaskResult> successfulResults = new ArrayList<>();
@@ -136,7 +143,20 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		
 	}
 
-	private boolean blockCreateNeeded(int factor) {
+	public OpOperation addOpIfNeeded(OpOperation op, 
+			boolean force) throws FailedVerificationException {
+		int sz = (int) (force ? 0 : placesPerOperation - 1);
+		if(op.getEdited().size() > sz || 
+				op.getCreated().size() > sz || op.getDeleted().size() > sz) {
+			generateHashAndSignAndAdd(op);
+			op = initOpOperation(op.getType());
+			if(blockCreateNeeded(1)) {
+				blocksManager.createBlock(blockCapacity);
+			}
+		}
+		return op;
+	}
+	protected boolean blockCreateNeeded(int factor) {
 		return blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock * factor && 
 				blocksManager.getQueueCapacity() >= blockCapacity * factor;
 	}

@@ -78,11 +78,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	public static final String INDEX_OSMID = "osmid";
 	public static final String F_MATCH_ID = "match-id";
 	
-	public static final String F_CONFIG = "config";
-	public static final String F_BOT_STATE = "bot-state";
-	public static final String F_OSM_TAGS = "osm-tags";
-	public static final String F_DATE = "date";
-	
 	public static final String F_URL = "url";
 	public static final String F_TIMESTAMP = "overpass_timestamp";
 	public static final String F_OVERPASS = "overpass";
