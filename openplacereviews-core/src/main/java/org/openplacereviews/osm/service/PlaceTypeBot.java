@@ -80,7 +80,7 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 		}
 		op = addOpIfNeeded(op, true);
 		String lastBlockRawHash = init.getLastBlockRawHash();
-		if(//changed > 0 && 
+		if(changed > 0 && 
 				!OUtils.equals(lastBlockRawHash, lastScannedBlockHash)) {
 			op = initOpOperation(botObject.getParentType());
 			PlaceOpObjectHelper.generateSetOperation(op, botObject.getId(), 
