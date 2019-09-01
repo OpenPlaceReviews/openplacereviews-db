@@ -35,7 +35,6 @@ public class OsmLocationTool {
 	}
 
 	
-
 	public static String toString(CodeArea c) {
 		return String.format("(lat:%f,lon:%f) [w:%f, h:%f)", 
 				c.getCenterLatitude(), c.getCenterLongitude(),

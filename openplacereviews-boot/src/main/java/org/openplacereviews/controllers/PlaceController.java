@@ -90,6 +90,9 @@ public class PlaceController {
 		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
 		for(OpObject o : r.result) {
 			List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
+			if(osmList.size() == 0) {
+				continue;
+			}
 			Map<String, Object> osm = osmList.get(0);
 			double lat = (double) osm.get("lat");
 			double lon = (double) osm.get("lon");
