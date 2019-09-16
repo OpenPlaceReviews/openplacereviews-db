@@ -1,12 +1,8 @@
 package org.openplacereviews.osm.service;
 
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -39,57 +35,69 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 	
 	@Override
 	public synchronized PlaceTypeBot call() throws Exception {
+		saveStartBotProcess("RUNNING");
+		isRunning = true;
 		super.initVars();
-		OpBlockChain blc = blocksManager.getBlockchain();
-		OpBlockChain init = blc;
-		totalCnt = blc.countAllObjects("opr.place");
-		progress = 0;
-		changed = 0;
-		String lastScannedBlockHash = botObject.getField(null, F_BOT_STATE, F_BLOCK_HASH);
-		LOGGER.info(
-				String.format("Synchronization of 'placetype' has started from block %s. Total %d places.", lastScannedBlockHash, totalCnt));
-		OpOperation op = initOpOperation("opr.place");
-		Set<CompoundKey> keys = new HashSet<CompoundKey>();
-		boolean blockExist = blc.getBlockHeaderByRawHash(wrapNull(lastScannedBlockHash)) != null;
-		while(blc != null && !blc.isNullBlock()) {
-			Iterator<Entry<CompoundKey, OpObject>> it = blc.getRawSuperblockObjects("opr.place").iterator();
-			while(it.hasNext()) {
-				Entry<CompoundKey, OpObject> e = it.next();
-				if(!keys.add(e.getKey())) {
-					continue;
+		try {
+			OpBlockChain blc = blocksManager.getBlockchain();
+			OpBlockChain init = blc;
+			totalCnt = blc.countAllObjects("opr.place");
+			progress = 0;
+			changed = 0;
+			String lastScannedBlockHash = botObject.getField(null, F_BOT_STATE, F_BLOCK_HASH);
+			LOGGER.info(
+					String.format("Synchronization of 'placetype' has started from block %s. Total %d places.", lastScannedBlockHash, totalCnt));
+			OpOperation op = initOpOperation("opr.place");
+			Set<CompoundKey> keys = new HashSet<CompoundKey>();
+			boolean blockExist = blc.getBlockHeaderByRawHash(wrapNull(lastScannedBlockHash)) != null;
+			while (blc != null && !blc.isNullBlock()) {
+				Iterator<Entry<CompoundKey, OpObject>> it = blc.getRawSuperblockObjects("opr.place").iterator();
+				while (it.hasNext()) {
+					Entry<CompoundKey, OpObject> e = it.next();
+					if (!keys.add(e.getKey())) {
+						continue;
+					}
+					progress++;
+					OpObject o = e.getValue();
+					String tp = o.getField(null, "placetype");
+					String ntp = evalPlaceType(o);
+					if (!OUtils.equals(wrapNull(ntp), wrapNull(tp))) {
+						PlaceOpObjectHelper.generateSetOperation(op, o.getId(), "placetype", tp, ntp);
+						op = addOpIfNeeded(op, false);
+						changed++;
+					}
+					if (progress % 5000 == 0) {
+						LOGGER.info(
+								String.format("Progress of 'placetype' %d / %d  (changed %d).",
+										progress, totalCnt, changed));
+					}
 				}
-				progress ++;
-				OpObject o = e.getValue();
-				String tp = o.getField(null, "placetype");
-				String ntp = evalPlaceType(o);
-				if(!OUtils.equals(wrapNull(ntp), wrapNull(tp))) {
-					PlaceOpObjectHelper.generateSetOperation(op, o.getId(), "placetype", tp, ntp);
-					op = addOpIfNeeded(op, false);
-					changed++;
-				}
-				if(progress % 5000 == 0) {
-					LOGGER.info(
-						String.format("Progress of 'placetype' %d / %d  (changed %d).", 
-								progress, totalCnt, changed));
+				blc = blc.getParent();
+				if (blockExist && blc.getBlockHeaderByRawHash(wrapNull(lastScannedBlockHash)) == null) {
+					break;
 				}
 			}
-			blc = blc.getParent();
-			if(blockExist && blc.getBlockHeaderByRawHash(wrapNull(lastScannedBlockHash)) == null) {
-				break;
+			op = addOpIfNeeded(op, true);
+			String lastBlockRawHash = init.getLastBlockRawHash();
+			if (changed > 0 &&
+					!OUtils.equals(lastBlockRawHash, lastScannedBlockHash)) {
+				op = initOpOperation(botObject.getParentType());
+				PlaceOpObjectHelper.generateSetOperation(op, botObject.getId(),
+						F_BOT_STATE + "." + F_BLOCK_HASH, lastScannedBlockHash, lastBlockRawHash);
+				addOpIfNeeded(op, true);
 			}
+			updateProcess("SUCCESS");
+			LOGGER.info(
+					String.format("Synchronization of 'placetype' has finished. Scanned %d, changed %d",
+							progress, changed));
+		} catch (Exception e) {
+			updateProcess( "FAILED");
+			LOGGER.info("Synchronization  of 'placetype' has failed: " + e.getMessage(), e);
+			throw e;
+		} finally {
+			isRunning = false;
+			super.shutdown();
 		}
-		op = addOpIfNeeded(op, true);
-		String lastBlockRawHash = init.getLastBlockRawHash();
-		if(changed > 0 && 
-				!OUtils.equals(lastBlockRawHash, lastScannedBlockHash)) {
-			op = initOpOperation(botObject.getParentType());
-			PlaceOpObjectHelper.generateSetOperation(op, botObject.getId(), 
-					F_BOT_STATE + "."+ F_BLOCK_HASH, lastScannedBlockHash, lastBlockRawHash);
-			addOpIfNeeded(op, true);
-		}
-		LOGGER.info(
-				String.format("Synchronization of 'placetype' has finished. Scanned %d, changed %d",
-						progress, changed));
 		return this;
 	}
 	

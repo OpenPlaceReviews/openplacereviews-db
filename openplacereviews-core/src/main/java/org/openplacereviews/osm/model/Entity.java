@@ -131,7 +131,7 @@ public abstract class Entity {
 	private final long id;
 	private boolean dataLoaded;
 	private int modify;
-	private int version;
+	private Integer version;
 	private double latitude;
 	private double longitude;
 	private EntityInfo entityInfo = null;
@@ -251,7 +251,7 @@ public abstract class Entity {
 		this.entityInfo = entityInfo;
 	}
 
-	public int getVersion() {
+	public Integer getVersion() {
 		return version;
 	}
 

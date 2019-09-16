@@ -1,47 +1,42 @@
 package org.openplacereviews.controllers;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.servlet.http.HttpSession;
-
-import org.openplacereviews.opendb.ops.OpBlockChain;
-import org.openplacereviews.opendb.ops.OpBlockChain.ObjectsSearchRequest;
-import org.openplacereviews.opendb.ops.OpIndexColumn;
-import org.openplacereviews.opendb.ops.OpObject;
-import org.openplacereviews.opendb.ops.de.CompoundKey;
-import org.openplacereviews.opendb.service.BlocksManager;
-import org.openplacereviews.opendb.service.DBSchemaManager;
-import org.openplacereviews.osm.parser.OsmLocationTool;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-
 import com.github.filosganga.geogson.gson.GeometryAdapterFactory;
-import com.github.filosganga.geogson.model.Feature;
-import com.github.filosganga.geogson.model.FeatureCollection;
-import com.github.filosganga.geogson.model.Point;
-import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMap.Builder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
-import com.google.openlocationcode.OpenLocationCode.CodeArea;
+import org.openplacereviews.db.service.OprPlaceManager;
+import org.openplacereviews.opendb.util.JsonFormatter;
+import org.openplacereviews.scheduled.OpenPlaceReviewsScheduledService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpSession;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.openplacereviews.db.OpenPlaceReviewsDbBoot.OPENDB_STORAGE_REPORTS_PREF;
 
 @Controller
 @RequestMapping("/api/places")
 public class PlaceController {
 
 	@Autowired
-	public BlocksManager blocksManager;
-	
+	public OprPlaceManager oprPlaceManager;
+
+	@Autowired
+	private JsonFormatter formatter;
+
+	@Autowired
+	private OpenPlaceReviewsScheduledService openPlaceReviewsScheduledService;
+
 	private Gson geoJson;
 	
 	public PlaceController() {
@@ -51,59 +46,63 @@ public class PlaceController {
 	
 	@GetMapping(path = "/geojson-ids")
 	public ResponseEntity<String> allIds(HttpSession session) {
-		OpBlockChain blc = blocksManager.getBlockchain();
-		ObjectsSearchRequest r = new ObjectsSearchRequest();
-		r.requestOnlyKeys = true;
-		blc.fetchAllObjects("opr.place", r);
-		List<CompoundKey> ks = r.keys;
-		Map<String, Integer> counts = new HashMap<>();
-		
-		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
-		for(CompoundKey c : ks) {
-			String areaCode = c.first.substring(0, 4);
-			Integer l = counts.get(areaCode);
-			if(l == null) {
-				l = 1;
-			} else {
-				l = l + 1;
-			}
-			counts.put(areaCode, l);
-		}
-		for(String areaCode: counts.keySet()) {
-			CodeArea ca = OsmLocationTool.decode(areaCode);
-			Point p = Point.from(ca.getCenterLongitude(), ca.getCenterLatitude());
-			Feature f = new Feature(p, ImmutableMap.of("name", new JsonPrimitive(counts.get(areaCode)),
-					"code", new JsonPrimitive(areaCode)), Optional.absent());
-			fc.features().add(f);
-		}
-		
-		return ResponseEntity.ok(geoJson.toJson(fc));
+		return ResponseEntity.ok(geoJson.toJson(oprPlaceManager.getAllIds()));
 	}
-	
+
+	@GetMapping(path = "/osm-objects")
+	public ResponseEntity<String> osmObjects(HttpSession session) {
+		return ResponseEntity.ok(formatter.fullObjectToJson(oprPlaceManager.getOsmObjects()));
+	}
+
+	private class ReportInfo {
+		public String fileName;
+		public String filePath;
+		public Long size;
+		public Long date;
+	}
+
+	@GetMapping(value = "/report")
+	@ResponseBody
+	public ResponseEntity<String> getReportFiles() throws IOException {
+		File folder = new File(OPENDB_STORAGE_REPORTS_PREF.get());
+		File[] listOfFiles = folder.listFiles();
+
+		List<ReportInfo> files = new ArrayList<>();
+		if (listOfFiles != null) {
+			for (File file : listOfFiles) {
+				ReportInfo reportInfo = new ReportInfo();
+				reportInfo.fileName = file.getName();
+				reportInfo.filePath = file.getPath();
+				reportInfo.size = file.length();
+				BasicFileAttributes attr = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
+				reportInfo.date = attr.lastModifiedTime().toMillis();
+				files.add(reportInfo);
+			}
+		}
+
+		return ResponseEntity.ok(formatter.fullObjectToJson(files));
+	}
+
+	@GetMapping(value = "/report/{filename}")
+	@ResponseBody
+	public FileSystemResource getGeoLocationReport(@PathVariable("filename") String fileName) {
+		File file = new File(OPENDB_STORAGE_REPORTS_PREF.get(), fileName);
+		return new FileSystemResource(file);
+	}
+
 	@GetMapping(path = "/geojson-by-id")
 	public ResponseEntity<String> tileData(HttpSession session, 
 			@RequestParam(required = false) String tileId) {
-		OpBlockChain blc = blocksManager.getBlockchain();
-		ObjectsSearchRequest r = new ObjectsSearchRequest();
-		OpIndexColumn ind = blocksManager.getIndex("opr.place", DBSchemaManager.INDEX_P[0]);
-		blc.fetchObjectsByIndex("opr.place", ind, r, tileId);
-		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
-		for(OpObject o : r.result) {
-			List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
-			if(osmList.size() == 0) {
-				continue;
-			}
-			Map<String, Object> osm = osmList.get(0);
-			double lat = (double) osm.get("lat");
-			double lon = (double) osm.get("lon");
-			Point p = Point.from(lat, lon);
-			Builder<String, JsonElement> bld = ImmutableMap.builder();
-			for(String k : osm.keySet()) {
-				bld.put(k, new JsonPrimitive(osm.get(k).toString()));
-			}
-			Feature f = new Feature(p, bld.build(), Optional.absent());
-			fc.features().add(f);
+		return ResponseEntity.ok(geoJson.toJson(oprPlaceManager.getIdsByTileId(tileId)));
+	}
+
+	@PutMapping(path = "/report/{filename}")
+	@ResponseBody
+	public ResponseEntity<String> generateReport(@PathVariable("filename") String fileName) throws ParserConfigurationException, TransformerException, IOException {
+		if (openPlaceReviewsScheduledService.generateFileReport(fileName)) {
+			return ResponseEntity.ok("Report was updated");
+		} else {
+			return ResponseEntity.ok("Error while report updating");
 		}
-		return ResponseEntity.ok(geoJson.toJson(fc));
 	}
 }

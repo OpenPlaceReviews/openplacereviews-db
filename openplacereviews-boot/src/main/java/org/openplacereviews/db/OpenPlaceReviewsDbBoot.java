@@ -2,6 +2,8 @@ package org.openplacereviews.db;
 
 import org.openplacereviews.opendb.OpenDBServer;
 import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.service.SettingsManager;
+import org.openplacereviews.scheduled.OpenPlaceReviewsScheduledService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -15,6 +17,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+
+import static org.openplacereviews.db.config.DefaultPreferences.OBJTABLE_OPR_PLACE;
+import static org.openplacereviews.db.config.DefaultPreferences.OPENDB_STORAGE_REPORTS;
+import static org.openplacereviews.db.config.DefaultPreferences.getDefaultOprPlacePreference;
 
 @SpringBootApplication
 @ComponentScan("org.openplacereviews")
@@ -25,6 +32,12 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 
 	@Autowired
 	public BlocksManager blocksManager;
+
+	@Autowired
+	public SettingsManager settingsManager;
+
+	@Autowired
+	private OpenPlaceReviewsScheduledService openPlaceReviewsScheduledService;
 	
 	@Value("${opendb.mgmt.user}")
 	public String opendbMgmtUser; 
@@ -37,6 +50,8 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 
 	public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
 		return cmd -> {
+			initPrefs();
+			openPlaceReviewsScheduledService.init();
 			super.commandLineRunner(ctx).run();
 		};
 	}
@@ -55,5 +70,13 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	@Override
 	public void run(ApplicationArguments args) {
 	}
+
+	private void initPrefs() {
+		OBJTABLE_OPR_PLACE_PREF = settingsManager.registerMapPreference(OBJTABLE_OPR_PLACE, getDefaultOprPlacePreference(), true, false);
+		OPENDB_STORAGE_REPORTS_PREF = settingsManager.registerStringPreference(OPENDB_STORAGE_REPORTS, "reports", false, false);
+	}
+
+	public static SettingsManager.CommonPreference<Map<String, Object>> OBJTABLE_OPR_PLACE_PREF;
+	public static SettingsManager.CommonPreference<String> OPENDB_STORAGE_REPORTS_PREF;
 
 }

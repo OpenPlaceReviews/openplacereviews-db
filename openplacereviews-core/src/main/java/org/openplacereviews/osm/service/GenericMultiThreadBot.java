@@ -1,8 +1,12 @@
 package org.openplacereviews.osm.service;
 
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
+import static org.openplacereviews.opendb.service.DBSchemaManager.BOT_STATS_TABLE;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -28,6 +32,10 @@ import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
+import org.springframework.jdbc.core.RowCallbackHandler;
 
 public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 
@@ -54,12 +62,16 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 	protected double blockCapacity = 0.8;
 	protected OpObject botObject;
 	protected String opType;
+	protected boolean isRunning;
 	
 	@Autowired
 	private BlocksManager blocksManager;
 	
 	@Autowired
 	private LogOperationService logSystem;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
 
 	private ThreadPoolExecutor service;
 
@@ -143,6 +155,34 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		
 	}
 
+	protected boolean saveStartBotProcess(String status) {
+		return jdbcTemplate.update("INSERT INTO " + BOT_STATS_TABLE + " (bot,start_date, status) VALUES (?,?,?)",
+				botObject.getId().get(0), new Date(), status) != 0;
+	}
+
+	protected boolean updateProcess(String status) {
+		Integer lastBotState = getLastBotProcessId();
+		if (lastBotState != null) {
+			return jdbcTemplate.update("UPDATE " + BOT_STATS_TABLE + " set end_date = ?, total = ?, processed = ?, status = ? WHERE id = ?",
+					new Date(), total(), progress(), status, lastBotState) != 0;
+		}
+
+		return false;
+	}
+
+	protected Integer getLastBotProcessId() {
+		return jdbcTemplate.query("SELECT id FROM " + BOT_STATS_TABLE + " WHERE bot = ? ORDER BY id DESC LIMIT 1", new ResultSetExtractor<Integer>() {
+			@Override
+			public Integer extractData(ResultSet resultSet) throws SQLException, DataAccessException {
+				if (resultSet.next()) {
+					return resultSet.getInt(1);
+				}
+				return null;
+			}
+		}, botObject.getId().get(0)
+		);
+	}
+
 	public OpOperation addOpIfNeeded(OpOperation op, 
 			boolean force) throws FailedVerificationException {
 		int sz = (int) (force ? 0 : placesPerOperation - 1);
@@ -204,6 +244,11 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 	public int progress() {
 		return 1 + (service == null ? 1 : (int) service.getCompletedTaskCount());
 	}
+
+	@Override
+	public boolean isRunning() {
+		return isRunning;
+	}
 	
 	public TaskResult errorResult(String msg, Exception e) {
 		logSystem.logError(botObject, ErrorType.BOT_PROCESSING_ERROR, getTaskName() + " failed: " + e.getMessage(), e);
@@ -245,8 +290,10 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 	@Override
 	public boolean interrupt() {
 		if(this.service != null) {
+			updateProcess("INTERRUPTED");
 			this.service.shutdownNow();
 			this.service = null;
+			this.isRunning = false;
 			return true;
 		}
 		return false;
