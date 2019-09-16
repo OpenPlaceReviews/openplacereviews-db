@@ -12,8 +12,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-import static com.google.openlocationcode.OpenLocationCode.CodeArea;
-
 public class OsmLocationTool {
 	private static final int CODE_LENGTH = 6;
 

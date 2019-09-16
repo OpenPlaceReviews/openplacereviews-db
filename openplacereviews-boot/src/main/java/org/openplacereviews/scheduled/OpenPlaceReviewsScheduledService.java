@@ -6,7 +6,10 @@ import com.google.gson.GsonBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.db.service.OprPlaceManager;
+import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.scheduled.OpenDBScheduledServices;
+import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.service.BotManager;
 import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.model.EntityInfo;
 import org.openplacereviews.osm.model.Node;
@@ -39,8 +42,8 @@ import static org.openplacereviews.osm.model.Entity.*;
 import static org.openplacereviews.osm.model.EntityInfo.*;
 import static org.openplacereviews.osm.model.Way.ATTR_ND;
 
-@Component
 @Primary
+@Component
 public class OpenPlaceReviewsScheduledService extends OpenDBScheduledServices {
 
 	private static final Log LOGGER = LogFactory.getLog(OpenPlaceReviewsScheduledService.class);
@@ -51,8 +54,15 @@ public class OpenPlaceReviewsScheduledService extends OpenDBScheduledServices {
 	@Autowired
 	private OprPlaceManager oprPlaceManager;
 
+	@Autowired
+	private BlocksManager blocksManager;
+
+	@Autowired
+	private BotManager botManager;
+
 	private File mainDirectory;
 	private boolean enabled = false;
+	private long previousBotsCheck = 0;
 
 	private Gson geoJson;
 
@@ -90,6 +100,18 @@ public class OpenPlaceReviewsScheduledService extends OpenDBScheduledServices {
 		}
 	}
 
+	@Scheduled(fixedRate = BLOCK_CREATION_PULSE_INTERVAL_SECONDS * SECOND, initialDelay = MINUTE)
+	public void runBots() {
+		long now = System.currentTimeMillis();
+		if (blocksManager.getBlockchain().getStatus() == OpBlockChain.UNLOCKED && blocksManager.isBlockCreationOn()
+				&& (now - previousBotsCheck) >= getBotsMinInterval()) {
+			previousBotsCheck = now;
+			for (BotManager.BotInfo bi : botManager.getBots().values()) {
+				botManager.startBot(bi.getId());
+			}
+		}
+	}
+
 	@Scheduled(fixedRate = DAY, initialDelay = MINUTE)
 	public void generateDailyGeoJsonReport() throws IOException {
 		if (enabled) {
@@ -117,6 +139,8 @@ public class OpenPlaceReviewsScheduledService extends OpenDBScheduledServices {
 			LOGGER.info("Generating .osm Report is finished");
 		}
 	}
+
+
 
 	private void generateOsmXmlReport(Collection<Entity> entityList) throws ParserConfigurationException, TransformerException {
 		DocumentBuilderFactory documentFactory = DocumentBuilderFactory.newInstance();

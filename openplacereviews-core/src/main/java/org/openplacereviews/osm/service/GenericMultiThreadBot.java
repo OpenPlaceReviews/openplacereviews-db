@@ -1,7 +1,23 @@
 package org.openplacereviews.osm.service;
 
-import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
-import static org.openplacereviews.opendb.service.DBSchemaManager.BOT_STATS_TABLE;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.openplacereviews.opendb.ops.OpBlockchainRules.ErrorType;
+import org.openplacereviews.opendb.ops.OpObject;
+import org.openplacereviews.opendb.ops.OpOperation;
+import org.openplacereviews.opendb.ops.PerformanceMetrics;
+import org.openplacereviews.opendb.ops.PerformanceMetrics.Metric;
+import org.openplacereviews.opendb.ops.PerformanceMetrics.PerformanceMetric;
+import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.service.IOpenDBBot;
+import org.openplacereviews.opendb.service.LogOperationService;
+import org.openplacereviews.opendb.util.JsonFormatter;
+import org.openplacereviews.opendb.util.exception.FailedVerificationException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -9,33 +25,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Deque;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.openplacereviews.opendb.ops.OpBlockchainRules.ErrorType;
-import org.openplacereviews.opendb.ops.PerformanceMetrics.Metric;
-import org.openplacereviews.opendb.ops.PerformanceMetrics.PerformanceMetric;
-import org.openplacereviews.opendb.ops.OpObject;
-import org.openplacereviews.opendb.ops.OpOperation;
-import org.openplacereviews.opendb.ops.PerformanceMetrics;
-import org.openplacereviews.opendb.service.BlocksManager;
-import org.openplacereviews.opendb.service.IOpenDBBot;
-import org.openplacereviews.opendb.service.LogOperationService;
-import org.openplacereviews.opendb.util.JsonFormatter;
-import org.openplacereviews.opendb.util.exception.FailedVerificationException;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.ResultSetExtractor;
-import org.springframework.jdbc.core.RowCallbackHandler;
+import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
+import static org.openplacereviews.opendb.service.DBSchemaManager.BOT_STATS_TABLE;
 
 public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 
