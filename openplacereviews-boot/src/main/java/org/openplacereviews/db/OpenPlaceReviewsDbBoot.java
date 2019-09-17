@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static org.openplacereviews.db.config.DefaultPreferences.OBJTABLE_OPR_PLACE;
 import static org.openplacereviews.db.config.DefaultPreferences.OPENDB_STORAGE_REPORTS;
+import static org.openplacereviews.db.config.DefaultPreferences.getDefaultOprPlacePreference;
 
 @SpringBootApplication
 @ComponentScan("org.openplacereviews")
