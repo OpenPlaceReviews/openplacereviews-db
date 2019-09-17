@@ -7,6 +7,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.db.service.OprPlaceManager;
 import org.openplacereviews.opendb.ops.OpBlockChain;
+import org.openplacereviews.opendb.ops.de.CompoundKey;
 import org.openplacereviews.opendb.scheduled.OpenDBScheduledServices;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.BotManager;
@@ -16,6 +17,7 @@ import org.openplacereviews.osm.model.Node;
 import org.openplacereviews.osm.model.Way;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Attr;
@@ -33,9 +35,7 @@ import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 
 import static org.openplacereviews.db.OpenPlaceReviewsDbBoot.OPENDB_STORAGE_REPORTS_PREF;
 import static org.openplacereviews.osm.model.Entity.*;
@@ -49,6 +49,7 @@ public class OpenPlaceReviewsScheduledService extends OpenDBScheduledServices {
 	private static final Log LOGGER = LogFactory.getLog(OpenPlaceReviewsScheduledService.class);
 
 	public final static String GEOJSON_FILE_NAME = "geo-location.json";
+	public final static String GEOJSON_FILE_SUBNAME = "geo-%s.json";
 	public final static String OSM_FILE_NAME = "object-location.osm";
 
 	@Autowired
@@ -59,6 +60,9 @@ public class OpenPlaceReviewsScheduledService extends OpenDBScheduledServices {
 
 	@Autowired
 	private BotManager botManager;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
 
 	private File mainDirectory;
 	private boolean enabled = false;
@@ -80,7 +84,7 @@ public class OpenPlaceReviewsScheduledService extends OpenDBScheduledServices {
 		}
 	}
 
-	private String getDirectory() {
+	public String getDirectory() {
 		return OPENDB_STORAGE_REPORTS_PREF.get();
 	}
 
@@ -115,17 +119,27 @@ public class OpenPlaceReviewsScheduledService extends OpenDBScheduledServices {
 	@Scheduled(fixedRate = DAY, initialDelay = MINUTE)
 	public void generateDailyGeoJsonReport() throws IOException {
 		if (enabled) {
-			LOGGER.info("Start generating GeoJson Report ...");
-
-			File f = new File(mainDirectory, GEOJSON_FILE_NAME);
-			try (FileWriter file = new FileWriter(f)) {
-				file.write(geoJson.toJson(oprPlaceManager.getAllIds()));
-				file.flush();
-			} catch (Exception e) {
-				e.printStackTrace();
+			LOGGER.info("Start generating GeoJson Reports ...");
+			Set<String> mapTiles = getAllTiles();
+			for (String key : mapTiles) {
+				File f = new File(mainDirectory, String.format(GEOJSON_FILE_SUBNAME, key));
+				try (FileWriter fileWriter = new FileWriter(f)) {
+					fileWriter.write(geoJson.toJson(oprPlaceManager.getIdsByTileId(key)));
+					fileWriter.flush();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
+//			LOGGER.info("Generating GeoJson Report is finished");
+//			File f = new File(mainDirectory, GEOJSON_FILE_NAME);
+//			try (FileWriter file = new FileWriter(f)) {
+//				file.write(geoJson.toJson(oprPlaceManager.getAllIds()));
+//				file.flush();
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
 
-			LOGGER.info("Generating GeoJson Report is finished");
+			LOGGER.info("Generating GeoJson Reports is finished");
 		}
 	}
 
@@ -268,5 +282,17 @@ public class OpenPlaceReviewsScheduledService extends OpenDBScheduledServices {
 		}
 	}
 
+	private Set<String> getAllTiles() {
+		OpBlockChain blc = blocksManager.getBlockchain();
+		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
+		r.requestOnlyKeys = true;
+		blc.fetchAllObjects("opr.place", r);
+		Set<String> tiles = new HashSet<>();
+		for (CompoundKey compoundKey : r.keys) {
+			tiles.add(compoundKey.first);
+		}
+
+		return tiles;
+	}
 
 }

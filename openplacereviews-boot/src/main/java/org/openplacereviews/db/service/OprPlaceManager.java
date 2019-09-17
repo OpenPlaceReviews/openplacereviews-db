@@ -69,8 +69,13 @@ public class OprPlaceManager {
 		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
 		OpIndexColumn ind = blocksManager.getIndex("opr.place", DBSchemaManager.INDEX_P[0]);
 		blc.fetchObjectsByIndex("opr.place", ind, r, tileId);
+
+		return generateFeatureCollectionFromResult(r.result);
+	}
+
+	public FeatureCollection generateFeatureCollectionFromResult(List<OpObject> opObjects) {
 		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
-		for(OpObject o : r.result) {
+		for(OpObject o : opObjects) {
 			List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
 			if(osmList.size() == 0) {
 				continue;
@@ -86,7 +91,6 @@ public class OprPlaceManager {
 			Feature f = new Feature(p, bld.build(), Optional.absent());
 			fc.features().add(f);
 		}
-
 		return fc;
 	}
 

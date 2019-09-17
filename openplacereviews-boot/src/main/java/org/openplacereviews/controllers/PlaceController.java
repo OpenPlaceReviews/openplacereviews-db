@@ -22,8 +22,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.openplacereviews.db.OpenPlaceReviewsDbBoot.OPENDB_STORAGE_REPORTS_PREF;
-
 @Controller
 @RequestMapping("/api/places")
 public class PlaceController {
@@ -64,7 +62,7 @@ public class PlaceController {
 	@GetMapping(value = "/report")
 	@ResponseBody
 	public ResponseEntity<String> getReportFiles() throws IOException {
-		File folder = new File(OPENDB_STORAGE_REPORTS_PREF.get());
+		File folder = new File(openPlaceReviewsScheduledService.getDirectory());
 		File[] listOfFiles = folder.listFiles();
 
 		List<ReportInfo> files = new ArrayList<>();
@@ -86,7 +84,7 @@ public class PlaceController {
 	@GetMapping(value = "/report/{filename}")
 	@ResponseBody
 	public FileSystemResource getGeoLocationReport(@PathVariable("filename") String fileName) {
-		File file = new File(OPENDB_STORAGE_REPORTS_PREF.get(), fileName);
+		File file = new File(openPlaceReviewsScheduledService.getDirectory(), fileName);
 		return new FileSystemResource(file);
 	}
 

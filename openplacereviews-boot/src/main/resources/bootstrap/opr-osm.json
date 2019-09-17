@@ -35,5 +35,45 @@
 				"bot-state": {}
 			}
 		]
+	},
+	{
+		"type": "sys.bot",
+		"create": [
+			{
+				"id": [
+					"border-sync"
+				],
+				"api": "org.openplacereviews.osm.service.BorderSyncBot",
+				"threads": 1,
+				"blockchain-config": {
+					"places_per_operation": 250,
+					"operations_per_block": 16,
+					"type": "opr.place"
+				},
+				"version": 1,
+				"config": {},
+				"bot-state": {}
+			}
+		]
+	},
+	{
+		"type": "sys.bot",
+		"create": [
+			{
+				"id": [
+					"region-sync"
+				],
+				"api": "org.openplacereviews.osm.service.RegionImportBot",
+				"threads": 1,
+				"blockchain-config": {
+					"places_per_operation": 250,
+					"operations_per_block": 16,
+					"type": "opr.place"
+				},
+				"version": 1,
+				"config": {},
+				"bot-state": {}
+			}
+		]
 	}
 ]
