@@ -10,6 +10,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+// FIXME
 public class BorderSyncBot extends GenericMultiThreadBot<BorderSyncBot> {
 
 	protected static final Log LOGGER = LogFactory.getLog(BorderSyncBot.class);
