@@ -1,4 +1,4 @@
-package org.openplacereviews.db.service;
+package org.openplacereviews.controllers;
 
 import com.github.filosganga.geogson.model.Feature;
 import com.github.filosganga.geogson.model.FeatureCollection;
