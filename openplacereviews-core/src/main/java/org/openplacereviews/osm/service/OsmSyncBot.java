@@ -288,7 +288,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 
 	@Override
 	public synchronized OsmSyncBot call() throws Exception {
-		saveStartBotProcess("RUNNING");
 		isRunning = true;
 		try {
 			Map<String, Object> urls = getMap(F_CONFIG, F_URL);
@@ -360,10 +359,8 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					generateHashAndSignAndAdd(op);
 				}
 			}
-			updateProcess( "SUCCESS");
 			LOGGER.info("Synchronization is finished ");
 		} catch (Exception e) {
-			updateProcess("FAILED");
 			LOGGER.info("Synchronization has failed: " + e.getMessage(), e);
 			throw e;
 		} finally {

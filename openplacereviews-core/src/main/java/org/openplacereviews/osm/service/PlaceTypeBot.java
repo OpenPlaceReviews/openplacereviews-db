@@ -35,7 +35,6 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 	
 	@Override
 	public synchronized PlaceTypeBot call() throws Exception {
-		saveStartBotProcess("RUNNING");
 		isRunning = true;
 		super.initVars();
 		try {
@@ -86,12 +85,10 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 						F_BOT_STATE + "." + F_BLOCK_HASH, lastScannedBlockHash, lastBlockRawHash);
 				addOpIfNeeded(op, true);
 			}
-			updateProcess("SUCCESS");
 			LOGGER.info(
 					String.format("Synchronization of 'placetype' has finished. Scanned %d, changed %d",
 							progress, changed));
 		} catch (Exception e) {
-			updateProcess( "FAILED");
 			LOGGER.info("Synchronization  of 'placetype' has failed: " + e.getMessage(), e);
 			throw e;
 		} finally {

@@ -1,6 +1,17 @@
 package org.openplacereviews.osm.service;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
+
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockchainRules.ErrorType;
@@ -15,20 +26,8 @@ import org.openplacereviews.opendb.service.LogOperationService;
 import org.openplacereviews.opendb.util.JsonFormatter;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.ResultSetExtractor;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Deque;
-import java.util.List;
-import java.util.concurrent.*;
-
-import static org.openplacereviews.opendb.ops.OpBlockchainRules.F_TYPE;
-import static org.openplacereviews.opendb.service.DBSchemaManager.BOT_STATS_TABLE;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 
@@ -46,7 +45,6 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 	public static final String F_OSM_TAGS = "osm-tags";
 	public static final String F_DATE = "date";
 	
-	
 	private static final PerformanceMetric mBlock = PerformanceMetrics.i().getMetric("opr.osm-sync.block");
 	
 	private List<TaskResult> successfulResults = new ArrayList<>();
@@ -62,9 +60,6 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 	
 	@Autowired
 	private LogOperationService logSystem;
-
-	@Autowired
-	private JdbcTemplate jdbcTemplate;
 
 	private ThreadPoolExecutor service;
 
@@ -147,35 +142,7 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		return r;
 		
 	}
-
-	protected boolean saveStartBotProcess(String status) {
-		return jdbcTemplate.update("INSERT INTO " + BOT_STATS_TABLE + " (bot,start_date, status) VALUES (?,?,?)",
-				botObject.getId().get(0), new Date(), status) != 0;
-	}
-
-	protected boolean updateProcess(String status) {
-		Integer lastBotState = getLastBotProcessId();
-		if (lastBotState != null) {
-			return jdbcTemplate.update("UPDATE " + BOT_STATS_TABLE + " set end_date = ?, total = ?, processed = ?, status = ? WHERE id = ?",
-					new Date(), total(), progress(), status, lastBotState) != 0;
-		}
-
-		return false;
-	}
-
-	protected Integer getLastBotProcessId() {
-		return jdbcTemplate.query("SELECT id FROM " + BOT_STATS_TABLE + " WHERE bot = ? ORDER BY id DESC LIMIT 1", new ResultSetExtractor<Integer>() {
-			@Override
-			public Integer extractData(ResultSet resultSet) throws SQLException, DataAccessException {
-				if (resultSet.next()) {
-					return resultSet.getInt(1);
-				}
-				return null;
-			}
-		}, botObject.getId().get(0)
-		);
-	}
-
+	
 	public OpOperation addOpIfNeeded(OpOperation op, 
 			boolean force) throws FailedVerificationException {
 		int sz = (int) (force ? 0 : placesPerOperation - 1);
@@ -189,6 +156,7 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 		}
 		return op;
 	}
+	
 	protected boolean blockCreateNeeded(int factor) {
 		return blocksManager.getBlockchain().getQueueOperations().size() >= operationsPerBlock * factor && 
 				blocksManager.getQueueCapacity() >= blockCapacity * factor;
@@ -283,7 +251,6 @@ public abstract class GenericMultiThreadBot<T> implements IOpenDBBot<T> {
 	@Override
 	public boolean interrupt() {
 		if(this.service != null) {
-			updateProcess("INTERRUPTED");
 			this.service.shutdownNow();
 			this.service = null;
 			this.isRunning = false;
