@@ -52,23 +52,28 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 						"opr-0-" + usr + "-bot");
 		blocksManager.setBootstrapList(bootstrapList);
 		settingsManager.registerTableMapping("obj_opr_places", 2, "opr.place");
-		// FIXME add indexes
-		Map<String, Object> columnMap = new TreeMap<>();
-		columnMap.put("name", "osmid");
-		columnMap.put("field", Arrays.asList("source.osm.id"));
-		columnMap.put("sqlmapping", "array");
-		columnMap.put("sqltype", "bigint[]");
-		columnMap.put("cache-runtime-max", 128);
-		columnMap.put("cache-db-max", 256);
-		columnMap.put("index", "GIN");
-		Map<String, Object> columnMap1 = new TreeMap<>();
-		columnMap1.put("name", "placetype");
-		columnMap1.put("field", Arrays.asList("placetype"));
-		columnMap1.put("sqlmapping", "single");
-		columnMap1.put("sqltype", "text");
-		columnMap.put("cache-runtime-max", 64);
-		columnMap.put("cache-db-max", 64);
-		columnMap1.put("index", "true");
+
+		Map<String, Object> osmIdInd = new TreeMap<>();
+		osmIdInd.put(SettingsManager.INDEX_NAME, "osmid");
+		osmIdInd.put(SettingsManager.INDEX_TABLENAME, "obj_opr_places");
+		osmIdInd.put(SettingsManager.INDEX_FIELD, Arrays.asList("source.osm.id"));
+		osmIdInd.put("sqlmapping", "array");
+		osmIdInd.put(SettingsManager.INDEX_SQL_TYPE, "bigint[]");
+		osmIdInd.put(SettingsManager.INDEX_CACHE_RUNTIME_MAX, 128);
+		osmIdInd.put(SettingsManager.INDEX_CACHE_DB_MAX, 256);
+		osmIdInd.put(SettingsManager.INDEX_INDEX_TYPE, "GIN");
+		settingsManager.registerMapPreferenceForFamily(SettingsManager.DB_SCHEMA_INDEXES, osmIdInd);
+		
+		Map<String, Object> placeTypeInd = new TreeMap<>();
+		placeTypeInd.put(SettingsManager.INDEX_NAME, "placetype");
+		placeTypeInd.put(SettingsManager.INDEX_TABLENAME, "obj_opr_places");
+		placeTypeInd.put(SettingsManager.INDEX_FIELD, Arrays.asList("placetype"));
+		placeTypeInd.put("sqlmapping", "single");
+		placeTypeInd.put(SettingsManager.INDEX_SQL_TYPE, "text");
+		placeTypeInd.put(SettingsManager.INDEX_CACHE_RUNTIME_MAX, 64);
+		placeTypeInd.put(SettingsManager.INDEX_CACHE_DB_MAX, 64);
+		placeTypeInd.put(SettingsManager.INDEX_INDEX_TYPE, "true");
+		settingsManager.registerMapPreferenceForFamily(SettingsManager.DB_SCHEMA_INDEXES, placeTypeInd);
 	}
 
 	@Override
