@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.annotation.PostConstruct;
-
 import org.openplacereviews.opendb.OpenDBServer;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.SettingsManager;
@@ -24,8 +22,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @ComponentScan("org.openplacereviews")
 public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationRunner {
 
-	public final static String OBJTABLE_OPR_PLACE = "opendb.db-schema.objtables.obj_opr_places";
-	public final static String OPENDB_STORAGE_REPORTS = "opendb.storage.report-storage";
 	
 	@Autowired
 	public JdbcTemplate jdbcTemplate;
@@ -55,22 +51,8 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 						BlocksManager.BOOT_STD_VALIDATION, "opr-osm", 
 						"opr-0-" + usr + "-bot");
 		blocksManager.setBootstrapList(bootstrapList);
-	}
-
-	@Override
-	public void run(ApplicationArguments args) {
-	}
-
-	@PostConstruct
-	private void initPrefs() {
-		OBJTABLE_OPR_PLACE_PREF = settingsManager.registerMapPreference(OBJTABLE_OPR_PLACE, getDefaultOprPlacePreference(), true, "Determines table for storing superblock opr.place objects", false);
-		OPENDB_STORAGE_REPORTS_PREF = settingsManager.registerStringPreference(OPENDB_STORAGE_REPORTS, "reports", true, "Determines path for storing report files", true);
-	}
-	
-	public static Map<String, Object> getDefaultOprPlacePreference() {
-		Map<String, Object> obj_logins = new TreeMap<>();
-		obj_logins.put("types", Arrays.asList("opr.place"));
-		obj_logins.put("keysize", 2);
+		settingsManager.registerTableMapping("obj_opr_places", 2, "opr.place");
+		// FIXME add indexes
 		Map<String, Object> columnMap = new TreeMap<>();
 		columnMap.put("name", "osmid");
 		columnMap.put("field", Arrays.asList("source.osm.id"));
@@ -87,12 +69,11 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 		columnMap.put("cache-runtime-max", 64);
 		columnMap.put("cache-db-max", 64);
 		columnMap1.put("index", "true");
-		obj_logins.put("columns", Arrays.asList(columnMap, columnMap1));
-		return obj_logins;
 	}
 
-	public static SettingsManager.CommonPreference<Map<String, Object>> OBJTABLE_OPR_PLACE_PREF;
-	public static SettingsManager.CommonPreference<String> OPENDB_STORAGE_REPORTS_PREF;
+	@Override
+	public void run(ApplicationArguments args) {
+	}
 
 
 }
