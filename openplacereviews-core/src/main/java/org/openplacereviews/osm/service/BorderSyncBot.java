@@ -4,6 +4,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpObject;
+import org.openplacereviews.opendb.service.GenericMultiThreadBot;
 import org.springframework.util.ResourceUtils;
 
 import java.io.File;

@@ -11,6 +11,7 @@ import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.ops.de.CompoundKey;
 import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.service.GenericMultiThreadBot;
 import org.openplacereviews.opendb.util.OUtils;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
