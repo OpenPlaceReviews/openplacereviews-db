@@ -389,6 +389,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		public String type;
 		public Entity e;
 		public String osmKey;
+		public int version;
 	}
 	
 	public PlaceObject getObjectByOsmEntity(String key, Entity e) throws InterruptedException, DBStaleException {
@@ -398,25 +399,31 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		OpIndexColumn ind = blocksManager.getIndex(opType, INDEX_OSMID);
 		blocksManager.getBlockchain().fetchObjectsByIndex(opType, ind, objectsSearchRequest, osmId);
 		List<OpObject> r = objectsSearchRequest.result;
+		PlaceObject po = null;
 		for(OpObject o : r) {
 			List<Map<String, Object>> osmObjs = o.getField(null, F_SOURCE, F_OSM);
 			for (int i = 0; i < osmObjs.size(); i++) {
 				Map<String, Object> osm  = osmObjs.get(i);
 				if (osmId.equals(osm.get(OpOperation.F_ID)) && type.equals(osm.get(OpOperation.F_TYPE))
 						&& key.equals(osm.get(F_OSM_TAG))) {
-					PlaceObject po = new PlaceObject();
-					po.e = e;
-					po.obj = o;
-					po.ind = i;
-					po.osm = osm;
-					po.type = type;
-					po.osmId = osmId;
-					po.osmKey = key;
-					return po;
+					if(po == null) {
+						po = new PlaceObject();
+					}
+					int version = osm.containsKey(F_VERSION) ? Integer.parseInt((String) osm.get(F_VERSION)) : 0;
+					if (po.version <= version) {
+						po.e = e;
+						po.version = version;
+						po.obj = o;
+						po.ind = i;
+						po.osm = osm;
+						po.type = type;
+						po.osmId = osmId;
+						po.osmKey = key;
+					}
 				}
 			}
 		}
-		return null;
+		return po;
 	}
 	
 
