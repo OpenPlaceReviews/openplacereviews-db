@@ -419,7 +419,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 						po.type = type;
 						po.osmId = osmId;
 						po.osmKey = key;
-						return po;
 					}
 				}
 			}
