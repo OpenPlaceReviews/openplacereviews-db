@@ -36,7 +36,7 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 	
 	@Override
 	public synchronized PlaceTypeBot call() throws Exception {
-		isRunning = true;
+		addNewBotStat();
 		super.initVars();
 		try {
 			OpBlockChain blc = blocksManager.getBlockchain();
@@ -46,7 +46,7 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 			changed = 0;
 			String lastScannedBlockHash = botObject.getField(null, F_BOT_STATE, F_BLOCK_HASH);
 			LOGGER.info(
-					String.format("Synchronization of 'placetype' has started from block %s. Total %d places.", lastScannedBlockHash, totalCnt));
+					addInfoLogEntry(String.format("Synchronization of 'placetype' has started from block %s. Total %d places.", lastScannedBlockHash, totalCnt)));
 			OpOperation op = initOpOperation("opr.place");
 			Set<CompoundKey> keys = new HashSet<CompoundKey>();
 			boolean blockExist = blc.getBlockHeaderByRawHash(wrapNull(lastScannedBlockHash)) != null;
@@ -68,8 +68,8 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 					}
 					if (progress % 5000 == 0) {
 						LOGGER.info(
-								String.format("Progress of 'placetype' %d / %d  (changed %d).",
-										progress, totalCnt, changed));
+								addInfoLogEntry(String.format("Progress of 'placetype' %d / %d  (changed %d).",
+										progress, totalCnt, changed)));
 					}
 				}
 				blc = blc.getParent();
@@ -87,13 +87,14 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 				addOpIfNeeded(op, true);
 			}
 			LOGGER.info(
-					String.format("Synchronization of 'placetype' has finished. Scanned %d, changed %d",
-							progress, changed));
+					addInfoLogEntry(String.format("Synchronization of 'placetype' has finished. Scanned %d, changed %d",
+							progress, changed)));
+			setSuccessState();
 		} catch (Exception e) {
-			LOGGER.info("Synchronization  of 'placetype' has failed: " + e.getMessage(), e);
+			setfailedState();
+			LOGGER.info(addErrorLogEntry("Synchronization  of 'placetype' has failed: " + e.getMessage(), e), e);
 			throw e;
 		} finally {
-			isRunning = false;
 			super.shutdown();
 		}
 		return this;
