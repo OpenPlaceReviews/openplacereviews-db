@@ -45,8 +45,7 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 			progress = 0;
 			changed = 0;
 			String lastScannedBlockHash = botObject.getField(null, F_BOT_STATE, F_BLOCK_HASH);
-			LOGGER.info(
-					addInfoLogEntry(String.format("Synchronization of 'placetype' has started from block %s. Total %d places.", lastScannedBlockHash, totalCnt)));
+			info(String.format("Synchronization of 'placetype' has started from block %s. Total %d places.", lastScannedBlockHash, totalCnt));
 			OpOperation op = initOpOperation("opr.place");
 			Set<CompoundKey> keys = new HashSet<CompoundKey>();
 			boolean blockExist = blc.getBlockHeaderByRawHash(wrapNull(lastScannedBlockHash)) != null;
@@ -67,9 +66,8 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 						changed++;
 					}
 					if (progress % 5000 == 0) {
-						LOGGER.info(
-								addInfoLogEntry(String.format("Progress of 'placetype' %d / %d  (changed %d).",
-										progress, totalCnt, changed)));
+						info(String.format("Progress of 'placetype' %d / %d  (changed %d).",
+								progress, totalCnt, changed));
 					}
 				}
 				blc = blc.getParent();
@@ -86,13 +84,12 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 						F_BOT_STATE + "." + F_BLOCK_HASH, lastScannedBlockHash, lastBlockRawHash);
 				addOpIfNeeded(op, true);
 			}
-			LOGGER.info(
-					addInfoLogEntry(String.format("Synchronization of 'placetype' has finished. Scanned %d, changed %d",
-							progress, changed)));
+			info(String.format("Synchronization of 'placetype' has finished. Scanned %d, changed %d",
+					progress, changed));
 			setSuccessState();
 		} catch (Exception e) {
 			setfailedState();
-			LOGGER.info(addErrorLogEntry("Synchronization  of 'placetype' has failed: " + e.getMessage(), e), e);
+			info("Synchronization  of 'placetype' has failed: " + e.getMessage(), e);
 			throw e;
 		} finally {
 			super.shutdown();
