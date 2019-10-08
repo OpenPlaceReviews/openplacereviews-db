@@ -88,7 +88,7 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 					progress, changed));
 			setSuccessState();
 		} catch (Exception e) {
-			setfailedState();
+			setFailedState();
 			info("Synchronization  of 'placetype' has failed: " + e.getMessage(), e);
 			throw e;
 		} finally {

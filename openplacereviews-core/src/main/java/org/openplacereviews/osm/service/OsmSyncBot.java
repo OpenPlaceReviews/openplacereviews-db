@@ -359,7 +359,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			info("Synchronization is finished ");
 			setSuccessState();
 		} catch (Exception e) {
-			setfailedState();
+			setFailedState();
 			info("Synchronization has failed: " + e.getMessage(), e);
 			throw e;
 		} finally {
