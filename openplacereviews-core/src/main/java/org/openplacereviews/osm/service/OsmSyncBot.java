@@ -199,13 +199,11 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		}
 
 		String request = String.format(requestTemplate, queryType, timestamp, changedS.toString(), ts.toString());
-		LOGGER.info(String.format("Overpass query: %s", request));
+		info(String.format("Overpass query: %s", request));
 		request = URLEncoder.encode(request, StandardCharsets.UTF_8.toString());
 		request = overpassURL+ "?data=" + request;
 		return request;
 	}
-	
-	
 	
 	private String alignTimestamp(String timestamp) {
 		try {
@@ -289,7 +287,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 
 	@Override
 	public synchronized OsmSyncBot call() throws Exception {
-		isRunning = true;
+		addNewBotStat();
 		try {
 			Map<String, Object> urls = getMap(F_CONFIG, F_URL);
 			
@@ -302,13 +300,12 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					"Download current OSM timestamp");
 			String atimestamp = alignTimestamp(ctimestamp);
 			if(atimestamp == null) {
-				LOGGER.info(String.format("Nothing to synchronize yet: %s", ctimestamp));
+				info(String.format("Nothing to synchronize yet: %s", ctimestamp));
 				return this;
 			}
 			ctimestamp = atimestamp;
 			super.initVars();
-			
-			LOGGER.info(String.format("Start synchronizing: %s", ctimestamp));
+			info(String.format("Start synchronizing: %s", ctimestamp));
 			
 			Map<String, Object> schema = getMap(F_CONFIG, F_OSM_TAGS);
 			Map<String, Object> state = getMap(F_BOT_STATE, F_OSM_TAGS);
@@ -330,13 +327,12 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					String msg = String.format(" %s new tag/values [%s] [%s] - %s", r.name, r.nvalues, r.ntype, r.date);
 					submitTaskAndWait("Synchronization started: " + msg, task, futures);
 					if(isInterrupted()) {
-						LOGGER.info("Synchronization interrupted: " + msg);
+						info("Synchronization interrupted: " + msg);
 						return this;
 					}
 					OpOperation op = initOpOperation(OP_BOT);
 					generateEditOpForBotObject(op, r, botObject);
 					generateHashAndSignAndAdd(op);
-					
 				}
 				if (!OUtils.equals(ctimestamp, r.state.date)) {
 					r.date = ctimestamp;
@@ -352,7 +348,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					String msg = String.format(" diff %s [%s]->[%s]", r.name, r.state.date, r.date);
 					submitTaskAndWait("Synchronization started: " + msg, task, futures);
 					if(isInterrupted()) {
-						LOGGER.info("Synchronization interrupted: " + msg);
+						info("Synchronization interrupted: " + msg);
 						return this;
 					}
 					OpOperation op = initOpOperation(OP_BOT);
@@ -360,12 +356,13 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					generateHashAndSignAndAdd(op);
 				}
 			}
-			LOGGER.info("Synchronization is finished ");
+			info("Synchronization is finished ");
+			setSuccessState();
 		} catch (Exception e) {
-			LOGGER.info("Synchronization has failed: " + e.getMessage(), e);
+			setFailedState();
+			info("Synchronization has failed: " + e.getMessage(), e);
 			throw e;
 		} finally {
-			isRunning = false;
 			super.shutdown();
 		}
 		return this;
