@@ -68,8 +68,6 @@ import org.xmlpull.v1.XmlPullParserException;
 
 public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 
-	private static final Log LOGGER = LogFactory.getLog(OsmSyncBot.class);
-	
 	private static final PerformanceMetric mOverpassQuery = PerformanceMetrics.i().getMetric("opr.osm-sync.overpass");
 	private static final PerformanceMetric mPublish = PerformanceMetrics.i().getMetric("opr.osm-sync.publish");
 	private static final PerformanceMetric mProcDiff = PerformanceMetrics.i().getMetric("opr.osm-sync.proc-diff");
@@ -107,7 +105,8 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	
 
 	public OsmSyncBot(OpObject botObject) {
-		super(botObject);
+		super(botObject, false);
+		LOGGER = LogFactory.getLog(OsmSyncBot.class);
 	}
 	
 	public static class SyncRequest {

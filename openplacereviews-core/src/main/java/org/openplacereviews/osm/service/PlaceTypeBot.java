@@ -18,8 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 
-	protected static final Log LOGGER = LogFactory.getLog(PlaceTypeBot.class);
-
 	private static final String F_BLOCK_HASH = "lastblock";
 	
 	@Autowired
@@ -31,7 +29,8 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 	private int changed;
 	
 	public PlaceTypeBot(OpObject botObject) {
-		super(botObject);
+		super(botObject, false);
+		LOGGER = LogFactory.getLog(PlaceTypeBot.class);
 	}
 	
 	@Override

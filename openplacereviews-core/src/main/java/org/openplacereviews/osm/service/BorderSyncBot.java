@@ -14,13 +14,12 @@ import java.util.Map;
 // FIXME
 public class BorderSyncBot extends GenericMultiThreadBot<BorderSyncBot> {
 
-	protected static final Log LOGGER = LogFactory.getLog(BorderSyncBot.class);
-
 	private int totalCnt = 1;
 	private int progress = 0;
 
 	public BorderSyncBot(OpObject botObject) {
-		super(botObject);
+		super(botObject, false);
+		LOGGER = LogFactory.getLog(BorderSyncBot.class);
 	}
 
 	@Override
