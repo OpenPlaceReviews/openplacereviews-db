@@ -19,7 +19,6 @@ public class BorderSyncBot extends GenericMultiThreadBot<BorderSyncBot> {
 
 	public BorderSyncBot(OpObject botObject) {
 		super(botObject, false);
-		LOGGER = LogFactory.getLog(BorderSyncBot.class);
 	}
 
 	@Override

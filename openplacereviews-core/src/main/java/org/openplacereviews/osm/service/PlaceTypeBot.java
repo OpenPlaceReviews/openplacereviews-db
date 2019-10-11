@@ -30,7 +30,6 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 	
 	public PlaceTypeBot(OpObject botObject) {
 		super(botObject, false);
-		LOGGER = LogFactory.getLog(PlaceTypeBot.class);
 	}
 	
 	@Override

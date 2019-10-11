@@ -106,7 +106,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 
 	public OsmSyncBot(OpObject botObject) {
 		super(botObject, false);
-		LOGGER = LogFactory.getLog(OsmSyncBot.class);
 	}
 	
 	public static class SyncRequest {
