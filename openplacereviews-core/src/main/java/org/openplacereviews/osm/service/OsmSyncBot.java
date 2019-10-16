@@ -37,8 +37,6 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpIndexColumn;
 import org.openplacereviews.opendb.ops.OpObject;
@@ -105,7 +103,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	
 
 	public OsmSyncBot(OpObject botObject) {
-		super(botObject, false);
+		super(botObject);
 	}
 	
 	public static class SyncRequest {

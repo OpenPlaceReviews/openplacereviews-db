@@ -4,8 +4,6 @@ package org.openplacereviews.osm.service;
 import java.util.*;
 import java.util.Map.Entry;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -29,7 +27,7 @@ public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
 	private int changed;
 	
 	public PlaceTypeBot(OpObject botObject) {
-		super(botObject, false);
+		super(botObject);
 	}
 	
 	@Override
