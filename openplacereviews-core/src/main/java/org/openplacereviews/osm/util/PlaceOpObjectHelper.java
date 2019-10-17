@@ -116,24 +116,32 @@ public class PlaceOpObjectHelper {
 		return opOperation;
 	}
 
-	private static void generateDiff(OpObject editObject, String field, Map<String, Object> change,
+	protected static void generateDiff(OpObject editObject, String field, Map<String, Object> change,
 			Map<String, Object> current, Map<String, Object> oldM, Map<String, Object> newM) {
 		TreeSet<String> removedTags = new TreeSet<>(oldM.keySet());
 		removedTags.removeAll(newM.keySet());
 		for(String removedTag : removedTags) {
-			change.put(field + removedTag, OpBlockChain.OP_CHANGE_DELETE);
-			current.put(field + removedTag, oldM.get(removedTag));
+			change.put(field + addBraces(removedTag), OpBlockChain.OP_CHANGE_DELETE);
+			current.put(field + addBraces(removedTag), oldM.get(removedTag));
 		}
 		for(String tag : newM.keySet()) {
 			Object po = oldM.get(tag);
 			Object no = newM.get(tag);
 			if(!OUtils.equals(po, no)) {
-				change.put(field + tag, set(no));
+				change.put(field + addBraces(tag), set(no));
 				if(po != null) {
-					current.put(field + tag, po);
+					current.put(field + addBraces(tag), po);
 				}
 			}
 		}
+	}
+
+	private static String addBraces(String field) {
+		if (field.contains(".")) {
+			field = "{" + field + "}";
+		}
+
+		return field;
 	}
 
 	@SuppressWarnings("unchecked")
