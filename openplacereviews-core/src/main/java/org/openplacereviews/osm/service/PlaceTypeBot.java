@@ -4,8 +4,6 @@ package org.openplacereviews.osm.service;
 import java.util.*;
 import java.util.Map.Entry;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -17,8 +15,6 @@ import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class PlaceTypeBot extends GenericMultiThreadBot<PlaceTypeBot> {
-
-	protected static final Log LOGGER = LogFactory.getLog(PlaceTypeBot.class);
 
 	private static final String F_BLOCK_HASH = "lastblock";
 	

@@ -1,20 +1,16 @@
 package org.openplacereviews.osm.service;
 
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.openplacereviews.opendb.ops.OpObject;
-import org.openplacereviews.opendb.service.GenericMultiThreadBot;
-import org.springframework.util.ResourceUtils;
-
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.io.FilenameUtils;
+import org.openplacereviews.opendb.ops.OpObject;
+import org.openplacereviews.opendb.service.GenericMultiThreadBot;
+import org.springframework.util.ResourceUtils;
+
 // FIXME
 public class BorderSyncBot extends GenericMultiThreadBot<BorderSyncBot> {
-
-	protected static final Log LOGGER = LogFactory.getLog(BorderSyncBot.class);
 
 	private int totalCnt = 1;
 	private int progress = 0;
