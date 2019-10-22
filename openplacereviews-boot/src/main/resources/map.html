@@ -4,10 +4,12 @@
 	
 	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" /> 
     <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js" integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og==" crossorigin=""></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/openlocationcode/1.0.3/openlocationcode.js"></script>
+	<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
 	<style>
 		html, body {
@@ -123,18 +125,24 @@
 
 	function onMapChange() {
 		var bounds = map.getBounds();
-		var lb = OpenLocationCode.encode(bounds.getCenter().lat, bounds.getCenter().lng, 6);
+		var tl = OpenLocationCode.encode(bounds.min.lat, bounds.min.lng, 6);
+		var rb = OpenLocationCode.encode(bounds.max.lat, bounds.max.lng, 6);
 		if(map.getZoom() <= 11) {
 			$("#map-info").text("zooming to get data ");
-		} else if (lb != currentBounds) {
-			currentBounds = lb;
-			$("#map-info").text("tile " + lb + " is loading...");
-			$.getJSON("data?tileid="+lb, function (data) {
+		} else if ((lb+rb) != currentBounds) {
+			currentBounds = lb + rb;
+			$("#map-info").text("tiles [" + lb + "-" + rb + "] are loading...");
+			$.getJSON("data?tileid="+lb+","+rb, function (data) {
 				if(currentLayer) {
-					currentLayer.remove();
+					map.removeLayer(currentLayer);
+					// currentLayer.remove();
 				}
 				$("#map-info").text("tile " + lb + " has " + data.features.length + " places");
-				currentLayer = L.geoJSON(data, {
+				currentLayer = L.markerClusterGroup({
+					
+				});
+				
+				let currentLayerPoints = L.geoJSON(data, {
 					style: function (feature) {
 						return feature.properties && feature.properties.style;
 					},
@@ -150,7 +158,9 @@
 						});
 					}
 				});
-				currentLayer.addTo(map);
+				currentLayer.addLayer(currentLayerPoints);
+				// currentLayer.addTo(map);
+				map.addLayer(currentLayer);
 			});
 		}
 	}

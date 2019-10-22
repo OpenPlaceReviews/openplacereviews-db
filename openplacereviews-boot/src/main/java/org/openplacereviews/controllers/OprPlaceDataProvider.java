@@ -33,6 +33,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.google.openlocationcode.OpenLocationCode;
+import com.google.openlocationcode.OpenLocationCode.CodeArea;
 
 public class OprPlaceDataProvider implements PublicDataProvider {
 	
@@ -48,24 +50,19 @@ public class OprPlaceDataProvider implements PublicDataProvider {
 		geoJson = new GsonBuilder().registerTypeAdapterFactory(new GeometryAdapterFactory()).create();
 	}
 	
-	public FeatureCollection getIdsByTileId(String tileId) {
-		if(tileId.length() > INDEXED_TILEID) {
-			tileId = tileId.trim().substring(0, INDEXED_TILEID);
-		}
+	public void fetchObjectsByTileId(String tileId, FeatureCollection fc) {
 		OpBlockChain blc = blocksManager.getBlockchain();
 		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
 		OpIndexColumn ind = blocksManager.getIndex("opr.place", DBSchemaManager.INDEX_P[0]);
 		blc.fetchObjectsByIndex("opr.place", ind, r, tileId);
-
-		return generateFeatureCollectionFromResult(r.result);
+		generateFeatureCollectionFromResult(r.result, fc);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public FeatureCollection generateFeatureCollectionFromResult(List<OpObject> opObjects) {
-		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
-		for(OpObject o : opObjects) {
+	public void generateFeatureCollectionFromResult(List<OpObject> opObjects, FeatureCollection fc) {
+		for (OpObject o : opObjects) {
 			List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
-			if(osmList.size() == 0) {
+			if (osmList.size() == 0) {
 				continue;
 			}
 			Map<String, Object> osm = osmList.get(0);
@@ -73,17 +70,17 @@ public class OprPlaceDataProvider implements PublicDataProvider {
 			double lon = (double) osm.get(ATTR_LONGITUDE);
 			Point p = Point.from(lon, lat);
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
-			for(String k : osm.keySet()) {
-				if(k.equals("tags")) {
+			for (String k : osm.keySet()) {
+				if (k.equals("tags")) {
 					continue;
 				}
 				bld.put(k, new JsonPrimitive(osm.get(k).toString()));
 			}
 			Map<String, Object> tagsValue = (Map<String, Object>) osm.get("tags");
-			if(tagsValue != null) {
+			if (tagsValue != null) {
 				JsonObject obj = new JsonObject();
 				Iterator<Entry<String, Object>> it = tagsValue.entrySet().iterator();
-				while(it.hasNext()) {
+				while (it.hasNext()) {
 					Entry<String, Object> e = it.next();
 					obj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
 				}
@@ -92,19 +89,47 @@ public class OprPlaceDataProvider implements PublicDataProvider {
 			Feature f = new Feature(p, bld.build(), Optional.absent());
 			fc.features().add(f);
 		}
-		return fc;
 	}
+	private static final double MIN_PR = 0.05 ;
 	
 	
 	@Override
 	public AbstractResource getContent(Map<String, String[]> params) {
 		String[] tls = params.get(PARAM_TILE_ID);
-		if(tls == null || tls.length != 1) {
+		if(tls == null || tls.length == 0) {
 			new InMemoryResource(geoJson.toJson(Collections.EMPTY_MAP));
 		}
-		return new InMemoryResource(geoJson.toJson(getIdsByTileId(tls[0])));
+		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
+		String topLeft = formatTile(tls[0]), bottomRight;
+		if(tls.length > 1) {
+			bottomRight = formatTile(tls[1]);
+		} else {
+			bottomRight = topLeft;
+		}
+		CodeArea tlc = OpenLocationCode.decode(topLeft);
+		CodeArea brc = OpenLocationCode.decode(bottomRight);
+		double tllat = Math.ceil(tlc.getNorthLatitude() / MIN_PR ) * MIN_PR;
+		double tllon = Math.floor(tlc.getEastLongitude() / MIN_PR ) * MIN_PR;
+		double brlat = Math.floor(brc.getSouthLatitude() / MIN_PR ) * MIN_PR;
+		double brlon = Math.ceil(brc.getWestLongitude() / MIN_PR ) * MIN_PR;
+		for (double lat = tllat; lat >= brlat; lat -= MIN_PR) {
+			for (double lon = tllon; lon <= brlon; lon += MIN_PR) {
+				String tileId = OpenLocationCode.encode(lat, lon, INDEXED_TILEID).substring(0, INDEXED_TILEID);
+				fetchObjectsByTileId(tileId, fc);
+			}
+		}
+		
+		return new InMemoryResource(geoJson.toJson(fc));
 	}
 	
+	private String formatTile(String string) {
+		if(string.length() > INDEXED_TILEID) {
+			return string.substring(0, INDEXED_TILEID);
+		} else {
+			return string;
+		}
+	}
+
 	@Override
 	public AbstractResource getPage(Map<String, String[]> params) {
 		return new InputStreamResource(OprPlaceDataProvider.class.getResourceAsStream("/map.html"));
