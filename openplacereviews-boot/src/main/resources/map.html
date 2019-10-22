@@ -125,19 +125,19 @@
 
 	function onMapChange() {
 		var bounds = map.getBounds();
-		var tl = OpenLocationCode.encode(bounds.min.lat, bounds.min.lng, 6);
-		var rb = OpenLocationCode.encode(bounds.max.lat, bounds.max.lng, 6);
-		if(map.getZoom() <= 11) {
+		var tl = OpenLocationCode.encode(bounds.getNorth(), bounds.getWest(), 6);
+		var rb = OpenLocationCode.encode(bounds.getSouth(), bounds.getEast(), 6);
+		if(map.getZoom() <= 10) {
 			$("#map-info").text("zooming to get data ");
-		} else if ((lb+rb) != currentBounds) {
-			currentBounds = lb + rb;
-			$("#map-info").text("tiles [" + lb + "-" + rb + "] are loading...");
-			$.getJSON("data?tileid="+lb+","+rb, function (data) {
+		} else if ((tl + rb) != currentBounds) {
+			currentBounds = tl + rb;
+			$("#map-info").text("tiles [" + tl + "-" + rb + "] are loading...");
+			$.getJSON("data?tileid=" + tl + "," + rb, function (data) {
 				if(currentLayer) {
 					map.removeLayer(currentLayer);
 					// currentLayer.remove();
 				}
-				$("#map-info").text("tile " + lb + " has " + data.features.length + " places");
+				$("#map-info").text("tiles [" + tl + "-" + rb + "] have " + data.features.length + " places");
 				currentLayer = L.markerClusterGroup({
 					
 				});

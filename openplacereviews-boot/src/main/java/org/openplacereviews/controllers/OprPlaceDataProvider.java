@@ -17,6 +17,7 @@ import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.DBSchemaManager;
 import org.openplacereviews.opendb.service.PublicDataManager.PublicDataProvider;
+import org.openplacereviews.osm.parser.OsmLocationTool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.InputStreamResource;
@@ -90,15 +91,18 @@ public class OprPlaceDataProvider implements PublicDataProvider {
 			fc.features().add(f);
 		}
 	}
-	private static final double MIN_PR = 0.05 ;
+	
+	private static final int INT_PR = 20;
+	private static final double MIN_PR = 100.0 /  INT_PR;
 	
 	
 	@Override
 	public AbstractResource getContent(Map<String, String[]> params) {
 		String[] tls = params.get(PARAM_TILE_ID);
 		if(tls == null || tls.length == 0) {
-			new InMemoryResource(geoJson.toJson(Collections.EMPTY_MAP));
+			return new InMemoryResource(geoJson.toJson(Collections.EMPTY_MAP));
 		}
+		tls = tls[0].split(",");
 		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
 		String topLeft = formatTile(tls[0]), bottomRight;
 		if(tls.length > 1) {
@@ -106,15 +110,17 @@ public class OprPlaceDataProvider implements PublicDataProvider {
 		} else {
 			bottomRight = topLeft;
 		}
-		CodeArea tlc = OpenLocationCode.decode(topLeft);
-		CodeArea brc = OpenLocationCode.decode(bottomRight);
-		double tllat = Math.ceil(tlc.getNorthLatitude() / MIN_PR ) * MIN_PR;
-		double tllon = Math.floor(tlc.getEastLongitude() / MIN_PR ) * MIN_PR;
-		double brlat = Math.floor(brc.getSouthLatitude() / MIN_PR ) * MIN_PR;
-		double brlon = Math.ceil(brc.getWestLongitude() / MIN_PR ) * MIN_PR;
-		for (double lat = tllat; lat >= brlat; lat -= MIN_PR) {
-			for (double lon = tllon; lon <= brlon; lon += MIN_PR) {
-				String tileId = OpenLocationCode.encode(lat, lon, INDEXED_TILEID).substring(0, INDEXED_TILEID);
+		CodeArea tlc = OsmLocationTool.decode(topLeft);
+		CodeArea brc = OsmLocationTool.decode(bottomRight);
+		int tllat = (int) Math.ceil(tlc.getNorthLatitude() * INT_PR);
+		int tllon = (int) Math.floor(tlc.getWestLongitude() * INT_PR);
+		int brlat = (int) Math.floor(brc.getSouthLatitude() * INT_PR);
+		int brlon = (int) Math.ceil(brc.getEastLongitude() * INT_PR);
+		for (int lat = tllat; lat > brlat; lat --) {
+			for (int lon = tllon; lon < brlon; lon ++) {
+				double clat = (lat - 0.5d) / INT_PR ;
+				double clon = (lon + 0.5d) / INT_PR ;
+				String tileId = OpenLocationCode.encode(clat, clon, INDEXED_TILEID).substring(0, INDEXED_TILEID);
 				fetchObjectsByTileId(tileId, fc);
 			}
 		}
