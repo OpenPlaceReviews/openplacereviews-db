@@ -12,18 +12,31 @@
 	<style>
 		html, body {
 			height: 100%;
+			margin: 0px;
+		}
+		#map-header {
+			height: 40px;
+			margin-left: 15px;
+			margin-right: 15px;
+			display: flex;
 		}
 		#map {
+			position: absolute;
+			top:50px;
+			left:0px;
+			right:0px;
+			bottom: 10px;
 			width: 100%;
-			height: 100%;
 		}
 	</style>
 </head>
 <body>
-<h3>Map of places: <span id="map-info">zooming to get data</span></h3>
 
-
-<div id='map'></div>
+<div id='map-header'>
+	<h3 id='map-header-text'>Map of places: <span id="map-info">zooming to get data</span></h3>
+</div>
+<div id='map'>		
+</div>
 <!-- https://github.com/makinacorpus/Leaflet.RestoreView/blob/master/leaflet.restoreview.js -->
 <script>
 	(function() {
