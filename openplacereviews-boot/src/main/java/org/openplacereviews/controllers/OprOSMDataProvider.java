@@ -38,12 +38,12 @@ public class OprOSMDataProvider implements PublicDataProvider {
 	private BlocksManager blocksManager;
 	
 	@Override
-	public AbstractResource getContent() {
+	public AbstractResource getContent(Map<String, String[]> params) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public AbstractResource getPage() {
+	public AbstractResource getPage(Map<String, String[]> params) {
 		throw new UnsupportedOperationException();
 	}
 	
@@ -61,6 +61,7 @@ public class OprOSMDataProvider implements PublicDataProvider {
 
 	
 
+	@SuppressWarnings("unchecked")
 	private List<Entity> generateEntityFromObject(OpObject opObject) {
 		List<Map<String, Object>> objectEntity = (List<Map<String, Object>>) opObject.getStringObjMap(F_SOURCE).get(F_OSM);
 		List<Entity> entities = new ArrayList<>();
@@ -94,18 +95,21 @@ public class OprOSMDataProvider implements PublicDataProvider {
 
 	private Entity generateNode(Map<String, Object> map) {
 		Node node = new Node((Double) map.get(ATTR_LATITUDE), (Double) map.get(ATTR_LONGITUDE), (Long) map.get(ATTR_ID));
-		for (Map.Entry<String, Object> entry : ((Map<String, Object>) map.get(F_TAGS)).entrySet()) {
-			node.putTag(entry.getKey(), entry.getValue().toString());
-		}
+		addTags(map, node);
 		generateEntityInfo(map, node);
 		return node;
 	}
 
+	@SuppressWarnings("unchecked")
+	private void addTags(Map<String, Object> map, Entity node) {
+		for (Map.Entry<String, Object> entry : ((Map<String, Object>) map.get(F_TAGS)).entrySet()) {
+			node.putTag(entry.getKey(), entry.getValue().toString());
+		}
+	}
+
 	private Entity generateWay(Map<String, Object> map) {
 		Way way = new Way((Long)map.get(ATTR_ID), null, (Double) map.get(ATTR_LATITUDE), (Double) map.get(ATTR_LONGITUDE));
-		for (Map.Entry<String, Object> entry : ((Map<String, Object>) map.get(F_TAGS)).entrySet()) {
-			way.putTag(entry.getKey(), entry.getValue().toString());
-		}
+		addTags(map, way);
 		generateEntityInfo(map, way);
 		return way;
 	}
