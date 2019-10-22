@@ -44,7 +44,7 @@
 		layer.bindPopup(popupContent);
 	}
 	
-	$.getJSON("/api/places/geojson-ids", function(data) {
+	$.getJSON("data", function(data) {
 	    	L.geoJSON(data, {
 	    		style: function (feature) {
 	    			return feature.properties && feature.properties.style;
