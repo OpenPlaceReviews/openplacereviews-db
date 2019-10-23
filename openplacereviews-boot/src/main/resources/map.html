@@ -97,7 +97,8 @@
 	
 	var map = L.map('map');
 	var currentLayer = null;
-	var currentBounds = null;
+	var currentBounds = {};
+	var placesCache = {};
 	if (!map.restoreView()) {
         map.setView([40, -35], 4);
     }
@@ -112,56 +113,110 @@
 
 	function onEachFeature(feature, layer) {
 		var p = feature.properties;
-		var popupContent = "<p><b>" + p.osm_value + "</b>:";
+		var popupContent = "<b>" + p.osm_value + "</b> (" + p.opr_id+") ";
 
 		for (var t in p.tags) {
 			popupContent += "<br>" + t + " " + p.tags[t];
 		}
-		popupContent += "</p>";
+		popupContent += "<br><a href=\'/api/admin?view=objects&browse=type&type=opr.place&subtype=id&key=" +
+			p.opr_id + "\'>OpenPlaceReviews</a>";
 		popupContent += "<br><a href=\'https://www.openstreetmap.org/" +
 			p.type + "/" + p.id + "\'>OpenStreetMap</a>";
+		
 		layer.bindPopup(popupContent);
+	}
+
+	function calculateLocationCodes(bounds) {
+		var tl = OpenLocationCode.encode(bounds.getNorth(), bounds.getWest(), 6);
+		var rb = OpenLocationCode.encode(bounds.getSouth(), bounds.getEast(), 6);
+		var INT_PR = 20;
+		var tllat = Math.ceil(bounds.getNorth() * INT_PR);
+		var tllon = Math.floor(bounds.getWest() * INT_PR);
+		var brlat = Math.floor(bounds.getSouth() * INT_PR);
+		var brlon = Math.ceil(bounds.getEast() * INT_PR);
+		var mp = {};
+		for (var lat = tllat; lat > brlat; lat --) {
+			for (var lon = tllon; lon < brlon; lon ++) {
+				var clat = (lat - 0.5) / INT_PR ;
+				var clon = (lon + 0.5) / INT_PR ;
+				var tileId = OpenLocationCode.encode(clat, clon, 6).substring(0, 6);
+				mp[tileId] = {};
+			}
+		}
+		return mp;
+	}
+
+	function refreshMap() {
+		
+		if (currentLayer) {
+			map.removeLayer(currentLayer);
+			// currentLayer.remove();
+		}
+		var geoJson = { 
+   			"type":"FeatureCollection",
+			"features":[]
+		};
+		var tiles = 0;
+		var missing = 0;
+		for(var k in currentBounds) {
+			var cTileId = placesCache[k];
+			if("features" in cTileId) {
+				tiles++;
+				geoJson.features = geoJson.features.concat(cTileId.features);
+			} else {
+				missing++;
+			}
+		}
+		var msg = tiles + " tiles have " + geoJson.features.length + " places " ;
+		if(missing > 0) {
+			msg += " (" + missing + " tiles loading...) ";
+		}
+		$("#map-info").text(msg);
+		currentLayer = L.markerClusterGroup();
+		let currentLayerPoints = L.geoJSON(geoJson , {
+			style: function (feature) {
+				return feature.properties && feature.properties.style;
+			},
+			onEachFeature: onEachFeature,
+			pointToLayer: function (feature, latlng) {
+				return L.circleMarker(latlng, {
+					radius: 8,
+					fillColor: "#ff7800",
+					color: "#000",
+					weight: 1,
+					opacity: 1,
+					fillOpacity: 0.8
+				});
+			}
+		});
+		currentLayer.addLayer(currentLayerPoints);
+		// currentLayer.addTo(map);
+		map.addLayer(currentLayer);
 	}
 
 	function onMapChange() {
 		var bounds = map.getBounds();
+		var lcodes = calculateLocationCodes(bounds);
+		var elcodes = JSON.stringify(lcodes);
 		var tl = OpenLocationCode.encode(bounds.getNorth(), bounds.getWest(), 6);
 		var rb = OpenLocationCode.encode(bounds.getSouth(), bounds.getEast(), 6);
 		if(map.getZoom() <= 10) {
 			$("#map-info").text("zooming to get data ");
-		} else if ((tl + rb) != currentBounds) {
-			currentBounds = tl + rb;
-			$("#map-info").text("tiles [" + tl + "-" + rb + "] are loading...");
-			$.getJSON("data?tileid=" + tl + "," + rb, function (data) {
-				if(currentLayer) {
-					map.removeLayer(currentLayer);
-					// currentLayer.remove();
+		} else if(elcodes != JSON.stringify(currentBounds) ) {
+			currentBounds = lcodes;
+			var tilesToLoad = {};
+			for(var t in lcodes) {
+				let tileId = t;
+				if(!placesCache[tileId]) {
+					placesCache[tileId] = {};
+					// on failure we can clear cache
+					$.getJSON("data?tileid=" + tileId, function (data) {
+						placesCache[tileId] = data;
+						refreshMap();
+					});
 				}
-				$("#map-info").text("tiles [" + tl + "-" + rb + "] have " + data.features.length + " places");
-				currentLayer = L.markerClusterGroup({
-					
-				});
-				
-				let currentLayerPoints = L.geoJSON(data, {
-					style: function (feature) {
-						return feature.properties && feature.properties.style;
-					},
-					onEachFeature: onEachFeature,
-					pointToLayer: function (feature, latlng) {
-						return L.circleMarker(latlng, {
-							radius: 8,
-							fillColor: "#ff7800",
-							color: "#000",
-							weight: 1,
-							opacity: 1,
-							fillOpacity: 0.8
-						});
-					}
-				});
-				currentLayer.addLayer(currentLayerPoints);
-				// currentLayer.addTo(map);
-				map.addLayer(currentLayer);
-			});
+			}
+			refreshMap();
 		}
 	}
 
