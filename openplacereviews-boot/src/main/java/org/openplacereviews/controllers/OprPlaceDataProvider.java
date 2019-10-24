@@ -34,7 +34,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
-public class OprPlaceDataProvider implements IPublicDataProvider<FeatureCollection> {
+public class OprPlaceDataProvider implements IPublicDataProvider<String, FeatureCollection> {
 	
 	protected static final String PARAM_TILE_ID = "tileid";
 	protected static final int INDEXED_TILEID = 6;
@@ -99,21 +99,20 @@ public class OprPlaceDataProvider implements IPublicDataProvider<FeatureCollecti
 	}
 
 	@Override
-	public AbstractResource getPage(Map<String, String[]> params) {
+	public AbstractResource getMetaPage(Map<String, String[]> params) {
 		return new InputStreamResource(OprPlaceDataProvider.class.getResourceAsStream("/map.html"));
 	}
 
 	@Override
-	public List<Map<String, String[]>> getKeysToCache() {
+	public List<String> getKeysToCache() {
 		return new ArrayList<>();
 	}
 
 	@Override
-	public FeatureCollection getContent(Map<String, String[]> params) {
-		String[] tls = params.get(PARAM_TILE_ID);
+	public FeatureCollection getContent(String tile) {
 		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
-		if(tls != null && tls.length == 1) {
-			fetchObjectsByTileId(formatTile(tls[0]), fc);
+		if(!tile.equals("")) {
+			fetchObjectsByTileId(formatTile(tile), fc);
 		}
 		return fc;
 	}
@@ -121,6 +120,15 @@ public class OprPlaceDataProvider implements IPublicDataProvider<FeatureCollecti
 	@Override
 	public AbstractResource formatContent(FeatureCollection fc) {
 		return new InMemoryResource(geoJson.toJson(fc));
+	}
+
+	@Override
+	public String formatParams(Map<String, String[]> params) {
+		String[] tls = params.get(PARAM_TILE_ID);
+		if(tls != null && tls.length == 1 && tls[0] != null) {
+			return tls[0];
+		}
+		return "";
 	}
 
 }

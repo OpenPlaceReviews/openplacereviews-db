@@ -24,7 +24,7 @@ public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
 	private static final int TILE_INFO_SUBSET = 4;
 	
 	@Override
-	public FeatureCollection getContent(Map<String, String[]> params) {
+	public FeatureCollection getContent(String params) {
 		OpBlockChain blc = blocksManager.getBlockchain();
 		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
 		r.requestOnlyKeys = true;
@@ -56,7 +56,7 @@ public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
 	
 	
 	@Override
-	public AbstractResource getPage(Map<String, String[]> params) {
+	public AbstractResource getMetaPage(Map<String, String[]> params) {
 		return new InputStreamResource(OprSummaryPlaceDataProvider.class.getResourceAsStream("/mapall.html"));
 	}
 

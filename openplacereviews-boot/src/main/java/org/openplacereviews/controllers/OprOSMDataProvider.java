@@ -33,7 +33,7 @@ import org.openplacereviews.osm.model.Way;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 
-public class OprOSMDataProvider implements IPublicDataProvider<Object> {
+public class OprOSMDataProvider implements IPublicDataProvider<String, Object> {
 	
 	@Autowired
 	private BlocksManager blocksManager;
@@ -120,12 +120,12 @@ public class OprOSMDataProvider implements IPublicDataProvider<Object> {
 
 
 	@Override
-	public List<Map<String, String[]>> getKeysToCache() {
+	public List<String> getKeysToCache() {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public Object getContent(Map<String, String[]> params) {
+	public Object getContent(String params) {
 		throw new UnsupportedOperationException();
 	}
 
@@ -134,9 +134,14 @@ public class OprOSMDataProvider implements IPublicDataProvider<Object> {
 		throw new UnsupportedOperationException();
 	}
 
+	
+	@Override
+	public String formatParams(Map<String, String[]> params) {
+		return "";
+	}
 
 	@Override
-	public AbstractResource getPage(Map<String, String[]> params) {
+	public AbstractResource getMetaPage(Map<String, String[]> params) {
 		throw new UnsupportedOperationException();
 	}
 }
