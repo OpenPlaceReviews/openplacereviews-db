@@ -6,11 +6,14 @@
 
 	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
 	<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" /> 
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.0/css/bootstrap.min.css">
+    
     <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js" integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og==" crossorigin=""></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/openlocationcode/1.0.3/openlocationcode.js"></script>
 	<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.0/js/bootstrap.min.js"></script>
+    
 
 	<style>
 		html, body {
@@ -18,10 +21,8 @@
 			margin: 0px;
 		}
 		#map-header {
-			height: 40px;
-			margin-left: 15px;
-			margin-right: 15px;
-			display: flex;
+			margin-top: 5px;
+			margin-left: 5px;
 		}
 		#map {
 			position: absolute;
@@ -34,9 +35,18 @@
 	</style>
 </head>
 <body>
+<div id='map-header' class="form-row align-items-center">
+	<div class="col-2">
+		<select id="filter" class="form-control">
+			<option selected value="all">Filter...</option>
+		</select>
+	</div>
+	<div class="col-8">
+		<span id='map-header-text' class="col-md-8">Map of places: <span id="map-info">zooming to get data</span>
+		</span>
+	</div>
 
-<div id='map-header'>
-	<h3 id='map-header-text'>Map of places: <span id="map-info">zooming to get data</span></h3>
+
 </div>
 <div id='map'>		
 </div>
@@ -101,26 +111,14 @@
 			"biergarten": "Biergarten", "fast_food": "Fast food", "food_court": "Food court", 
 			"pub": "Pub", "hotel": "Hotel", "motel": "Motel", "hostel": "Hostel", 
 			"apartment": "Apartment", "guest_house": "Guest house"
-		};
-	
-
+	};
 	var map = L.map('map');
 	var currentLayer = null;
 	var currentBounds = {};
 	var placesCache = {};
 	var mapInvalidate = true;
-	if (!map.restoreView()) {
-        map.setView([40, -35], 4);
-    }
 
-	L.tileLayer('https://tile.osmand.net/{z}/{x}/{y}.png', {
-		maxZoom: 18,
-		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
-			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ',
-		id: 'tiles'
-	}).addTo(map);
-
-
+	
 	function calculateLocationCodes(bounds) {
 		var tl = OpenLocationCode.encode(bounds.getNorth(), bounds.getWest(), 6);
 		var rb = OpenLocationCode.encode(bounds.getSouth(), bounds.getEast(), 6);
@@ -191,6 +189,18 @@
 		return popupContent;
 	}
 
+	function prepareFilter() {
+		var filter = $("#filter");
+		filter.empty();
+		filter.append(new Option("Filter...", "all"));
+		for(var type in types) {
+			filter.append(new Option(types[type], type));
+		}
+		filter.change(function(){
+			refreshMap();
+		});
+	}
+
 
 	function refreshMap() {
 		
@@ -204,11 +214,21 @@
 		};
 		var tiles = 0;
 		var missing = 0;
+		var filterVal = $("#filter").val();
 		for(var k in currentBounds) {
 			var cTileId = placesCache[k];
 			if(cTileId.data && "features" in cTileId.data) {
 				tiles++;
-				geoJson.features = geoJson.features.concat(cTileId.data.features);
+				if(filterVal == "all") {
+					geoJson.features = geoJson.features.concat(cTileId.data.features);
+				} else {
+					for(var i = 0; i < cTileId.data.features.length; i++) {
+						var f = cTileId.data.features[i];
+						if(f.properties && f.properties.osm_value == filterVal) {
+							geoJson.features.push(f);
+						}
+					}
+				}
 			} else {
 				missing++;
 			}
@@ -268,10 +288,22 @@
 		}
 	}
 
+
+	if (!map.restoreView()) {
+        map.setView([40, -35], 4);
+	}
+
+	L.tileLayer('https://tile.osmand.net/{z}/{x}/{y}.png', {
+		maxZoom: 18,
+		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ',
+		id: 'tiles'
+	}).addTo(map);
 	map.on('moveend', function (e) {
 		onMapChange();
 	});
 	onMapChange();
+	prepareFilter();
 
 
 </script>
