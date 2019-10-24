@@ -11,6 +11,7 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/openlocationcode/1.0.3/openlocationcode.js"></script>
 	<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
+
 	<style>
 		html, body {
 			height: 100%;
@@ -94,11 +95,20 @@
 </script>
 
 <script>
+	// TODO define in blockchain
+	var types = {
+			"ice_cream": "Ice cream", "cafe": "Cafe", "bar": "Bar", "restaurant": "Restaurant", 
+			"biergarten": "Biergarten", "fast_food": "Fast food", "food_court": "Food court", 
+			"pub": "Pub", "hotel": "Hotel", "motel": "Motel", "hostel": "Hostel", 
+			"apartment": "Apartment", "guest_house": "Guest house"
+		};
 	
+
 	var map = L.map('map');
 	var currentLayer = null;
 	var currentBounds = {};
 	var placesCache = {};
+	var mapInvalidate = true;
 	if (!map.restoreView()) {
         map.setView([40, -35], 4);
     }
@@ -110,21 +120,6 @@
 		id: 'tiles'
 	}).addTo(map);
 
-
-	function onEachFeature(feature, layer) {
-		var p = feature.properties;
-		var popupContent = "<b>" + p.osm_value + "</b> (" + p.opr_id+") ";
-
-		for (var t in p.tags) {
-			popupContent += "<br>" + t + " " + p.tags[t];
-		}
-		popupContent += "<br><a href=\'/api/admin?view=objects&browse=type&type=opr.place&subtype=id&key=" +
-			p.opr_id + "\'>OpenPlaceReviews</a>";
-		popupContent += "<br><a href=\'https://www.openstreetmap.org/" +
-			p.type + "/" + p.id + "\'>OpenStreetMap</a>";
-		
-		layer.bindPopup(popupContent);
-	}
 
 	function calculateLocationCodes(bounds) {
 		var tl = OpenLocationCode.encode(bounds.getNorth(), bounds.getWest(), 6);
@@ -146,6 +141,57 @@
 		return mp;
 	}
 
+	function gcPlaceTiles() {
+		var toDel = {};
+		if(Object.keys(placesCache).length < 150) {
+			return;
+		}
+		for(var k in placesCache) {
+			if(!(k in currentBounds)) {
+				toDel[k] = placesCache[k].access;
+			}
+		}
+		for(var k in toDel) {
+			delete placesCache[k];
+		}
+	}
+
+	function refreshMapDelay() {
+		mapInvalidate = true;
+		setTimeout(function() {
+			if(mapInvalidate) {
+				mapInvalidate = false;
+				refreshMap();
+			}
+		}, 500);
+	}
+
+	function getMarkerContent(feature) {
+		var p = feature.properties;
+		var typeName = types[p.osm_value];
+		if(!typeName) {
+			typeName = p.osm_value;
+		}
+		var name = p.tags["name"];
+		var popupContent = "";
+		if(name) {
+			popupContent = typeName + " <b>" + name + "</b>";
+		} else {
+			popupContent = "<b>" + typeName + "</b>";
+		}
+		popupContent += " (" + p.opr_id+") ";
+
+		for (var t in p.tags) {
+			popupContent += "<br>" + t + " " + p.tags[t];
+		}
+		popupContent += "<br><a href=\'/api/admin?view=objects&browse=type&type=opr.place&subtype=id&key=" +
+			p.opr_id + "\'>OpenPlaceReviews</a>";
+		popupContent += "<br><a href=\'https://www.openstreetmap.org/" +
+			p.type + "/" + p.id + "\'>OpenStreetMap</a>";
+		return popupContent;
+	}
+
+
 	function refreshMap() {
 		
 		if (currentLayer) {
@@ -160,9 +206,9 @@
 		var missing = 0;
 		for(var k in currentBounds) {
 			var cTileId = placesCache[k];
-			if("features" in cTileId) {
+			if(cTileId.data && "features" in cTileId.data) {
 				tiles++;
-				geoJson.features = geoJson.features.concat(cTileId.features);
+				geoJson.features = geoJson.features.concat(cTileId.data.features);
 			} else {
 				missing++;
 			}
@@ -177,46 +223,48 @@
 			style: function (feature) {
 				return feature.properties && feature.properties.style;
 			},
-			onEachFeature: onEachFeature,
+			// onEachFeature: onEachFeature,
 			pointToLayer: function (feature, latlng) {
-				return L.circleMarker(latlng, {
-					radius: 8,
-					fillColor: "#ff7800",
-					color: "#000",
-					weight: 1,
-					opacity: 1,
-					fillOpacity: 0.8
-				});
+				var p = feature.properties;
+				return L.marker(latlng).bindPopup(getMarkerContent(feature));
+				// return L.circleMarker(latlng, {
+				// 	radius: 8,
+				// 	fillColor: "#ff7800",
+				// 	color: "#000",
+				// 	weight: 1,
+				// 	opacity: 1,
+				// 	fillOpacity: 0.8
+				// });
 			}
 		});
 		currentLayer.addLayer(currentLayerPoints);
 		// currentLayer.addTo(map);
 		map.addLayer(currentLayer);
+		gcPlaceTiles();
 	}
 
 	function onMapChange() {
 		var bounds = map.getBounds();
 		var lcodes = calculateLocationCodes(bounds);
-		var elcodes = JSON.stringify(lcodes);
-		var tl = OpenLocationCode.encode(bounds.getNorth(), bounds.getWest(), 6);
-		var rb = OpenLocationCode.encode(bounds.getSouth(), bounds.getEast(), 6);
 		if(map.getZoom() <= 10) {
 			$("#map-info").text("zooming to get data ");
-		} else if(elcodes != JSON.stringify(currentBounds) ) {
+		} else if(JSON.stringify(lcodes) != JSON.stringify(currentBounds) ) {
 			currentBounds = lcodes;
 			var tilesToLoad = {};
 			for(var t in lcodes) {
 				let tileId = t;
 				if(!placesCache[tileId]) {
-					placesCache[tileId] = {};
+					placesCache[tileId] = { "access" : 1};
 					// on failure we can clear cache
 					$.getJSON("data?tileid=" + tileId, function (data) {
-						placesCache[tileId] = data;
-						refreshMap();
+						placesCache[tileId].data = data;
+						refreshMapDelay();
 					});
+				} else {
+					placesCache[tileId].access = placesCache[tileId].access + 1; 
 				}
 			}
-			refreshMap();
+			refreshMapDelay();
 		}
 	}
 
