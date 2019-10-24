@@ -10,7 +10,6 @@ import org.openplacereviews.opendb.ops.de.CompoundKey;
 import org.openplacereviews.osm.parser.OsmLocationTool;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.security.util.InMemoryResource;
 
 import com.github.filosganga.geogson.model.Feature;
 import com.github.filosganga.geogson.model.FeatureCollection;
@@ -24,7 +23,8 @@ public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
 	
 	private static final int TILE_INFO_SUBSET = 4;
 	
-	public FeatureCollection getAllIds() {
+	@Override
+	public FeatureCollection getContent(Map<String, String[]> params) {
 		OpBlockChain blc = blocksManager.getBlockchain();
 		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
 		r.requestOnlyKeys = true;
@@ -54,10 +54,6 @@ public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
 		return fc;
 	}
 	
-	@Override
-	public AbstractResource getContent(Map<String, String[]> params) {
-		return new InMemoryResource(geoJson.toJson(getAllIds()));
-	}
 	
 	@Override
 	public AbstractResource getPage(Map<String, String[]> params) {

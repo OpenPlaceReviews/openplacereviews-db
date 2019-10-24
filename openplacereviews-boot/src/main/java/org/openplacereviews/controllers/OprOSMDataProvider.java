@@ -24,7 +24,7 @@ import java.util.Map;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
-import org.openplacereviews.opendb.service.PublicDataManager.PublicDataProvider;
+import org.openplacereviews.opendb.service.IPublicDataProvider;
 import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.model.EntityInfo;
 import org.openplacereviews.osm.model.Node;
@@ -33,19 +33,11 @@ import org.openplacereviews.osm.model.Way;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 
-public class OprOSMDataProvider implements PublicDataProvider {
+public class OprOSMDataProvider implements IPublicDataProvider<Object> {
+	
 	@Autowired
 	private BlocksManager blocksManager;
 	
-	@Override
-	public AbstractResource getContent(Map<String, String[]> params) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public AbstractResource getPage(Map<String, String[]> params) {
-		throw new UnsupportedOperationException();
-	}
 	
 	public Collection<Entity> getOsmObjects() {
 		OpBlockChain blc = blocksManager.getBlockchain();
@@ -124,5 +116,27 @@ public class OprOSMDataProvider implements PublicDataProvider {
 		entityInfo.setAction((String) map.get(ATTR_ACTION));
 		entityInfo.setVisible((String) map.get(ATTR_VISIBLE));
 		node.setEntityInfo(entityInfo);
+	}
+
+
+	@Override
+	public List<Map<String, String[]>> getKeysToCache() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Object getContent(Map<String, String[]> params) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public AbstractResource formatContent(Object content) {
+		throw new UnsupportedOperationException();
+	}
+
+
+	@Override
+	public AbstractResource getPage(Map<String, String[]> params) {
+		throw new UnsupportedOperationException();
 	}
 }

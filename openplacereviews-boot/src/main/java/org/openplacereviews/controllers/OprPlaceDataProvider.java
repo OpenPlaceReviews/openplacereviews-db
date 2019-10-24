@@ -1,11 +1,11 @@
 package org.openplacereviews.controllers;
 
 
+
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +16,7 @@ import org.openplacereviews.opendb.ops.OpIndexColumn;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.DBSchemaManager;
-import org.openplacereviews.opendb.service.PublicDataManager.PublicDataProvider;
-import org.openplacereviews.osm.parser.OsmLocationTool;
+import org.openplacereviews.opendb.service.IPublicDataProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.InputStreamResource;
@@ -34,10 +33,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import com.google.openlocationcode.OpenLocationCode;
-import com.google.openlocationcode.OpenLocationCode.CodeArea;
 
-public class OprPlaceDataProvider implements PublicDataProvider {
+public class OprPlaceDataProvider implements IPublicDataProvider<FeatureCollection> {
 	
 	protected static final String PARAM_TILE_ID = "tileid";
 	protected static final int INDEXED_TILEID = 6;
@@ -93,44 +90,6 @@ public class OprPlaceDataProvider implements PublicDataProvider {
 		}
 	}
 	
-	private static final int INT_PR = 20;
-	private static final double MIN_PR = 100.0 /  INT_PR;
-	
-	
-	@Override
-	public AbstractResource getContent(Map<String, String[]> params) {
-		String[] tls = params.get(PARAM_TILE_ID);
-		if(tls == null || tls.length != 1) {
-			return new InMemoryResource(geoJson.toJson(Collections.EMPTY_MAP));
-		}
-		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
-//		tls = tls[0].split(",");
-//		String topLeft = formatTile(tls[0]), bottomRight;
-//		if(tls.length > 1) {
-//			bottomRight = formatTile(tls[1]);
-//		} else {
-//			bottomRight = topLeft;
-//		}
-//		CodeArea tlc = OsmLocationTool.decode(topLeft);
-//		CodeArea brc = OsmLocationTool.decode(bottomRight);
-//		int tllat = (int) Math.ceil(tlc.getNorthLatitude() * INT_PR);
-//		int tllon = (int) Math.floor(tlc.getWestLongitude() * INT_PR);
-//		int brlat = (int) Math.floor(brc.getSouthLatitude() * INT_PR);
-//		int brlon = (int) Math.ceil(brc.getEastLongitude() * INT_PR);
-//		for (int lat = tllat; lat > brlat; lat --) {
-//			for (int lon = tllon; lon < brlon; lon ++) {
-//				double clat = (lat - 0.5d) / INT_PR ;
-//				double clon = (lon + 0.5d) / INT_PR ;
-//				String tileId = OpenLocationCode.encode(clat, clon, INDEXED_TILEID).substring(0, INDEXED_TILEID);
-//				fetchObjectsByTileId(tileId, fc);
-//			}
-//		}
-		
-		fetchObjectsByTileId(formatTile(tls[0]), fc);
-		
-		return new InMemoryResource(geoJson.toJson(fc));
-	}
-	
 	private String formatTile(String string) {
 		if(string.length() > INDEXED_TILEID) {
 			return string.substring(0, INDEXED_TILEID);
@@ -142,6 +101,26 @@ public class OprPlaceDataProvider implements PublicDataProvider {
 	@Override
 	public AbstractResource getPage(Map<String, String[]> params) {
 		return new InputStreamResource(OprPlaceDataProvider.class.getResourceAsStream("/map.html"));
+	}
+
+	@Override
+	public List<Map<String, String[]>> getKeysToCache() {
+		return new ArrayList<>();
+	}
+
+	@Override
+	public FeatureCollection getContent(Map<String, String[]> params) {
+		String[] tls = params.get(PARAM_TILE_ID);
+		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
+		if(tls != null && tls.length == 1) {
+			fetchObjectsByTileId(formatTile(tls[0]), fc);
+		}
+		return fc;
+	}
+
+	@Override
+	public AbstractResource formatContent(FeatureCollection fc) {
+		return new InMemoryResource(geoJson.toJson(fc));
 	}
 
 }
