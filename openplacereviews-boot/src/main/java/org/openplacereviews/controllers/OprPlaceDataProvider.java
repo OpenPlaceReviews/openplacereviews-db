@@ -130,5 +130,15 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, Feature
 		}
 		return "";
 	}
+	
+	@Override
+	public String serializeValue(FeatureCollection v) {
+		return geoJson.toJson(v);
+	}
+	
+	@Override
+	public FeatureCollection deserializeValue(String key) {
+		return geoJson.fromJson(key, FeatureCollection.class);
+	}
 
 }
