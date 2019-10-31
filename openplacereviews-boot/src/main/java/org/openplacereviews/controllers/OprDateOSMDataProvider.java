@@ -123,7 +123,7 @@ public class OprDateOSMDataProvider extends OprPlaceDataProvider {
 			try {
 				getOsmObjectByDate(date, fc);
 			} catch (ParseException e) {
-				LOGGER.error("Incorrect date param", e);
+				LOGGER.error("Incorrect 'date' format", e);
 			}
 		}
 
