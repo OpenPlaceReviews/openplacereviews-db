@@ -59,6 +59,9 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, Feature
 	@SuppressWarnings("unchecked")
 	public void generateFeatureCollectionFromResult(List<OpObject> opObjects, FeatureCollection fc) {
 		for (OpObject o : opObjects) {
+			if (o.isDeleted()) {
+				continue;
+			}
 			List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
 			if (osmList.size() == 0) {
 				continue;
