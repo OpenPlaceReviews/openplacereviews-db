@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.openplacereviews.controllers.OprDateOSMDataProvider;
+import org.openplacereviews.controllers.OprHistoryChangesProvider;
 import org.openplacereviews.controllers.OprOSMDataProvider;
 import org.openplacereviews.controllers.OprPlaceDataProvider;
 import org.openplacereviews.controllers.OprSummaryPlaceDataProvider;
@@ -67,7 +67,7 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 		
 		publicDataManager.registerDataProvider(OprSummaryPlaceDataProvider.class);
 		publicDataManager.registerDataProvider(OprPlaceDataProvider.class);
-		publicDataManager.registerDataProvider(OprDateOSMDataProvider.class);
+		publicDataManager.registerDataProvider(OprHistoryChangesProvider.class);
 		addGeoIndexReport();
 		addGeoSummaryIndexReport();
 		addDateOSMDataReport();
@@ -93,7 +93,7 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 		Map<String, Object> mp = new TreeMap<>();
 		mp.put(SettingsManager.ENDPOINT_ID, "osm");
 		mp.put(PublicDataManager.ENDPOINT_PATH, "osm");
-		mp.put(PublicDataManager.ENDPOINT_PROVIDER, OprDateOSMDataProvider.class.getName());
+		mp.put(PublicDataManager.ENDPOINT_PROVIDER, OprHistoryChangesProvider.class.getName());
 		settingsManager.registerMapPreferenceForFamily(SettingsManager.OPENDB_ENDPOINTS_CONFIG, mp);
 	}
 	

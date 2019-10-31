@@ -24,7 +24,7 @@ import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
-public class OprDateOSMDataProvider extends OprPlaceDataProvider {
+public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd/MM/yyyy");
 	public static final String OPR_PLACE = "opr.place";
