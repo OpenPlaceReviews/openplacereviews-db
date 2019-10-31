@@ -10,6 +10,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import org.apache.commons.lang3.time.DateUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.openplacereviews.opendb.api.ApiController;
 import org.openplacereviews.opendb.ops.OpBlock;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
@@ -25,6 +28,8 @@ import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 public class OprHistoryChangesProvider extends OprPlaceDataProvider {
+
+	private static final Log LOGGER = LogFactory.getLog(ApiController.class);
 
 	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd/MM/yyyy");
 	public static final String OPR_PLACE = "opr.place";
@@ -118,7 +123,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			try {
 				getOsmObjectByDate(date, fc);
 			} catch (ParseException e) {
-				e.printStackTrace();
+				LOGGER.error("Incorrect 'date' format", e);
 			}
 		}
 
