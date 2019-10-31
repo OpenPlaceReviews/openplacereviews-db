@@ -4,29 +4,105 @@
 	
 	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" /> 
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.0/css/bootstrap.min.css">
+    
     <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js" integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og==" crossorigin=""></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-
-
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/openlocationcode/1.0.3/openlocationcode.js"></script>
+	<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.0/js/bootstrap.min.js"></script>
+    
 	<style>
 		html, body {
 			height: 100%;
 		}
+		#map-header {
+			margin-top: 5px;
+			margin-left: 5px;
+		}
 		#map {
+			position: absolute;
+			top:50px;
+			left:0px;
+			right:0px;
+			bottom: 10px;
 			width: 100%;
-			height: 100%;
 		}
 	</style>
 </head>
 <body>
-<h1>Map overview</h1>
-<div id='map'></div>
+	<div id='map-header' class="form-row align-items-center">
+		<div class="col-2">
+			<input class="form-control" type="date" id="filter">
+		</div>
+		<div class="col-8">
+			<span id='map-header-text' class="col-md-8"></span>
+		</div>
+	</div>
+	<div id='map'>
+	</div>
+<!-- https://github.com/makinacorpus/Leaflet.RestoreView/blob/master/leaflet.restoreview.js -->
+<script>
+		(function() {
+		var RestoreViewMixin = {
+			restoreView: function () {
+				if (!storageAvailable('localStorage')) {
+					return false;
+				}
+				var storage = window.localStorage;
+				if (!this.__initRestore) {
+					this.on('moveend', function (e) {
+						if (!this._loaded)
+							return;  // Never access map bounds if view is not set.
+	
+						var view = {
+							lat: this.getCenter().lat,
+							lng: this.getCenter().lng,
+							zoom: this.getZoom()
+						};
+						storage['mapView'] = JSON.stringify(view);
+					}, this);
+					this.__initRestore = true;
+				}
+	
+				var view = storage['mapView'];
+				try {
+					view = JSON.parse(view || '');
+					this.setView(L.latLng(view.lat, view.lng), view.zoom, true);
+					return true;
+				}
+				catch (err) {
+					return false;
+				}
+			}
+		};
+	
+		function storageAvailable(type) {
+			try {
+				var storage = window[type],
+					x = '__storage_test__';
+				storage.setItem(x, x);
+				storage.removeItem(x);
+				return true;
+			}
+			catch(e) {
+				console.warn("Your browser blocks access to " + type);
+				return false;
+			}
+		}
+	
+		L.Map.include(RestoreViewMixin);
+	})();
+</script>
 
 <script>
-	
-	var map = L.map('map').setView([50, 4], 13);
-
+	var map = L.map('map');
+	if (!map.restoreView()) {
+        map.setView([40, -35], 4);
+	}
 	L.tileLayer('https://tile.osmand.net/{z}/{x}/{y}.png', {
 		maxZoom: 18,
 		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
@@ -35,58 +111,68 @@
 	}).addTo(map);
 
 
-	function onEachFeature(feature, layer) {
-		var popupContent = "<p>Area "+feature.properties.code + ": " +feature.properties.name +" places</p>";
-		if (feature.properties && feature.properties.popupContent) {
-			popupContent += feature.properties.popupContent;
+	function getMarkerContent(feature) {
+		var p = feature.properties;
+		//var typeName = types? types[p.osm_value] : null;
+		// if(!typeName) {
+		var typeName = p.osm_value;
+		// }
+		var name = p.tags["name"];
+		var popupContent = "";
+		if(name) {
+			popupContent = typeName + " <b>" + name + "</b>";
+		} else {
+			popupContent = "<b>" + typeName + "</b>";
 		}
+		popupContent += " (" + p.opr_id+") ";
 
-		layer.bindPopup(popupContent);
+		for (var t in p.tags) {
+			popupContent += "<br>" + t + " " + p.tags[t];
+		}
+		popupContent += "<br><a href=\'/api/admin?view=objects&browse=type&type=opr.place&subtype=id&key=" +
+			p.opr_id + "\'>OpenPlaceReviews</a>";
+		popupContent += "<br><a href=\'https://www.openstreetmap.org/" +
+			p.type + "/" + p.id + "\'>OpenStreetMap</a>";
+		return popupContent;
+	}
+
+	// function onEachFeature(feature, layer) {
+	// 	var popupContent = "<p>Area "+feature.properties.code + ": " +feature.properties.name +" places</p>";
+	// 	if (feature.properties && feature.properties.popupContent) {
+	// 		popupContent += feature.properties.popupContent;
+	// 	}
+
+	// 	layer.bindPopup(popupContent);
+	// }
+	
+	function refreshData() {
+		$("#map-header-text").text("Loading data...");
+		$.getJSON("data?date=" + $("#filter").val(), function (data) {
+			$("#map-header-text").text("Loaded " + data.features.length + " objects");
+			L.geoJSON(data, {
+				style: function (feature) {
+					return feature.properties && feature.properties.style;
+				},
+
+				pointToLayer: function (feature, latlng) {
+					return L.marker(latlng).bindPopup(getMarkerContent(feature));
+					// return L.circleMarker(latlng, {
+					// 	radius: 8,
+					// 	fillColor: "#ff7800",
+					// 	color: "#000",
+					// 	weight: 1,
+					// 	opacity: 1,
+					// 	fillOpacity: 0.8
+					// });
+				}
+			}).addTo(map);
+		});
 	}
 	
-	$.getJSON("data", function(data) {
-	    	L.geoJSON(data, {
-	    		style: function (feature) {
-	    			return feature.properties && feature.properties.style;
-	    		},
-	    		onEachFeature: onEachFeature,
-
-	    		pointToLayer: function (feature, latlng) {
-	    			return L.circleMarker(latlng, {
-	    				radius: 8,
-	    				fillColor: "#ff7800",
-	    				color: "#000",
-	    				weight: 1,
-	    				opacity: 1,
-	    				fillOpacity: 0.8
-	    			});
-	    		}
-	    	}).addTo(map);
+	refreshData();
+	$("#filter").change(function(){
+		refreshData();
 	});
-
-/*	
-	L.geoJSON(freeBus, {
-
-		filter: function (feature, layer) {
-			if (feature.properties) {
-				// If the property "underConstruction" exists and is true, return false (don't render features under construction)
-				return feature.properties.underConstruction !== undefined ? !feature.properties.underConstruction : true;
-			}
-			return false;
-		},
-
-		onEachFeature: onEachFeature
-	}).addTo(map);
-
-	var coorsLayer = L.geoJSON(coorsField, {
-
-		pointToLayer: function (feature, latlng) {
-			return L.marker(latlng, {icon: baseballIcon});
-		},
-
-		onEachFeature: onEachFeature
-	}).addTo(map);
-*/
 </script>
 
 

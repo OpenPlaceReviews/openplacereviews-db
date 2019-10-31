@@ -91,8 +91,8 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 
 	private void addDateOSMDataReport() {
 		Map<String, Object> mp = new TreeMap<>();
-		mp.put(SettingsManager.ENDPOINT_ID, "osm");
-		mp.put(PublicDataManager.ENDPOINT_PATH, "osm");
+		mp.put(SettingsManager.ENDPOINT_ID, "history");
+		mp.put(PublicDataManager.ENDPOINT_PATH, "history");
 		mp.put(PublicDataManager.ENDPOINT_PROVIDER, OprHistoryChangesProvider.class.getName());
 		settingsManager.registerMapPreferenceForFamily(SettingsManager.OPENDB_ENDPOINTS_CONFIG, mp);
 	}

@@ -243,9 +243,7 @@
 			style: function (feature) {
 				return feature.properties && feature.properties.style;
 			},
-			// onEachFeature: onEachFeature,
 			pointToLayer: function (feature, latlng) {
-				var p = feature.properties;
 				return L.marker(latlng).bindPopup(getMarkerContent(feature));
 				// return L.circleMarker(latlng, {
 				// 	radius: 8,

@@ -17,6 +17,8 @@ import org.openplacereviews.opendb.ops.OpBlock;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
+import org.springframework.core.io.AbstractResource;
+import org.springframework.core.io.InputStreamResource;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -44,7 +46,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	public static final String OP_HASH = "op_hash";
 
 	public void getOsmObjectByDate(String stringDate, FeatureCollection featureCollection) throws ParseException {
-		Date date = DATE_FORMAT.parse(stringDate);
+		Date date = new SimpleDateFormat("yyyy-MM-dd").parse(stringDate);
 		List<OpBlock> listBlocks = blocksManager.getBlockchain().getBlockHeaders(-1);
 		List<OpBlock> blocksByDate = new LinkedList<>();
 		for (OpBlock opBlock : listBlocks) {
@@ -139,4 +141,9 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 		return "";
 	}
 
+	
+	@Override
+	public AbstractResource getMetaPage(Map<String, String[]> params) {
+		return new InputStreamResource(OprSummaryPlaceDataProvider.class.getResourceAsStream("/mapall.html"));
+	}
 }
