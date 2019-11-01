@@ -49,18 +49,20 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	public static final String OPR_ID = "opr_id";
 	public static final String OPR_PLACE = "opr.place";
 
+	// constants ? or human strings?
 	public static final String OBJ_CREATED = "Created";
 	public static final String OBJ_EDITED = "Edited";
 	public static final String OBJ_REMOVED = "Removed";
 
 	private static final String SOURCE_OSM_REGEX = "source.osm\\[\\d+]";
 	private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d+");
+	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
 
 	@Autowired
 	private HistoryManager historyManager;
 
-	public void getOsmObjectByDate(String stringDate, FeatureCollection featureCollection) throws ParseException {
-		Date date = new SimpleDateFormat("yyyy-MM-dd").parse(stringDate);
+	public void retrievePlacesByDate(String stringDate, FeatureCollection fc) throws ParseException {
+		Date date = DATE_FORMAT.parse(stringDate);
 		List<OpBlock> listBlocks = blocksManager.getBlockchain().getBlockHeaders(-1);
 		List<OpBlock> blocksByDate = new LinkedList<>();
 		for (OpBlock opBlock : listBlocks) {
@@ -77,13 +79,13 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			for (OpOperation opOperation : opOperations) {
 				if (opOperation.getType().equals(OPR_PLACE)) {
 					for (OpObject opObject : opOperation.getCreated()) {
-						generateCreateEntityFromOpObject(opObject, featureCollection, block, opOperation.getRawHash());
+						generateCreateEntityFromOpObject(opObject, fc, block, opOperation.getRawHash());
 					}
 					for (OpObject opObject : opOperation.getEdited()) {
-						generateEditedEntityFromOpObject(opObject, featureCollection, block, opOperation.getRawHash());
+						generateEditedEntityFromOpObject(opObject, fc, block, opOperation.getRawHash());
 					}
 					for (List<String> objId : opOperation.getDeleted()) {
-						generateRemovedEntityFromOpObject(objId, featureCollection, block, opOperation.getRawHash());
+						generateRemovedEntityFromOpObject(objId, fc, block, opOperation.getRawHash());
 					}
 				}
 			}
@@ -91,12 +93,12 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	}
 
-	private void generateCreateEntityFromOpObject(OpObject opObject, FeatureCollection featureCollection, OpBlock opBlock, String opHash) {
-		generateEntity(featureCollection, opBlock, opHash, opObject, OBJ_CREATED);
+	private void generateCreateEntityFromOpObject(OpObject opObject, FeatureCollection fc, OpBlock opBlock, String opHash) {
+		generateEntity(fc, opBlock, opHash, opObject, OBJ_CREATED);
 	}
 
-	private void generateRemovedEntityFromOpObject(List<String> objId, FeatureCollection featureCollection, OpBlock opBlock, String opHash) {
-		// TODO check if history manager has no table and generate at least empty marker in case there is no history table
+	private void generateRemovedEntityFromOpObject(List<String> objId, FeatureCollection fc, OpBlock opBlock, String opHash) {
+		// TODO check if history manager has no table and generate at least empty marker in case there is no history table	
 		HistoryManager.HistoryObjectRequest historyObjectRequest = new HistoryManager.HistoryObjectRequest(
 				HISTORY_BY_OBJECT,
 				generateSearchStringKey(objId),
@@ -107,12 +109,12 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 		List<HistoryManager.HistoryEdit> historyEdits = historyObjectRequest.historySearchResult;
 		HistoryManager.HistoryEdit lastVersion = historyEdits.get(0);
 		OpObject opObject = lastVersion.getObjEdit();
-		generateEntity(featureCollection, opBlock, opHash, opObject, OBJ_REMOVED);
+		generateEntity(fc, opBlock, opHash, opObject, OBJ_REMOVED);
 
 	}
 
 	@SuppressWarnings("unchecked")
-	private void generateEntity(FeatureCollection featureCollection, OpBlock opBlock, String opHash, OpObject opObject, String objRemoved) {
+	private void generateEntity(FeatureCollection fc, OpBlock opBlock, String opHash, OpObject opObject, String objRemoved) {
 		List<Map<String, Object>> osmList = opObject.getField(null, F_SOURCE, F_OSM);
 		for (int i = 0; i < osmList.size(); i++) {
 			Map<String, Object> osm = osmList.get(i);
@@ -134,7 +136,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 
 			Feature f = new Feature(p, bld.build(), Optional.absent()).withId(objRemoved);
-			featureCollection.features().add(f);
+			fc.features().add(f);
 		}
 	}
 
@@ -211,11 +213,12 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	}
 
 	@Override
-	public FeatureCollection getContent(String date) {
-		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
+	public MapCollection getContent(String date) {
+		MapCollection fc = new MapCollection();
+		fc.parameters.put(PARAM_OSM_DATE, MapCollection.TYPE_DATE);
 		if(!date.equals("")) {
 			try {
-				getOsmObjectByDate(date, fc);
+				retrievePlacesByDate(date, fc.geo);
 			} catch (ParseException e) {
 				LOGGER.error("Incorrect 'date' format", e);
 			}

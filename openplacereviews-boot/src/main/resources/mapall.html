@@ -140,7 +140,8 @@
 	
 	function refreshData() {
 		$("#map-header-text").text("Loading data...");
-		$.getJSON("data?date=" + $("#date-filter").val(), function (data) {
+		$.getJSON("data?date=" + $("#date-filter").val(), function (mp) {
+			let data = mp.geo;
 			$("#map-header-text").text("Loaded " + data.features.length + " objects");
 			L.geoJSON(data, {
 				style: function (feature) {

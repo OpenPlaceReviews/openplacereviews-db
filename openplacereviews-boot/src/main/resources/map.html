@@ -273,7 +273,8 @@
 				if(!placesCache[tileId]) {
 					placesCache[tileId] = { "access" : 1};
 					// on failure we can clear cache
-					$.getJSON("data?tileid=" + tileId, function (data) {
+					$.getJSON("data?tileid=" + tileId, function (mp) {
+						let data = mp.geo;
 						placesCache[tileId].data = data;
 						refreshMapDelay();
 					});

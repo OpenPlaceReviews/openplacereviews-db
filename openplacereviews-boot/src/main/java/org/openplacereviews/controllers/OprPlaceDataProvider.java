@@ -34,7 +34,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
-public class OprPlaceDataProvider implements IPublicDataProvider<String, FeatureCollection> {
+public class OprPlaceDataProvider implements IPublicDataProvider<String, MapCollection> {
 	
 	protected static final String PARAM_TILE_ID = "tileid";
 	protected static final int INDEXED_TILEID = 6;
@@ -112,17 +112,18 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, Feature
 	}
 
 	@Override
-	public FeatureCollection getContent(String tile) {
-		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
+	public MapCollection getContent(String tile) {
+		MapCollection m = new MapCollection();
+		m.tileBased = true;
 		if(!tile.equals("")) {
-			fetchObjectsByTileId(formatTile(tile), fc);
+			fetchObjectsByTileId(formatTile(tile), m.geo);
 		}
-		return fc;
+		return m;
 	}
 
 	@Override
-	public AbstractResource formatContent(FeatureCollection fc) {
-		return new InMemoryResource(geoJson.toJson(fc));
+	public AbstractResource formatContent(MapCollection m) {
+		return new InMemoryResource(geoJson.toJson(m));
 	}
 
 	@Override
@@ -135,13 +136,13 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, Feature
 	}
 	
 	@Override
-	public String serializeValue(FeatureCollection v) {
+	public String serializeValue(MapCollection v) {
 		return geoJson.toJson(v);
 	}
 	
 	@Override
-	public FeatureCollection deserializeValue(String key) {
-		return geoJson.fromJson(key, FeatureCollection.class);
+	public MapCollection deserializeValue(String key) {
+		return geoJson.fromJson(key, MapCollection.class);
 	}
 
 }

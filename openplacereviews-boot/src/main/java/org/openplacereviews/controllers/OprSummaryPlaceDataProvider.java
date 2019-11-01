@@ -1,6 +1,5 @@
 package org.openplacereviews.controllers;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +11,6 @@ import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.InputStreamResource;
 
 import com.github.filosganga.geogson.model.Feature;
-import com.github.filosganga.geogson.model.FeatureCollection;
 import com.github.filosganga.geogson.model.Point;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
@@ -24,15 +22,15 @@ public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
 	private static final int TILE_INFO_SUBSET = 4;
 	
 	@Override
-	public FeatureCollection getContent(String params) {
+	public MapCollection getContent(String params) {
+		
 		OpBlockChain blc = blocksManager.getBlockchain();
 		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
 		r.requestOnlyKeys = true;
 		blc.fetchAllObjects("opr.place", r);
 		List<CompoundKey> ks = r.keys;
 		Map<String, Integer> counts = new HashMap<>();
-
-		FeatureCollection fc = new FeatureCollection(new ArrayList<>());
+		MapCollection m = new MapCollection();
 		for(CompoundKey c : ks) {
 			String areaCode = c.first.substring(0, TILE_INFO_SUBSET);
 			Integer l = counts.get(areaCode);
@@ -48,10 +46,10 @@ public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
 			Point p = Point.from(ca.getCenterLongitude(), ca.getCenterLatitude());
 			Feature f = new Feature(p, ImmutableMap.of("name", new JsonPrimitive(counts.get(areaCode)),
 					"code", new JsonPrimitive(areaCode)), Optional.absent());
-			fc.features().add(f);
+			m.geo.features().add(f);
 		}
 
-		return fc;
+		return m;
 	}
 	
 	
