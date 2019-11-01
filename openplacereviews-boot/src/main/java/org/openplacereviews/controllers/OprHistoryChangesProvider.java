@@ -5,7 +5,6 @@ import com.github.filosganga.geogson.model.FeatureCollection;
 import com.github.filosganga.geogson.model.Point;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -21,15 +20,12 @@ import org.openplacereviews.opendb.service.HistoryManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.security.core.parameters.P;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
-import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
-import static org.openplacereviews.opendb.ops.OpObject.F_ID;
+import static org.openplacereviews.opendb.ops.OpObject.*;
 import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
 import static org.openplacereviews.opendb.service.HistoryManager.DESC_SORT;
 import static org.openplacereviews.opendb.service.HistoryManager.HISTORY_BY_OBJECT;
@@ -43,8 +39,6 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	public static final String PARAM_OSM_DATE = "date";
 
-	public static final String OSM_ID = "osm_id";
-	public static final String OSM_TYPE = "osm_type";
 	public static final String OSM_INDEX = "osm_index";
 
 	public static final String BLOCK_TIMESTAMP = "block_timestamp";
@@ -104,13 +98,13 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			Point p = Point.from(lon, lat);
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 
-			bld.put(OSM_ID, new JsonPrimitive((Number) osm.get(OpObject.F_ID)));
-			bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get(F_TYPE)));
+			bld.put(F_ID, new JsonPrimitive((Number) osm.get(OpObject.F_ID)));
+			bld.put(F_TYPE, new JsonPrimitive((String) osm.get(F_TYPE)));
 
 			Map<String, Object> tagsValue = (Map<String, Object>) osm.get(F_TAGS);
 			generateTagsForEntity(bld, tagsValue);
 
-			bld.put(OPR_ID, new JsonPrimitive(opObject.getId().get(0) + "," + opObject.getId().get(1)));
+			bld.put(OPR_ID, new JsonPrimitive(generateStringId(opObject)));
 			bld.put(OSM_INDEX, new JsonPrimitive(0));
 			bld.put(BLOCK_TIMESTAMP, new JsonPrimitive(opBlock.getDateString()));
 			bld.put(BLOCK_HASH, new JsonPrimitive(opBlock.getRawHash()));
@@ -145,7 +139,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			Point p = Point.from(lon, lat);
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 
-			bld.put(OPR_ID, new JsonPrimitive(opObject.getId().get(0) + "," + opObject.getId().get(1)));
+			bld.put(OPR_ID, new JsonPrimitive(generateStringId(opObject)));
 			for (String k : osm.keySet()) {
 				if (k.equals(F_TAGS)) {
 					continue;
@@ -175,17 +169,9 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 					Point p = Point.from(lon, lat);
 					ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 
-					bld.put(OPR_ID, new JsonPrimitive(opObject.getId().get(0) + "," + opObject.getId().get(1)));
+					bld.put(OPR_ID, new JsonPrimitive(generateStringId(opObject)));
 					for (String k : osm.keySet()) {
 						if (k.equals(F_TAGS)) {
-							continue;
-						}
-						if (k.equals(F_ID)) {
-							bld.put(OSM_ID, new JsonPrimitive((Number) osm.get(k)));
-							continue;
-						}
-						if (k.equals(F_TYPE)) {
-							bld.put(OSM_TYPE, new JsonPrimitive(osm.get(k).toString()));
 							continue;
 						}
 						bld.put(k, new JsonPrimitive(osm.get(k).toString()));
@@ -202,6 +188,12 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 		}
 
 	}
+
+
+	private String generateStringId(OpObject opObject) {
+		return opObject.getId().get(0) + "," + opObject.getId().get(1);
+	}
+
 
 	private void generateTagsForEntity(ImmutableMap.Builder<String, JsonElement> bld, Map<String, Object> tagsValue) {
 		if (tagsValue != null) {
