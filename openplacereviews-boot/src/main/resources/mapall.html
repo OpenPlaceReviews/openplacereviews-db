@@ -103,6 +103,7 @@
 
 <script>
 	var map = L.map('map');
+	var currentLayer;
 
 	function getMarkerContent(feature) {
 		var p = feature.properties;
@@ -110,14 +111,15 @@
 		// if(!typeName) {
 		// var typeName = p.osm_value;
 		// }
-		var name = p.tags["name"];
+		// var name = p.tags["name"];
 		var popupContent = p.title;
 		if(p.opr_id) {
 			popupContent += " (" + p.opr_id+") ";
 		}
-
-		for (var t in p.tags) {
-			popupContent += "<br>" + t + " " + p.tags[t];
+		if(p.tags) {
+			for (var t in p.tags) {
+				popupContent += "<br>" + t + " " + p.tags[t];
+			}
 		}
 		if(p.opr_id) {
 			popupContent += "<br><a href=\'/api/admin?view=objects&browse=type&type=opr.place&subtype=id&key=" +
@@ -132,10 +134,15 @@
 	
 	function refreshData() {
 		$("#map-header-text").text("Loading data...");
+		if (currentLayer) {
+			map.removeLayer(currentLayer);
+			// currentLayer.remove();
+		}
 		$.getJSON("data?date=" + $("#date-filter").val(), function (mp) {
 			let data = mp.geo;
 			$("#map-header-text").text("Loaded " + data.features.length + " objects");
-			L.geoJSON(data, {
+			currentLayer = L.markerClusterGroup();
+			let currentLayerPoints = L.geoJSON(data, {
 				style: function (feature) {
 					return feature.properties && feature.properties.style;
 				},
@@ -151,7 +158,10 @@
 					// 	fillOpacity: 0.8
 					// });
 				}
-			}).addTo(map);
+			});
+			currentLayer.addLayer(currentLayerPoints);
+			// currentLayer.addTo(map);
+			map.addLayer(currentLayer);
 		});
 	}
 	
