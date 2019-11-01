@@ -96,6 +96,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	}
 
 	private void generateRemovedEntityFromOpObject(List<String> objId, FeatureCollection featureCollection, OpBlock opBlock, String opHash) {
+		// TODO check if history manager has no table and generate at least empty marker in case there is no history table
 		HistoryManager.HistoryObjectRequest historyObjectRequest = new HistoryManager.HistoryObjectRequest(
 				HISTORY_BY_OBJECT,
 				generateSearchStringKey(objId),
@@ -142,6 +143,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 		Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 		Map<String, Object> current = opObject.getStringObjMap(F_CURRENT);
 
+		// TODO remove regex
 		if (change.size() == 2 && (((String) change.keySet().toArray()[1]).matches(SOURCE_OSM_REGEX))) {
 			for (String key : current.keySet()) {
 				if (key.matches(SOURCE_OSM_REGEX)) {
