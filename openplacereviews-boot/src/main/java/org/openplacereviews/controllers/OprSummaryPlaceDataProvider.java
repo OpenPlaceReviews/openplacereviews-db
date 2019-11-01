@@ -14,6 +14,7 @@ import com.github.filosganga.geogson.model.Feature;
 import com.github.filosganga.geogson.model.Point;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import com.google.openlocationcode.OpenLocationCode;
 
@@ -44,8 +45,13 @@ public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
 		for(String areaCode: counts.keySet()) {
 			OpenLocationCode.CodeArea ca = OsmLocationTool.decode(areaCode);
 			Point p = Point.from(ca.getCenterLongitude(), ca.getCenterLatitude());
-			Feature f = new Feature(p, ImmutableMap.of("name", new JsonPrimitive(counts.get(areaCode)),
-					"code", new JsonPrimitive(areaCode)), Optional.absent());
+			ImmutableMap<String, JsonElement> props = 
+					ImmutableMap.of(
+							"title", new JsonPrimitive(
+									areaCode + " " + counts.get(areaCode) + " places"),
+							"counts", new JsonPrimitive(counts.get(areaCode)),
+							"code", new JsonPrimitive(areaCode));
+			Feature f = new Feature(p, props, Optional.absent());
 			m.geo.features().add(f);
 		}
 

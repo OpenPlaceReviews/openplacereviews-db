@@ -33,14 +33,15 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.service.HistoryManager.DESC_SORT;
 import static org.openplacereviews.opendb.service.HistoryManager.HISTORY_BY_OBJECT;
-import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
-import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.model.Entity.*;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	private static final Log LOGGER = LogFactory.getLog(ApiController.class);
 
+	public static final String OSM_ID = "osm_id";
+	public static final String OSM_TYPE = "osm_type";
 	public static final String OSM_INDEX = "osm_index";
 	public static final String BLOCK_TIMESTAMP = "block_timestamp";
 	public static final String BLOCK_HASH = "block_hash";
@@ -48,15 +49,17 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	public static final String OP_HASH = "op_hash";
 	public static final String OPR_ID = "opr_id";
 	public static final String OPR_PLACE = "opr.place";
+	
+	public static final String ATTR_TYPE = "type";
 
 	private static final String SOURCE_OSM_REGEX = "source.osm\\[\\d+]";
 	private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d+");
 	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
 
 	// constants ? or human strings?
-	public final String OBJ_CREATED = "Created";
-	public final String OBJ_EDITED = "Edited";
-	public final String OBJ_REMOVED = "Removed";
+	public static final String OBJ_CREATED = "Created";
+	public static final String OBJ_EDITED = "Edited";
+	public static final String OBJ_REMOVED = "Removed";
 
 	@Autowired
 	private HistoryManager historyManager;
@@ -129,7 +132,8 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			double lon = (double) osm.get(ATTR_LONGITUDE);
 			Point p = Point.from(lon, lat);
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
-
+			bld.put(OSM_ID, new JsonPrimitive((long) osm.get(ATTR_ID)));
+			bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get(ATTR_TYPE)));
 			bld.put(OSM_INDEX, new JsonPrimitive(i));
 			bld.put(TITLE, new JsonPrimitive(objectStatus));
 			for (String k : osm.keySet()) {
