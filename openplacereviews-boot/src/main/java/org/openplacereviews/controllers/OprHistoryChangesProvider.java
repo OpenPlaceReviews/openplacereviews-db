@@ -27,6 +27,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.openplacereviews.controllers.MapCollection.TITLE;
+import static org.openplacereviews.controllers.MapCollection.TYPE_DATE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.service.HistoryManager.DESC_SORT;
@@ -39,8 +41,6 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	private static final Log LOGGER = LogFactory.getLog(ApiController.class);
 
-	public static final String PARAM_OSM_DATE = "date";
-
 	public static final String OSM_INDEX = "osm_index";
 	public static final String BLOCK_TIMESTAMP = "block_timestamp";
 	public static final String BLOCK_HASH = "block_hash";
@@ -49,14 +49,14 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	public static final String OPR_ID = "opr_id";
 	public static final String OPR_PLACE = "opr.place";
 
-	// constants ? or human strings?
-	public static final String OBJ_CREATED = "Created";
-	public static final String OBJ_EDITED = "Edited";
-	public static final String OBJ_REMOVED = "Removed";
-
 	private static final String SOURCE_OSM_REGEX = "source.osm\\[\\d+]";
 	private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d+");
 	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+
+	// constants ? or human strings?
+	public final String OBJ_CREATED = "Created";
+	public final String OBJ_EDITED = "Edited";
+	public final String OBJ_REMOVED = "Removed";
 
 	@Autowired
 	private HistoryManager historyManager;
@@ -98,23 +98,30 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	}
 
 	private void generateRemovedEntityFromOpObject(List<String> objId, FeatureCollection fc, OpBlock opBlock, String opHash) {
-		// TODO check if history manager has no table and generate at least empty marker in case there is no history table	
-		HistoryManager.HistoryObjectRequest historyObjectRequest = new HistoryManager.HistoryObjectRequest(
-				HISTORY_BY_OBJECT,
-				generateSearchStringKey(objId),
-				1,
-				DESC_SORT
-		);
-		historyManager.retrieveHistory(historyObjectRequest);
-		List<HistoryManager.HistoryEdit> historyEdits = historyObjectRequest.historySearchResult;
-		HistoryManager.HistoryEdit lastVersion = historyEdits.get(0);
-		OpObject opObject = lastVersion.getObjEdit();
-		generateEntity(fc, opBlock, opHash, opObject, OBJ_REMOVED);
-
+		if (historyManager.isRunning()) {
+			HistoryManager.HistoryObjectRequest historyObjectRequest = new HistoryManager.HistoryObjectRequest(
+					HISTORY_BY_OBJECT,
+					generateSearchStringKey(objId),
+					1,
+					DESC_SORT
+			);
+			historyManager.retrieveHistory(historyObjectRequest);
+			List<HistoryManager.HistoryEdit> historyEdits = historyObjectRequest.historySearchResult;
+			HistoryManager.HistoryEdit lastVersion = historyEdits.get(0);
+			OpObject opObject = lastVersion.getObjEdit();
+			generateEntity(fc, opBlock, opHash, opObject, OBJ_REMOVED);
+		} else {
+			// TODO we does not have a lat/lon for removed object -> only objId
+			double lat = 0;
+			double lon = 0;
+			Point p = Point.from(lon, lat);
+			Feature f = Feature.of(p).withProperty(TITLE, new JsonPrimitive(OBJ_REMOVED));
+//			fc.features().add(f);
+		}
 	}
 
 	@SuppressWarnings("unchecked")
-	private void generateEntity(FeatureCollection fc, OpBlock opBlock, String opHash, OpObject opObject, String objRemoved) {
+	private void generateEntity(FeatureCollection fc, OpBlock opBlock, String opHash, OpObject opObject, String objectStatus) {
 		List<Map<String, Object>> osmList = opObject.getField(null, F_SOURCE, F_OSM);
 		for (int i = 0; i < osmList.size(); i++) {
 			Map<String, Object> osm = osmList.get(i);
@@ -124,6 +131,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 
 			bld.put(OSM_INDEX, new JsonPrimitive(i));
+			bld.put(TITLE, new JsonPrimitive(objectStatus));
 			for (String k : osm.keySet()) {
 				if (k.equals(F_TAGS)) {
 					continue;
@@ -135,7 +143,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 
 
-			Feature f = new Feature(p, bld.build(), Optional.absent()).withId(objRemoved);
+			Feature f = new Feature(p, bld.build(), Optional.absent());
 			fc.features().add(f);
 		}
 	}
@@ -156,6 +164,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 					ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 
 					bld.put(OSM_INDEX, new JsonPrimitive(getOsmIndexFromStringKey(key)));
+					bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED));
 					for (String k : osm.keySet()) {
 						if (k.equals(F_TAGS)) {
 							continue;
@@ -166,7 +175,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 					generateTagsForEntity(bld, tagsValue);
 					generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 
-					Feature f = new Feature(p, bld.build(), Optional.absent()).withId(OBJ_REMOVED);
+					Feature f = new Feature(p, bld.build(), Optional.absent());
 					featureCollection.features().add(f);
 				}
 			}
@@ -215,7 +224,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	@Override
 	public MapCollection getContent(String date) {
 		MapCollection fc = new MapCollection();
-		fc.parameters.put(PARAM_OSM_DATE, MapCollection.TYPE_DATE);
+		fc.parameters.put(TYPE_DATE, TYPE_DATE);
 		if(!date.equals("")) {
 			try {
 				retrievePlacesByDate(date, fc.geo);
@@ -229,7 +238,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	@Override
 	public String formatParams(Map<String, String[]> params) {
-		String[] tls = params.get(PARAM_OSM_DATE);
+		String[] tls = params.get(TYPE_DATE);
 		if(tls != null && tls.length == 1 && tls[0] != null) {
 			return tls[0];
 		}
