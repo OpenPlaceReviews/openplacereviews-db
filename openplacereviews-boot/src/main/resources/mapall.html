@@ -157,26 +157,9 @@
 
 	function getMarkerContent(feature) {
 		var p = feature.properties;
-		//var typeName = types? types[p.osm_value] : null;
-		// if(!typeName) {
-		// var typeName = p.osm_value;
-		// }
-		// var name = p.tags["name"];
 		var popupContent = p.title;
 		if(p.opr_id) {
 			popupContent += " (" + p.opr_id+") ";
-		}
-		if (p.hasOwnProperty("title") && p.title === "Edited") {
-		    if (p.prev.tags) {
-                for (let t in p.prev.tags) {
-                    popupContent += "<br>prev." + t + " " + p.prev.tags[t];
-                }
-			}
-			if (p.next.tags) {
-                for (let t in p.next.tags) {
-                    popupContent += "<br>next." + t + " " + p.next.tags[t];
-                }
-			}
 		}
 		if(p.tags) {
 			for (var t in p.tags) {
@@ -210,9 +193,12 @@
 				filter.empty();
 				filter.append(new Option("Filter...", "all"));
 				for (var type in mp.placeTypes) {
-					filter.append(new Option(types[type], type));
+					filter.append(new Option(mp.placeTypes[type], type));
 				}
 				filter.removeClass("d-none");
+				$("#filter").change(function(){
+					refreshMapDelay();
+				});
 			}
 			refreshMapDelay();
 		});
@@ -241,7 +227,7 @@
 					} else {
 						for (var i = 0; i < cTileId.data.features.length; i++) {
 							var f = cTileId.data.features[i];
-							if (f.properties && f.properties.osm_value == filterVal) {
+							if (f.properties && f.properties.placeType == filterVal) {
 								geoJson.features.push(f);
 							}
 						}
@@ -267,8 +253,8 @@
 			
 			pointToLayer: function (feature, latlng) {
 				var iconVal = {};
-				if (color in feature.properties && feature.properties[color] in coloredMarkers) {
-					iconVal = { icon: coloredMarkers[feature.properties[color]] };
+				if ('color' in feature.properties && feature.properties.color in coloredMarkers) {
+					iconVal = { icon: coloredMarkers[feature.properties.color] };
 				}
 				return L.marker(latlng, iconVal).bindPopup(getMarkerContent(feature));
 				// return L.circleMarker(latlng, {
@@ -350,10 +336,6 @@
 	$("#date-filter").change(function(){
 		refreshData("date=" + $("#date-filter").val());
 	});
-	$("#filter").change(function(){
-		refreshMapDelay();
-	});
-
 	
 
 </script>

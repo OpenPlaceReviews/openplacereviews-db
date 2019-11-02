@@ -130,6 +130,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			bld.put(OSM_INDEX, new JsonPrimitive(i));
 			bld.put(TITLE, new JsonPrimitive(status + " " + getTitle(osm)));
 			bld.put(COLOR, new JsonPrimitive(color));
+			bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
 			generateAllFields(osm, bld);
 			generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 

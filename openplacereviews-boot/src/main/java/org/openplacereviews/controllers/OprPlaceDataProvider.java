@@ -43,9 +43,11 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	public static final String OSM_ID = "osm_id";
 	public static final String TITLE = "title";
 	public static final String COLOR = "color";
-	public static final String OSM_TYPE = "osm_type";
+	public static final String PLACE_TYPE = "place_type";
 	public static final String OPR_ID = "opr_id";
 	public static final String OSM_VALUE = "osm_value";
+	public static final String OSM_TYPE = "osm_type";
+	
 	
 	protected Gson geoJson;
 	
@@ -102,6 +104,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
 			bld.put(OSM_ID, new JsonPrimitive((Long) osm.get("id")));
 			bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get("type")));
+			bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
 			
 			String osmValue = getTitle(osm);
 			bld.put(TITLE, new JsonPrimitive(osmValue));
