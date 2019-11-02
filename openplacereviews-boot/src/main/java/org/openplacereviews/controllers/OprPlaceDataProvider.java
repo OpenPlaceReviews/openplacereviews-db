@@ -103,7 +103,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 
 	@Override
 	public AbstractResource getMetaPage(Map<String, String[]> params) {
-		return new InputStreamResource(OprPlaceDataProvider.class.getResourceAsStream("/map.html"));
+		return new InputStreamResource(OprPlaceDataProvider.class.getResourceAsStream("/mapall.html"));
 	}
 
 	@Override

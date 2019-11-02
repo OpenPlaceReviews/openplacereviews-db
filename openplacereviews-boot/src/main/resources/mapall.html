@@ -103,7 +103,56 @@
 
 <script>
 	var map = L.map('map');
-	var currentLayer;
+	var currentLayer = null;
+	var currentBounds = {};
+	var placesCache = {};
+	var mapInvalidate = true;
+	var tileBased = false;
+
+	function calculateLocationCodes(bounds) {
+		var tl = OpenLocationCode.encode(bounds.getNorth(), bounds.getWest(), 6);
+		var rb = OpenLocationCode.encode(bounds.getSouth(), bounds.getEast(), 6);
+		var INT_PR = 20;
+		var tllat = Math.ceil(bounds.getNorth() * INT_PR);
+		var tllon = Math.floor(bounds.getWest() * INT_PR);
+		var brlat = Math.floor(bounds.getSouth() * INT_PR);
+		var brlon = Math.ceil(bounds.getEast() * INT_PR);
+		var mp = {};
+		for (var lat = tllat; lat > brlat; lat --) {
+			for (var lon = tllon; lon < brlon; lon ++) {
+				var clat = (lat - 0.5) / INT_PR ;
+				var clon = (lon + 0.5) / INT_PR ;
+				var tileId = OpenLocationCode.encode(clat, clon, 6).substring(0, 6);
+				mp[tileId] = {};
+			}
+		}
+		return mp;
+	}
+
+	function gcPlaceTiles() {
+		var toDel = {};
+		if(Object.keys(placesCache).length < 150) {
+			return;
+		}
+		for(var k in placesCache) {
+			if(!(k in currentBounds)) {
+				toDel[k] = placesCache[k].access;
+			}
+		}
+		for(var k in toDel) {
+			delete placesCache[k];
+		}
+	}
+
+	function refreshMapDelay() {
+		mapInvalidate = true;
+		setTimeout(function() {
+			if(mapInvalidate) {
+				mapInvalidate = false;
+				refreshMap();
+			}
+		}, 500);
+	}
 
 	function getMarkerContent(feature) {
 		var p = feature.properties;
@@ -132,39 +181,114 @@
 		return popupContent;
 	}
 	
-	function refreshData() {
+	function refreshData(params="") {
 		$("#map-header-text").text("Loading data...");
+		$.getJSON("data?"+params, function (mp) {
+			let data = mp.geo;
+			placesCache[""] = { data: data };
+			if("date" in mp.parameters) {
+				$("#date-filter").removeClass("d-none");
+			}
+			if(mp.tileBased) {
+				tileBased = true;
+				$("#filter").removeClass("d-none");
+			}
+			refreshMapDelay();
+		});
+	}
+	
+	function refreshMap() {
+		var msg =  "Loading data...";
 		if (currentLayer) {
 			map.removeLayer(currentLayer);
 			// currentLayer.remove();
 		}
-		$.getJSON("data?date=" + $("#date-filter").val(), function (mp) {
-			let data = mp.geo;
-			$("#map-header-text").text("Loaded " + data.features.length + " objects");
-			currentLayer = L.markerClusterGroup();
-			let currentLayerPoints = L.geoJSON(data, {
-				style: function (feature) {
-					return feature.properties && feature.properties.style;
-				},
-
-				pointToLayer: function (feature, latlng) {
-					return L.marker(latlng).bindPopup(getMarkerContent(feature));
-					// return L.circleMarker(latlng, {
-					// 	radius: 8,
-					// 	fillColor: "#ff7800",
-					// 	color: "#000",
-					// 	weight: 1,
-					// 	opacity: 1,
-					// 	fillOpacity: 0.8
-					// });
+		var geoJson = { 
+			"type":"FeatureCollection",
+			"features":[]
+		};
+		if (tileBased) {
+			var tiles = 0;
+			var missing = 0;
+			var filterVal = $("#filter").val();
+			for (var k in currentBounds) {
+				var cTileId = placesCache[k];
+				if (cTileId.data && "features" in cTileId.data) {
+					tiles++;
+					if (filterVal == "all") {
+						geoJson.features = geoJson.features.concat(cTileId.data.features);
+					} else {
+						for (var i = 0; i < cTileId.data.features.length; i++) {
+							var f = cTileId.data.features[i];
+							if (f.properties && f.properties.osm_value == filterVal) {
+								geoJson.features.push(f);
+							}
+						}
+					}
+				} else {
+					missing++;
 				}
-			});
-			currentLayer.addLayer(currentLayerPoints);
-			// currentLayer.addTo(map);
-			map.addLayer(currentLayer);
+			}
+			msg = tiles + " tiles have " + geoJson.features.length + " places ";
+			if (missing > 0) {
+				msg += " (" + missing + " tiles loading...) ";
+			}
+		} else {
+			geoJson = placesCache[""].data;
+			msg = "Loaded " + geoJson.features.length + " places";
+		}
+		$("#map-header-text").text(msg);
+		currentLayer = L.markerClusterGroup();
+		let currentLayerPoints = L.geoJSON(geoJson , {
+			style: function (feature) {
+				return feature.properties && feature.properties.style;
+			},
+			pointToLayer: function (feature, latlng) {
+				return L.marker(latlng).bindPopup(getMarkerContent(feature));
+				// return L.circleMarker(latlng, {
+				// 	radius: 8,
+				// 	fillColor: "#ff7800",
+				// 	color: "#000",
+				// 	weight: 1,
+				// 	opacity: 1,
+				// 	fillOpacity: 0.8
+				// });
+			}
 		});
+		currentLayer.addLayer(currentLayerPoints);
+		// currentLayer.addTo(map);
+		map.addLayer(currentLayer);
+		gcPlaceTiles();
 	}
-	
+
+	function onMapChange() {
+		var bounds = map.getBounds();
+		var lcodes = calculateLocationCodes(bounds);
+		if(map.getZoom() <= 10) {
+			$("#map-header-text").text("zooming to get data ");
+		} else if(JSON.stringify(lcodes) != JSON.stringify(currentBounds) ) {
+			currentBounds = lcodes;
+			var tilesToLoad = {};
+			for(var t in lcodes) {
+				let tileId = t;
+				if(!placesCache[tileId]) {
+					placesCache[tileId] = { "access": 1 };
+					// on failure we can clear cache
+					$.getJSON("data?tileid=" + tileId, function (mp) {
+						let data = mp.geo;
+						placesCache[tileId].data = data;
+						refreshMapDelay();
+					});
+				} else {
+					placesCache[tileId].access = placesCache[tileId].access + 1; 
+				}
+			}
+			refreshMapDelay();
+		}
+	}
+
+
+
 	if (!map.restoreView()) {
         map.setView([40, -35], 4);
 	}
@@ -175,10 +299,17 @@
 		id: 'tiles'
 	}).addTo(map);
 
+	map.on('moveend', function (e) {
+		if(tileBased) {
+			onMapChange();	
+		}
+	});
 	refreshData();
-	$("#date-filter").removeClass("d-none");
 	$("#date-filter").change(function(){
-		refreshData();
+		refreshData("date=" + $("#date-filter").val());
+	});
+	$("#filter").change(function(){
+		refreshMapDelay();
 	});
 </script>
 
