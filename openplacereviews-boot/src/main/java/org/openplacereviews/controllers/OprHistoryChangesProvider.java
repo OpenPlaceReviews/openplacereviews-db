@@ -175,7 +175,9 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 					ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 
 					bld.put(OSM_INDEX, new JsonPrimitive(getOsmIndexFromStringKey(key)));
-					bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED));
+					bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED + " " + getTitle(osm)));
+					bld.put(COLOR, new JsonPrimitive("red"));
+					bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
 					generateAllFields(osm, bld);
 					generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 
@@ -184,6 +186,9 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 				}
 			}
 		} else {
+			if(true) {
+				return;
+			}
 			// TODO updated generating edited objects
 			Set<Integer> osmIds = new HashSet<>();
 			for (String key : current.keySet()) {

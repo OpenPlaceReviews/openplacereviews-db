@@ -227,7 +227,7 @@
 					} else {
 						for (var i = 0; i < cTileId.data.features.length; i++) {
 							var f = cTileId.data.features[i];
-							if (f.properties && f.properties.placeType == filterVal) {
+							if (f.properties && f.properties.place_type == filterVal) {
 								geoJson.features.push(f);
 							}
 						}
