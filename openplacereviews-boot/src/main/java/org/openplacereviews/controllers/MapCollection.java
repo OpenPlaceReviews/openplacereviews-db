@@ -17,4 +17,6 @@ public class MapCollection {
 	public Map<String, String> parameters = new LinkedHashMap<String, String>();
 	
 	public boolean tileBased = false;
+	
+	public Map<String, String> placeTypes;
 }

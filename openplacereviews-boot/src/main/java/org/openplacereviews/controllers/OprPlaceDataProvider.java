@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpIndexColumn;
@@ -44,10 +45,30 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	@Autowired
 	protected BlocksManager blocksManager;
 	
+	// TODO store in blockchain mapping + translations
+	public Map<String, String> placeTypes = new TreeMap<String, String>(); 
+	
 	public OprPlaceDataProvider() {
 		geoJson = new GsonBuilder().registerTypeAdapterFactory(new GeometryAdapterFactory()).create();
+		initPlaceTypes();
 	}
 	
+	private void initPlaceTypes() {
+		placeTypes.put("ice_cream", "Ice cream");
+		placeTypes.put("cafe", "Cafe");
+		placeTypes.put("bar", "Bar");
+		placeTypes.put("restaurant", "Restaurant");
+		placeTypes.put("biergarten", "Biergarten");
+		placeTypes.put("fast_food", "Fast food");
+		placeTypes.put("food_court", "Food court");
+		placeTypes.put("pub", "Pub");
+		placeTypes.put("hotel", "Hotel");
+		placeTypes.put("motel", "Motel");
+		placeTypes.put("hostel", "Hostel");
+		placeTypes.put("apartment", "Apartment");
+		placeTypes.put("guest_house", "Guest house");
+	}
+
 	public void fetchObjectsByTileId(String tileId, FeatureCollection fc) {
 		OpBlockChain blc = blocksManager.getBlockchain();
 		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
@@ -72,13 +93,18 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			Point p = Point.from(lon, lat);
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 			bld.put("opr_id", new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
-			for (String k : osm.keySet()) {
-				if (k.equals("tags")) {
-					continue;
-				}
-				bld.put(k, new JsonPrimitive(osm.get(k).toString()));
-			}
+			bld.put("osm_id", new JsonPrimitive((Long) osm.get("id")));
+			bld.put("osm_type", new JsonPrimitive((String) osm.get("type")));
 			Map<String, Object> tagsValue = (Map<String, Object>) osm.get("tags");
+			String osmValue = (String) osm.get("osm_value");
+			if(placeTypes.containsKey(osmValue)) {
+				osmValue = placeTypes.get(osmValue);
+			}
+			if(tagsValue.containsKey("name")) {
+				String name = (String) tagsValue.get("name");
+				osmValue += " <b>" +name +"</b>";
+			}
+			bld.put("title", new JsonPrimitive(osmValue));
 			if (tagsValue != null) {
 				JsonObject obj = new JsonObject();
 				Iterator<Entry<String, Object>> it = tagsValue.entrySet().iterator();
@@ -115,6 +141,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	public MapCollection getContent(String tile) {
 		MapCollection m = new MapCollection();
 		m.tileBased = true;
+		m.placeTypes = placeTypes;
 		if(!tile.equals("")) {
 			fetchObjectsByTileId(formatTile(tile), m.geo);
 		}

@@ -191,7 +191,15 @@
 			}
 			if(mp.tileBased) {
 				tileBased = true;
-				$("#filter").removeClass("d-none");
+			}
+			if(mp.placeTypes) {
+				var filter = $("#filter");
+				filter.empty();
+				filter.append(new Option("Filter...", "all"));
+				for (var type in mp.placeTypes) {
+					filter.append(new Option(types[type], type));
+				}
+				filter.removeClass("d-none");
 			}
 			refreshMapDelay();
 		});
