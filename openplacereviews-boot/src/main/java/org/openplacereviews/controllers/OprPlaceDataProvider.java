@@ -40,6 +40,13 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	protected static final String PARAM_TILE_ID = "tileid";
 	protected static final int INDEXED_TILEID = 6;
 	
+	public static final String OSM_ID = "osm_id";
+	public static final String TITLE = "title";
+	public static final String COLOR = "color";
+	public static final String OSM_TYPE = "osm_type";
+	public static final String OPR_ID = "opr_id";
+	public static final String OSM_VALUE = "osm_value";
+	
 	protected Gson geoJson;
 	
 	@Autowired
@@ -92,19 +99,13 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			double lon = (double) osm.get(ATTR_LONGITUDE);
 			Point p = Point.from(lon, lat);
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
-			bld.put("opr_id", new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
-			bld.put("osm_id", new JsonPrimitive((Long) osm.get("id")));
-			bld.put("osm_type", new JsonPrimitive((String) osm.get("type")));
+			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
+			bld.put(OSM_ID, new JsonPrimitive((Long) osm.get("id")));
+			bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get("type")));
+			
+			String osmValue = getTitle(osm);
+			bld.put(TITLE, new JsonPrimitive(osmValue));
 			Map<String, Object> tagsValue = (Map<String, Object>) osm.get("tags");
-			String osmValue = (String) osm.get("osm_value");
-			if(placeTypes.containsKey(osmValue)) {
-				osmValue = placeTypes.get(osmValue);
-			}
-			if(tagsValue.containsKey("name")) {
-				String name = (String) tagsValue.get("name");
-				osmValue += " <b>" +name +"</b>";
-			}
-			bld.put("title", new JsonPrimitive(osmValue));
 			if (tagsValue != null) {
 				JsonObject obj = new JsonObject();
 				Iterator<Entry<String, Object>> it = tagsValue.entrySet().iterator();
@@ -117,6 +118,20 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			Feature f = new Feature(p, bld.build(), Optional.absent());
 			fc.features().add(f);
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	protected String getTitle(Map<String, Object> osm) {
+		Map<String, Object> tagsValue = (Map<String, Object>) osm.get("tags");
+		String osmValue = (String) osm.get(OSM_VALUE);
+		if(placeTypes.containsKey(osmValue)) {
+			osmValue = placeTypes.get(osmValue);
+		}
+		if(tagsValue.containsKey("name")) {
+			String name = (String) tagsValue.get("name");
+			osmValue += " <b>" +name +"</b>";
+		}
+		return osmValue;
 	}
 	
 	private String formatTile(String string) {

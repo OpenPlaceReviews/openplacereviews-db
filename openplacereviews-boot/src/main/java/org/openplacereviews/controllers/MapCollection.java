@@ -10,7 +10,6 @@ import com.github.filosganga.geogson.model.FeatureCollection;
 public class MapCollection {
 
 	public static final String TYPE_DATE = "date";
-	public static final String TITLE = "title";
 
 	public FeatureCollection geo = new FeatureCollection(new ArrayList<Feature>());
 	

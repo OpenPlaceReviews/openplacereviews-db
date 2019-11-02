@@ -27,7 +27,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.openplacereviews.controllers.MapCollection.TITLE;
 import static org.openplacereviews.controllers.MapCollection.TYPE_DATE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
@@ -40,16 +39,15 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	private static final Log LOGGER = LogFactory.getLog(ApiController.class);
 
-	public static final String OSM_ID = "osm_id";
-	public static final String OSM_TYPE = "osm_type";
 	public static final String OSM_INDEX = "osm_index";
 	public static final String BLOCK_TIMESTAMP = "block_timestamp";
 	public static final String BLOCK_HASH = "block_hash";
 	public static final String BLOCK_ID = "block_id";
 	public static final String OP_HASH = "op_hash";
-	public static final String OPR_ID = "opr_id";
 	public static final String OPR_PLACE = "opr.place";
-	
+	public static final String OBJ_PREV = "prev";
+	public static final String OBJ_NEXT = "next";
+
 	public static final String ATTR_TYPE = "type";
 
 	private static final String SOURCE_OSM_REGEX = "source.osm\\[\\d+]";
@@ -82,7 +80,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			for (OpOperation opOperation : opOperations) {
 				if (opOperation.getType().equals(OPR_PLACE)) {
 					for (OpObject opObject : opOperation.getCreated()) {
-						generateCreateEntityFromOpObject(opObject, fc, block, opOperation.getRawHash());
+						generateEntity(fc, block, opOperation.getRawHash(), opObject, OBJ_CREATED, "green");
 					}
 					for (OpObject opObject : opOperation.getEdited()) {
 						generateEditedEntityFromOpObject(opObject, fc, block, opOperation.getRawHash());
@@ -96,9 +94,6 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	}
 
-	private void generateCreateEntityFromOpObject(OpObject opObject, FeatureCollection fc, OpBlock opBlock, String opHash) {
-		generateEntity(fc, opBlock, opHash, opObject, OBJ_CREATED);
-	}
 
 	private void generateRemovedEntityFromOpObject(List<String> objId, FeatureCollection fc, OpBlock opBlock, String opHash) {
 		if (historyManager.isRunning()) {
@@ -112,19 +107,19 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			List<HistoryManager.HistoryEdit> historyEdits = historyObjectRequest.historySearchResult;
 			HistoryManager.HistoryEdit lastVersion = historyEdits.get(0);
 			OpObject opObject = lastVersion.getObjEdit();
-			generateEntity(fc, opBlock, opHash, opObject, OBJ_REMOVED);
+			generateEntity(fc, opBlock, opHash, opObject, OBJ_REMOVED, "red");
 		} else {
 			// TODO we does not have a lat/lon for removed object -> only objId
-			double lat = 0;
-			double lon = 0;
-			Point p = Point.from(lon, lat);
-			Feature f = Feature.of(p).withProperty(TITLE, new JsonPrimitive(OBJ_REMOVED));
+//			double lat = 0;
+//			double lon = 0;
+//			Point p = Point.from(lon, lat);
+//			Feature f = Feature.of(p).withProperty(TITLE, new JsonPrimitive(OBJ_REMOVED));
 //			fc.features().add(f);
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private void generateEntity(FeatureCollection fc, OpBlock opBlock, String opHash, OpObject opObject, String objectStatus) {
+	private void generateEntity(FeatureCollection fc, OpBlock opBlock, String opHash, OpObject opObject, 
+			String status, String color) {
 		List<Map<String, Object>> osmList = opObject.getField(null, F_SOURCE, F_OSM);
 		for (int i = 0; i < osmList.size(); i++) {
 			Map<String, Object> osm = osmList.get(i);
@@ -132,24 +127,35 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			double lon = (double) osm.get(ATTR_LONGITUDE);
 			Point p = Point.from(lon, lat);
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
-			bld.put(OSM_ID, new JsonPrimitive((long) osm.get(ATTR_ID)));
-			bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get(ATTR_TYPE)));
 			bld.put(OSM_INDEX, new JsonPrimitive(i));
-			bld.put(TITLE, new JsonPrimitive(objectStatus));
-			for (String k : osm.keySet()) {
-				if (k.equals(F_TAGS)) {
-					continue;
-				}
-				bld.put(k, new JsonPrimitive(osm.get(k).toString()));
-			}
-			Map<String, Object> tagsValue = (Map<String, Object>) osm.get(F_TAGS);
-			generateTagsForEntity(bld, tagsValue);
+			bld.put(TITLE, new JsonPrimitive(status + " " + getTitle(osm)));
+			bld.put(COLOR, new JsonPrimitive(color));
+			generateAllFields(osm, bld);
 			generateObjectBlockInfo(opObject, opBlock, opHash, bld);
-
 
 			Feature f = new Feature(p, bld.build(), Optional.absent());
 			fc.features().add(f);
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void generateAllFields(Map<String, Object> osm, ImmutableMap.Builder<String, JsonElement> bld) {
+		for (String k : osm.keySet()) {
+			if (k.equals(F_TAGS)) {
+				continue;
+			}
+			if (k.equals(ATTR_ID)) {
+				bld.put(OSM_ID, new JsonPrimitive((long) osm.get(ATTR_ID)));
+				continue;
+			}
+			if (k.equals(ATTR_TYPE)) {
+				bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get(ATTR_TYPE)));
+				continue;
+			}
+			bld.put(k, new JsonPrimitive(osm.get(k).toString()));
+		}
+		Map<String, Object> tagsValue = (Map<String, Object>) osm.get(F_TAGS);
+		generateTagsForEntity(bld, tagsValue);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -169,14 +175,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 					bld.put(OSM_INDEX, new JsonPrimitive(getOsmIndexFromStringKey(key)));
 					bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED));
-					for (String k : osm.keySet()) {
-						if (k.equals(F_TAGS)) {
-							continue;
-						}
-						bld.put(k, new JsonPrimitive(osm.get(k).toString()));
-					}
-					Map<String, Object> tagsValue = (Map<String, Object>) osm.get(F_TAGS);
-					generateTagsForEntity(bld, tagsValue);
+					generateAllFields(osm, bld);
 					generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 
 					Feature f = new Feature(p, bld.build(), Optional.absent());
@@ -184,7 +183,51 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 				}
 			}
 		} else {
-			// TODO create edit entity
+			// TODO updated generating edited objects
+			Set<Integer> osmIds = new HashSet<>();
+			for (String key : current.keySet()) {
+				osmIds.add(getOsmIndexFromStringKey(key));
+			}
+			OpObject originObject = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+			List<Map<String, Object>> objects = originObject.getField(null, "source", "osm");
+			for (Integer id : osmIds) {
+				if (objects.size() > id) {
+					Map<String, Object> osm = objects.get(id);
+					double lat = (double) osm.get(ATTR_LATITUDE);
+					double lon = (double) osm.get(ATTR_LONGITUDE);
+					Point p = Point.from(lon, lat);
+					ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
+
+					bld.put(OSM_INDEX, new JsonPrimitive(id));
+					bld.put(TITLE, new JsonPrimitive(OBJ_EDITED + " " + getTitle(osm)));
+					bld.put(OSM_ID, new JsonPrimitive((long) osm.get(ATTR_ID)));
+					bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get(ATTR_TYPE)));
+					generateObjectBlockInfo(opObject, opBlock, opHash, bld);
+
+					JsonObject prev = new JsonObject();
+					for (String k : osm.keySet()) {
+						if (k.equals(F_TAGS)) {
+							continue;
+						}
+						prev.addProperty(k, osm.get(k).toString());
+					}
+					Map<String, Object> tagsValue = (Map<String, Object>) osm.get(F_TAGS);
+					if (tagsValue != null) {
+						JsonObject obj = new JsonObject();
+						for (Map.Entry<String, Object> e : tagsValue.entrySet()) {
+							obj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
+						}
+						prev.add(F_TAGS, obj);
+					}
+					JsonObject next = new JsonObject();
+
+					bld.put(OBJ_PREV, prev);
+					bld.put(OBJ_NEXT, next);
+
+					Feature f = new Feature(p, bld.build(), Optional.absent());
+					featureCollection.features().add(f);
+				}
+			}
 		}
 
 	}

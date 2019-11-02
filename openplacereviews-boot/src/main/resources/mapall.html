@@ -107,6 +107,7 @@
 	var currentBounds = {};
 	var placesCache = {};
 	var mapInvalidate = true;
+	var coloredMarkers = {};
 	var tileBased = false;
 
 	function calculateLocationCodes(bounds) {
@@ -164,6 +165,18 @@
 		var popupContent = p.title;
 		if(p.opr_id) {
 			popupContent += " (" + p.opr_id+") ";
+		}
+		if (p.hasOwnProperty("title") && p.title === "Edited") {
+		    if (p.prev.tags) {
+                for (let t in p.prev.tags) {
+                    popupContent += "<br>prev." + t + " " + p.prev.tags[t];
+                }
+			}
+			if (p.next.tags) {
+                for (let t in p.next.tags) {
+                    popupContent += "<br>next." + t + " " + p.next.tags[t];
+                }
+			}
 		}
 		if(p.tags) {
 			for (var t in p.tags) {
@@ -251,8 +264,13 @@
 			style: function (feature) {
 				return feature.properties && feature.properties.style;
 			},
+			
 			pointToLayer: function (feature, latlng) {
-				return L.marker(latlng).bindPopup(getMarkerContent(feature));
+				var iconVal = {};
+				if (color in feature.properties && feature.properties[color] in coloredMarkers) {
+					iconVal = { icon: coloredMarkers[feature.properties[color]] };
+				}
+				return L.marker(latlng, iconVal).bindPopup(getMarkerContent(feature));
 				// return L.circleMarker(latlng, {
 				// 	radius: 8,
 				// 	fillColor: "#ff7800",
@@ -295,6 +313,22 @@
 		}
 	}
 
+	function initColoredMarkers() {
+		coloredMarkers = { "green": {}, "blue": {}, "red": {} };
+		for (var clr in coloredMarkers) {
+			coloredMarkers[clr] =
+				new L.Icon({
+					iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-' + clr + '.png',
+					shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+					iconSize: [25, 41],
+					iconAnchor: [12, 41],
+					popupAnchor: [1, -34],
+					shadowSize: [41, 41]
+				});
+		}
+	}
+
+	initColoredMarkers();
 
 
 	if (!map.restoreView()) {
@@ -319,6 +353,9 @@
 	$("#filter").change(function(){
 		refreshMapDelay();
 	});
+
+	
+
 </script>
 
 
