@@ -197,40 +197,42 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			OpObject originObject = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 			List<Map<String, Object>> objects = originObject.getField(null, "source", "osm");
 			for (Integer id : osmIds) {
-				Map<String,Object> osm = objects.get(id);
-				double lat = (double) osm.get(ATTR_LATITUDE);
-				double lon = (double) osm.get(ATTR_LONGITUDE);
-				Point p = Point.from(lon, lat);
-				ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
+				if (objects.size() > id) {
+					Map<String, Object> osm = objects.get(id);
+					double lat = (double) osm.get(ATTR_LATITUDE);
+					double lon = (double) osm.get(ATTR_LONGITUDE);
+					Point p = Point.from(lon, lat);
+					ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 
-				bld.put(OSM_INDEX, new JsonPrimitive(id));
-				bld.put(TITLE, new JsonPrimitive(OBJ_EDITED));
-				bld.put(OSM_ID, new JsonPrimitive((long) osm.get(ATTR_ID)));
-				bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get(ATTR_TYPE)));
-				generateObjectBlockInfo(opObject, opBlock, opHash, bld);
+					bld.put(OSM_INDEX, new JsonPrimitive(id));
+					bld.put(TITLE, new JsonPrimitive(OBJ_EDITED));
+					bld.put(OSM_ID, new JsonPrimitive((long) osm.get(ATTR_ID)));
+					bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get(ATTR_TYPE)));
+					generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 
-				JsonObject prev = new JsonObject();
-				for (String k : osm.keySet()) {
-					if (k.equals(F_TAGS)) {
-						continue;
+					JsonObject prev = new JsonObject();
+					for (String k : osm.keySet()) {
+						if (k.equals(F_TAGS)) {
+							continue;
+						}
+						prev.addProperty(k, osm.get(k).toString());
 					}
-					prev.addProperty(k, osm.get(k).toString());
-				}
-				Map<String, Object> tagsValue = (Map<String, Object>) osm.get(F_TAGS);
-				if (tagsValue != null) {
-					JsonObject obj = new JsonObject();
-					for (Map.Entry<String, Object> e : tagsValue.entrySet()) {
-						obj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
+					Map<String, Object> tagsValue = (Map<String, Object>) osm.get(F_TAGS);
+					if (tagsValue != null) {
+						JsonObject obj = new JsonObject();
+						for (Map.Entry<String, Object> e : tagsValue.entrySet()) {
+							obj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
+						}
+						prev.add(F_TAGS, obj);
 					}
-					prev.add(F_TAGS, obj);
+					JsonObject next = new JsonObject();
+
+					bld.put(OBJ_PREV, prev);
+					bld.put(OBJ_NEXT, next);
+
+					Feature f = new Feature(p, bld.build(), Optional.absent());
+					featureCollection.features().add(f);
 				}
-				JsonObject next = new JsonObject();
-
-				bld.put(OBJ_PREV, prev);
-				bld.put(OBJ_NEXT, next);
-
-				Feature f = new Feature(p, bld.build(), Optional.absent());
-				featureCollection.features().add(f);
 			}
 		}
 
