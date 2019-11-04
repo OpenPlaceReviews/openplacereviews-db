@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpIndexColumn;
@@ -39,15 +40,44 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	protected static final String PARAM_TILE_ID = "tileid";
 	protected static final int INDEXED_TILEID = 6;
 	
+	public static final String OSM_ID = "osm_id";
+	public static final String TITLE = "title";
+	public static final String COLOR = "color";
+	public static final String PLACE_TYPE = "place_type";
+	public static final String OPR_ID = "opr_id";
+	public static final String OSM_VALUE = "osm_value";
+	public static final String OSM_TYPE = "osm_type";
+	
+	
 	protected Gson geoJson;
 	
 	@Autowired
 	protected BlocksManager blocksManager;
 	
+	// TODO store in blockchain mapping + translations
+	public Map<String, String> placeTypes = new TreeMap<String, String>(); 
+	
 	public OprPlaceDataProvider() {
 		geoJson = new GsonBuilder().registerTypeAdapterFactory(new GeometryAdapterFactory()).create();
+		initPlaceTypes();
 	}
 	
+	private void initPlaceTypes() {
+		placeTypes.put("ice_cream", "Ice cream");
+		placeTypes.put("cafe", "Cafe");
+		placeTypes.put("bar", "Bar");
+		placeTypes.put("restaurant", "Restaurant");
+		placeTypes.put("biergarten", "Biergarten");
+		placeTypes.put("fast_food", "Fast food");
+		placeTypes.put("food_court", "Food court");
+		placeTypes.put("pub", "Pub");
+		placeTypes.put("hotel", "Hotel");
+		placeTypes.put("motel", "Motel");
+		placeTypes.put("hostel", "Hostel");
+		placeTypes.put("apartment", "Apartment");
+		placeTypes.put("guest_house", "Guest house");
+	}
+
 	public void fetchObjectsByTileId(String tileId, FeatureCollection fc) {
 		OpBlockChain blc = blocksManager.getBlockchain();
 		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
@@ -71,13 +101,13 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			double lon = (double) osm.get(ATTR_LONGITUDE);
 			Point p = Point.from(lon, lat);
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
-			bld.put("opr_id", new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
-			for (String k : osm.keySet()) {
-				if (k.equals("tags")) {
-					continue;
-				}
-				bld.put(k, new JsonPrimitive(osm.get(k).toString()));
-			}
+			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
+			bld.put(OSM_ID, new JsonPrimitive((Long) osm.get("id")));
+			bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get("type")));
+			bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
+			
+			String osmValue = getTitle(osm);
+			bld.put(TITLE, new JsonPrimitive(osmValue));
 			Map<String, Object> tagsValue = (Map<String, Object>) osm.get("tags");
 			if (tagsValue != null) {
 				JsonObject obj = new JsonObject();
@@ -92,6 +122,20 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			fc.features().add(f);
 		}
 	}
+
+	@SuppressWarnings("unchecked")
+	protected String getTitle(Map<String, Object> osm) {
+		Map<String, Object> tagsValue = (Map<String, Object>) osm.get("tags");
+		String osmValue = (String) osm.get(OSM_VALUE);
+		if(placeTypes.containsKey(osmValue)) {
+			osmValue = placeTypes.get(osmValue);
+		}
+		if(tagsValue.containsKey("name")) {
+			String name = (String) tagsValue.get("name");
+			osmValue += " <b>" +name +"</b>";
+		}
+		return osmValue;
+	}
 	
 	private String formatTile(String string) {
 		if(string.length() > INDEXED_TILEID) {
@@ -103,7 +147,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 
 	@Override
 	public AbstractResource getMetaPage(Map<String, String[]> params) {
-		return new InputStreamResource(OprPlaceDataProvider.class.getResourceAsStream("/map.html"));
+		return new InputStreamResource(OprPlaceDataProvider.class.getResourceAsStream("/mapall.html"));
 	}
 
 	@Override
@@ -115,6 +159,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	public MapCollection getContent(String tile) {
 		MapCollection m = new MapCollection();
 		m.tileBased = true;
+		m.placeTypes = placeTypes;
 		if(!tile.equals("")) {
 			fetchObjectsByTileId(formatTile(tile), m.geo);
 		}

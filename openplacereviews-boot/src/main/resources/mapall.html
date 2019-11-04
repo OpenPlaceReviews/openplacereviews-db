@@ -103,42 +103,63 @@
 
 <script>
 	var map = L.map('map');
-	var currentLayer;
+	var currentLayer = null;
+	var currentBounds = {};
+	var placesCache = {};
+	var mapInvalidate = true;
+	var coloredMarkers = {};
+	var tileBased = false;
+
+	function calculateLocationCodes(bounds) {
+		var tl = OpenLocationCode.encode(bounds.getNorth(), bounds.getWest(), 6);
+		var rb = OpenLocationCode.encode(bounds.getSouth(), bounds.getEast(), 6);
+		var INT_PR = 20;
+		var tllat = Math.ceil(bounds.getNorth() * INT_PR);
+		var tllon = Math.floor(bounds.getWest() * INT_PR);
+		var brlat = Math.floor(bounds.getSouth() * INT_PR);
+		var brlon = Math.ceil(bounds.getEast() * INT_PR);
+		var mp = {};
+		for (var lat = tllat; lat > brlat; lat --) {
+			for (var lon = tllon; lon < brlon; lon ++) {
+				var clat = (lat - 0.5) / INT_PR ;
+				var clon = (lon + 0.5) / INT_PR ;
+				var tileId = OpenLocationCode.encode(clat, clon, 6).substring(0, 6);
+				mp[tileId] = {};
+			}
+		}
+		return mp;
+	}
+
+	function gcPlaceTiles() {
+		var toDel = {};
+		if(Object.keys(placesCache).length < 150) {
+			return;
+		}
+		for(var k in placesCache) {
+			if(!(k in currentBounds)) {
+				toDel[k] = placesCache[k].access;
+			}
+		}
+		for(var k in toDel) {
+			delete placesCache[k];
+		}
+	}
+
+	function refreshMapDelay() {
+		mapInvalidate = true;
+		setTimeout(function() {
+			if(mapInvalidate) {
+				mapInvalidate = false;
+				refreshMap();
+			}
+		}, 500);
+	}
 
 	function getMarkerContent(feature) {
 		var p = feature.properties;
-		//var typeName = types? types[p.osm_value] : null;
-		// if(!typeName) {
-		// var typeName = p.osm_value;
-		// }
-		// var name = p.tags["name"];
 		var popupContent = p.title;
 		if(p.opr_id) {
 			popupContent += " (" + p.opr_id+") ";
-		}
-		if (p.hasOwnProperty("title") && p.title === "Edited") {
-		    if (p.prev) {
-		        for (let prev in p.prev) {
-                    if (prev === "tags") {
-                        for (let t in p.prev.tags) {
-                            popupContent += "<br>prev.tags." + t + " " + p.prev.tags[t];
-                        }
-                    } else {
-                        popupContent += "<br>prev." + prev + " " + p.prev[prev];
-                    }
-                }
-			}
-			if (p.next) {
-                for (let next in p.next) {
-                    if (next === "tags") {
-                        for (let t in p.next.tags) {
-                            popupContent += "<br>next.tags." + t + " " + p.next.tags[t];
-                        }
-                    } else {
-                        popupContent += "<br>next." + next + " " + p.next[next];
-                    }
-                }
-			}
 		}
 		if(p.tags) {
 			for (var t in p.tags) {
@@ -156,39 +177,147 @@
 		return popupContent;
 	}
 	
-	function refreshData() {
+	function refreshData(params="") {
 		$("#map-header-text").text("Loading data...");
+		$.getJSON("data?"+params, function (mp) {
+			let data = mp.geo;
+			placesCache[""] = { data: data };
+			if("date" in mp.parameters) {
+				$("#date-filter").removeClass("d-none");
+			}
+			if(mp.tileBased) {
+				tileBased = true;
+				onMapChange();
+			}
+			if(mp.placeTypes) {
+				var filter = $("#filter");
+				filter.empty();
+				filter.append(new Option("Filter...", "all"));
+				for (var type in mp.placeTypes) {
+					filter.append(new Option(mp.placeTypes[type], type));
+				}
+				filter.removeClass("d-none");
+				$("#filter").change(function(){
+					refreshMapDelay();
+				});
+			}
+			refreshMapDelay();
+		});
+	}
+	
+	function refreshMap() {
+		var msg =  "Loading data...";
 		if (currentLayer) {
 			map.removeLayer(currentLayer);
 			// currentLayer.remove();
 		}
-		$.getJSON("data?date=" + $("#date-filter").val(), function (mp) {
-			let data = mp.geo;
-			$("#map-header-text").text("Loaded " + data.features.length + " objects");
-			currentLayer = L.markerClusterGroup();
-			let currentLayerPoints = L.geoJSON(data, {
-				style: function (feature) {
-					return feature.properties && feature.properties.style;
-				},
-
-				pointToLayer: function (feature, latlng) {
-					return L.marker(latlng, {icon: getColor(feature)}).bindPopup(getMarkerContent(feature));
-					// return L.circleMarker(latlng, {
-					// 	radius: 8,
-					// 	fillColor: "#ff7800",
-					// 	color: "#000",
-					// 	weight: 1,
-					// 	opacity: 1,
-					// 	fillOpacity: 0.8
-					// });
+		var geoJson = { 
+			"type":"FeatureCollection",
+			"features":[]
+		};
+		if (tileBased) {
+			var tiles = 0;
+			var missing = 0;
+			var filterVal = $("#filter").val();
+			for (var k in currentBounds) {
+				var cTileId = placesCache[k];
+				if (cTileId.data && "features" in cTileId.data) {
+					tiles++;
+					if (filterVal == "all") {
+						geoJson.features = geoJson.features.concat(cTileId.data.features);
+					} else {
+						for (var i = 0; i < cTileId.data.features.length; i++) {
+							var f = cTileId.data.features[i];
+							if (f.properties && f.properties.place_type == filterVal) {
+								geoJson.features.push(f);
+							}
+						}
+					}
+				} else {
+					missing++;
 				}
-			});
-			currentLayer.addLayer(currentLayerPoints);
-			// currentLayer.addTo(map);
-			map.addLayer(currentLayer);
+			}
+			msg = tiles + " tiles have " + geoJson.features.length + " places ";
+			if (missing > 0) {
+				msg += " (" + missing + " tiles loading...) ";
+			}
+		} else {
+			geoJson = placesCache[""].data;
+			msg = "Loaded " + geoJson.features.length + " places";
+		}
+		$("#map-header-text").text(msg);
+		currentLayer = L.markerClusterGroup();
+		let currentLayerPoints = L.geoJSON(geoJson , {
+			style: function (feature) {
+				return feature.properties && feature.properties.style;
+			},
+			
+			pointToLayer: function (feature, latlng) {
+				var iconVal = {};
+				if ('color' in feature.properties && feature.properties.color in coloredMarkers) {
+					iconVal = { icon: coloredMarkers[feature.properties.color] };
+				}
+				return L.marker(latlng, iconVal).bindPopup(getMarkerContent(feature));
+				// return L.circleMarker(latlng, {
+				// 	radius: 8,
+				// 	fillColor: "#ff7800",
+				// 	color: "#000",
+				// 	weight: 1,
+				// 	opacity: 1,
+				// 	fillOpacity: 0.8
+				// });
+			}
 		});
+		currentLayer.addLayer(currentLayerPoints);
+		// currentLayer.addTo(map);
+		map.addLayer(currentLayer);
+		gcPlaceTiles();
 	}
-	
+
+	function onMapChange() {
+		var bounds = map.getBounds();
+		var lcodes = calculateLocationCodes(bounds);
+		if(map.getZoom() <= 10) {
+			$("#map-header-text").text("zooming to get data ");
+		} else if(JSON.stringify(lcodes) != JSON.stringify(currentBounds) ) {
+			currentBounds = lcodes;
+			var tilesToLoad = {};
+			for(var t in lcodes) {
+				let tileId = t;
+				if(!placesCache[tileId]) {
+					placesCache[tileId] = { "access": 1 };
+					// on failure we can clear cache
+					$.getJSON("data?tileid=" + tileId, function (mp) {
+						let data = mp.geo;
+						placesCache[tileId].data = data;
+						refreshMapDelay();
+					});
+				} else {
+					placesCache[tileId].access = placesCache[tileId].access + 1; 
+				}
+			}
+			refreshMapDelay();
+		}
+	}
+
+	function initColoredMarkers() {
+		coloredMarkers = { "green": {}, "blue": {}, "red": {} };
+		for (var clr in coloredMarkers) {
+			coloredMarkers[clr] =
+				new L.Icon({
+					iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-' + clr + '.png',
+					shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+					iconSize: [25, 41],
+					iconAnchor: [12, 41],
+					popupAnchor: [1, -34],
+					shadowSize: [41, 41]
+				});
+		}
+	}
+
+	initColoredMarkers();
+
+
 	if (!map.restoreView()) {
         map.setView([40, -35], 4);
 	}
@@ -199,61 +328,17 @@
 		id: 'tiles'
 	}).addTo(map);
 
-	refreshData();
-	$("#date-filter").removeClass("d-none");
-	$("#date-filter").change(function(){
-		refreshData();
+	map.on('moveend', function (e) {
+		if(tileBased) {
+			onMapChange();	
+		}
 	});
+	refreshData();
+	$("#date-filter").change(function(){
+		refreshData("date=" + $("#date-filter").val());
+	});
+	
 
-	function getColor(feature) {
-        var color = getBlueColor();
-        if (feature.properties.hasOwnProperty("title")) {
-            switch (feature.properties.title) {
-                case "Created": {
-                    color = getGreenColor();
-                    break;
-                }
-                case "Removed": {
-                    color = getRedColor();
-                    break;
-                }
-            }
-        }
-        return color;
-    }
-
-	function getGreenColor() {
-		return new L.Icon({
-            iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-    }
-
-    function getBlueColor() {
-        return new L.Icon({
-            iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-    }
-
-    function getRedColor() {
-        return new L.Icon({
-            iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-    }
 </script>
 
 
