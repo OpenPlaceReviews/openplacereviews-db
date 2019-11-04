@@ -117,14 +117,26 @@
 			popupContent += " (" + p.opr_id+") ";
 		}
 		if (p.hasOwnProperty("title") && p.title === "Edited") {
-		    if (p.prev.tags) {
-                for (let t in p.prev.tags) {
-                    popupContent += "<br>prev." + t + " " + p.prev.tags[t];
+		    if (p.prev) {
+		        for (let prev in p.prev) {
+                    if (prev === "tags") {
+                        for (let t in p.prev.tags) {
+                            popupContent += "<br>prev.tags." + t + " " + p.prev.tags[t];
+                        }
+                    } else {
+                        popupContent += "<br>prev." + prev + " " + p.prev[prev];
+                    }
                 }
 			}
-			if (p.next.tags) {
-                for (let t in p.next.tags) {
-                    popupContent += "<br>next." + t + " " + p.next.tags[t];
+			if (p.next) {
+                for (let next in p.next) {
+                    if (next === "tags") {
+                        for (let t in p.next.tags) {
+                            popupContent += "<br>next.tags." + t + " " + p.next.tags[t];
+                        }
+                    } else {
+                        popupContent += "<br>next." + next + " " + p.next[next];
+                    }
                 }
 			}
 		}
