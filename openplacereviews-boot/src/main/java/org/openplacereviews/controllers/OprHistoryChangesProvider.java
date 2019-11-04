@@ -227,18 +227,25 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 				Object editedField = change.get(key);
 				if (editedField instanceof Map) {
 					if (key.contains(F_TAGS)) {
-						int tagsIndexOf = key.indexOf(F_TAGS);
-						nextTags.add(key.substring(tagsIndexOf + 5), new JsonPrimitive(String.valueOf(((Map<String, Object>)editedField).get(ATTR_SET))));
+						nextTags.add(key.substring(getTagsIndexOf(key)), new JsonPrimitive(String.valueOf(((Map<String, Object>)editedField).get(ATTR_SET))));
 					} else {
 						next.addProperty(key.substring(getIndexEndSourceOsm(key)), String.valueOf(((Map<String, Object>)editedField).get(ATTR_SET)));
 					}
 				} else {
-					next.addProperty(key.substring(getIndexEndSourceOsm(key)), String.valueOf(editedField));
+					if (key.contains(F_TAGS)) {
+						nextTags.add(key.substring(getTagsIndexOf(key)), new JsonPrimitive(String.valueOf(editedField)));
+					} else {
+						next.addProperty(key.substring(getIndexEndSourceOsm(key)), String.valueOf(editedField));
+					}
 				}
 			}
 		}
 		next.add(F_TAGS, nextTags);
 		return next;
+	}
+
+	private int getTagsIndexOf(String key) {
+		return key.indexOf(F_TAGS) + 5;
 	}
 
 	private int getIndexEndSourceOsm(String key) {
