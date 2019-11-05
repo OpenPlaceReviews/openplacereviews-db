@@ -25,6 +25,7 @@ import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.IPublicDataProvider;
+import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
 import org.openplacereviews.osm.model.Entity;
 import org.openplacereviews.osm.model.EntityInfo;
 import org.openplacereviews.osm.model.Node;
@@ -118,10 +119,10 @@ public class OprOSMDataProvider implements IPublicDataProvider<String, Object> {
 		node.setEntityInfo(entityInfo);
 	}
 
-
+	
 	@Override
-	public List<String> getKeysToCache() {
-		throw new UnsupportedOperationException();
+	public List<String> getKeysToCache(PublicAPIEndpoint<String, Object> api) {
+		return null;
 	}
 
 	@Override

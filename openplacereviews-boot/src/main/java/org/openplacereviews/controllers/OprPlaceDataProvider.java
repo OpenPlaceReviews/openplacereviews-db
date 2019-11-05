@@ -18,6 +18,8 @@ import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.DBSchemaManager;
 import org.openplacereviews.opendb.service.IPublicDataProvider;
+import org.openplacereviews.opendb.service.PublicDataManager.CacheHolder;
+import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.InputStreamResource;
@@ -47,7 +49,6 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	public static final String OPR_ID = "opr_id";
 	public static final String OSM_VALUE = "osm_value";
 	public static final String OSM_TYPE = "osm_type";
-	
 	
 	protected Gson geoJson;
 	
@@ -151,8 +152,22 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	}
 
 	@Override
-	public List<String> getKeysToCache() {
-		return new ArrayList<>();
+	public List<String> getKeysToCache(PublicAPIEndpoint<String, MapCollection> api) {
+		List<String> cacheKeys = new ArrayList<String>(api.getCacheKeys());
+		Iterator<String> it = cacheKeys.iterator();
+//		long now = api.getNow();
+		while(it.hasNext()) {
+			String key = it.next();
+			CacheHolder<MapCollection> cacheHolder = api.getCacheHolder(key);
+			// 1 hour
+//			if(now - cacheHolder.access < 3600l) {
+//			}
+			if(cacheHolder != null && cacheHolder.access <= 1 ) {
+				it.remove();
+			}
+		}
+		cacheKeys.add("");
+		return cacheKeys;
 	}
 
 	@Override

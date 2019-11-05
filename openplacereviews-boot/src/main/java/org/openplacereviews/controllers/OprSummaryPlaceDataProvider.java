@@ -1,11 +1,13 @@
 package org.openplacereviews.controllers;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.de.CompoundKey;
+import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
 import org.openplacereviews.osm.parser.OsmLocationTool;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.InputStreamResource;
@@ -56,6 +58,11 @@ public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
 		}
 
 		return m;
+	}
+	
+	@Override
+	public List<String> getKeysToCache(PublicAPIEndpoint<String, MapCollection> api) {
+		return Collections.singletonList("");
 	}
 	
 	
