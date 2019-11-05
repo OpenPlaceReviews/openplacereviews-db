@@ -162,8 +162,9 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			// 1 hour
 //			if(now - cacheHolder.access < 3600l) {
 //			}
-			if(cacheHolder != null && cacheHolder.access <= 1 ) {
+			if(cacheHolder != null && cacheHolder.access == 0 ) {
 				it.remove();
+				api.removeCacheHolder(key);
 			}
 		}
 		cacheKeys.add("");
