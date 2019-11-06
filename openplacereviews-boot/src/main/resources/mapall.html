@@ -24,21 +24,132 @@
 			margin-left: 5px;
 		}
 		#map {
-			position: absolute;
+			position: fixed;
 			top:50px;
 			left:0px;
 			right:0px;
 			bottom: 10px;
 			width: 100%;
 		}
+		/* The side navigation menu */
+		.sidenav {
+			height: 100%; /* 100% Full-height */
+			width: 0%; /* 0 width - change this with JavaScript */
+			position: fixed; /* Stay in place */
+			z-index: 1; /* Stay on top */
+			top: 50px; /* Stay at the top */
+			left: 0;
+			background-color: white; /* Black*/
+			overflow-x: hidden; /* Disable horizontal scroll */
+			padding-top: 20px; /* Place content 60px from the top */
+			transition: 0.5s; /* 0.5 second transition effect to slide in the sidenav */
+		}
+
+		/* The navigation menu links */
+		.sidenavA {
+			padding-left: 8px;
+			text-decoration: none;
+			font-size: 25px;
+			color: gray;
+			display: block;
+		}
+
+		.sidenav h2 {
+			padding-left: 8px;
+			text-decoration: none;
+			font-size: 18px;
+			color: black;
+			display: block;
+		}
+
+		.sidenav p {
+			padding-left: 8px;
+			text-decoration: none;
+			font-size: 12px;
+			color: black;
+			display: block;
+			margin-bottom: auto;
+		}
+
+		/* When you mouse over the navigation links, change their color */
+		.sidenav a:hover {
+			color: black;
+		}
+
+		/* Position and style the close button (top right corner) */
+		.sidenav .closebtn {
+			position: absolute;
+			top: 0px;
+			right: 8px;
+			font-size: 36px;
+			margin-left: 50px;
+		}
+
+		/* Style page content - use this if you want to push the page content to the right when you open the side navigation */
+		#main {
+			transition: margin-left .5s;
+			padding: 20px;
+		}
+
+		/* On smaller screens, where height is less than 450px, change the style of the sidenav (less padding and a smaller font size) */
+		@media screen and (max-height: 450px) {
+			.sidenav {padding-top: 15px;}
+			.sidenav a {font-size: 18px;}
+		}
+
+		.browse-tag-list{
+			padding-left: 8px;
+			border:1px solid #ddd;
+			border-radius:3px;
+			table-layout:fixed;
+		}
+		.browse-tag-k{
+			font-size:12px;
+			background-color:#F6F6F6;
+		}
+		.browse-tag-v{
+			font-size:12px;
+		}
+		.th a {
+			text-decoration: none;
+			font-size: 12px;
+		}
+		.table-responsive {
+			padding-left: 8px;
+			padding-right: 8px;
+		}
 	</style>
 </head>
 <body>
+
+	<div id="mySidenav" class="sidenav">
+		<a href="javascript:void(0)" class="closebtn sidenavA" onclick="closeNav()">&times;</a>
+		<h2><span id="placeType"></span>: <span id="placeName"></span> (<span id="placeId"></span>)</h2>
+		<p><b>Title:</b> <span id="placeTitle"></span></p>
+		<p><b>Version</b> #<span id="placeVersion"></span> - <b>Changeset</b> #<span id="placeChangeset"></span></p>
+		<p><b>Location:</b> <span id="placeLocation"></span></p>
+		<br>
+		<h2>Tags</h2>
+		<div class="table-responsive">
+			<table class="browse-tag-list table table-bordered" id="tag-table">
+				<tbody id="main-bot-table">
+				</tbody>
+
+				<tbody style="display: none">
+					<tr id="tag-template">
+						<th class="browse-tag-k"><a did="tag-k"></a></th>
+						<td class="browse-tag-v" did="tag-v"></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
 	<div id='map-header' class="form-row align-items-center">
-		<div class="col-2">
+		<div class="col-2 group-inline">
 			<input class="form-control d-none" type="date" id="date-filter">
 			<select id="filter" class="form-control d-none">
-					<option selected value="all">Filter...</option>
+				<option selected value="all">Filter...</option>
 			</select>
 		</div>
 		<div>
@@ -102,6 +213,16 @@
 </script>
 
 <script>
+    /* Set the width of the side navigation to 25% */
+    function openNav() {
+        document.getElementById("mySidenav").style.width = "20%";
+    }
+
+    /* Set the width of the side navigation to 0 */
+    function closeNav() {
+        document.getElementById("mySidenav").style.width = "0%";
+    }
+
 	var map = L.map('map');
 	var currentLayer = null;
 	var currentBounds = {};
@@ -176,7 +297,8 @@
 		}
 		return popupContent;
 	}
-	
+
+	var addClickListener = false;
 	function refreshData(params="") {
 		$("#map-header-text").text("Loading data...");
 		$.getJSON("data?"+params, function (mp) {
@@ -184,6 +306,7 @@
 			placesCache[""] = { data: data };
 			if("date" in mp.parameters) {
 				$("#date-filter").removeClass("d-none");
+                addClickListener = true;
 			}
 			if(mp.tileBased) {
 				tileBased = true;
@@ -257,7 +380,84 @@
 				if ('color' in feature.properties && feature.properties.color in coloredMarkers) {
 					iconVal = { icon: coloredMarkers[feature.properties.color] };
 				}
-				return L.marker(latlng, iconVal).bindPopup(getMarkerContent(feature));
+				var marker = L.marker(latlng, iconVal).bindPopup(getMarkerContent(feature));
+				if (addClickListener) {
+                    return marker.on('click', function () {addClickMenuInfo(feature)} );
+				} else {
+                    return marker;
+				}
+				function addClickMenuInfo(feature) {
+                    openNav();
+                    var prop = feature.properties;
+                    $("#placeType").html(prop.osm_type);
+                    $("#placeTitle").html(prop.title);
+                    var placeName = "";
+                    if (prop.tags) {
+                        placeName = (prop.tags["name"]);
+                    }
+                    $("#placeName").html(placeName);
+                    $("#placeId").html(prop.osm_id);
+                    if (prop.version) {
+                        $("#placeVersion").html(prop.version);
+                    } else {
+                        $("#placeVersion").html(prop.prev.version);
+                    }
+                    if (prop.changeset) {
+                        $("#placeChangeset").html(prop.changeset);
+                    } else {
+                        $("#placeChangeset").html(prop.prev.changeset);
+					}
+                    $("#placeLocation").html(feature.geometry.coordinates.toString());
+
+                    var table = $("#main-bot-table");
+                    table.empty();
+                    var template = $("#tag-template");
+
+                    if (prop.tags) {
+                        for (var t in prop.tags) {
+                            let newTemplate = template.clone()
+                                .appendTo(table)
+                                .removeClass("hidden")
+                                .show();
+
+                            fillTemplateFields(newTemplate, t, prop.tags[t]);
+                        }
+                    }
+
+                    if (prop.prev) {
+                        for (let prev in prop.prev) {
+                            if (prev === "tags") {
+                                for (let t in prop.prev.tags) {
+                                    let newTemplate = template.clone()
+                                        .appendTo(table)
+                                        .removeClass("hidden")
+                                        .show();
+
+                                    fillTemplateFields(newTemplate, "prev." + t, prop.prev.tags[t]);
+                                }
+                            }
+                        }
+                    }
+                    if (prop.next) {
+                        for (let next in p.next) {
+                            if (next === "tags") {
+                                for (let t in prop.next.tags) {
+                                    let newTemplate = template.clone()
+                                        .appendTo(table)
+                                        .removeClass("hidden")
+                                        .show();
+
+                                    fillTemplateFields(newTemplate, "next." + t, prop.next.tags[t]);
+                                }
+                            }
+                        }
+					}
+
+					function fillTemplateFields(newTemplate, key, value) {
+                        newTemplate.find("[did='tag-k']").html(key).attr("href", "https://wiki.openstreetmap.org/wiki/Uk:Key:" + key + "?uselang=uk");
+                        newTemplate.find("[did='tag-v']").html(value);
+                    }
+                }
 				// return L.circleMarker(latlng, {
 				// 	radius: 8,
 				// 	fillColor: "#ff7800",
