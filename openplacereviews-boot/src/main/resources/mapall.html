@@ -2,47 +2,250 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	
-	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
-
+	<link rel="shortcut icon" type="image/x-icon" href="docs/api/images/favicon.ico" />
 
 	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
-	<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" /> 
+	<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.0/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+	<link rel="stylesheet" href="/api/css/mapall.css" />
+
 
 	<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js" integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og==" crossorigin=""></script>
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/openlocationcode/1.0.3/openlocationcode.js"></script>
 	<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.0/js/bootstrap.min.js"></script>
-    
-	<style>
-		html, body {
-			height: 100%;
-		}
-		#map-header {
-			margin-top: 5px;
-			margin-left: 5px;
-		}
-		#map {
-			position: absolute;
-			top:50px;
-			left:0px;
-			right:0px;
-			bottom: 10px;
-			width: 100%;
-		}
-	</style>
+	<script src="/api/js/sidenav.js"></script>
 </head>
 <body>
+
+	<div id="mySidenav" class="sidenav">
+		<a href="javascript:void(0)" class="closebtn sidenavA" onclick="closeNav()">&times;</a>
+		<h2 id="placeName" class="remove-element-top-bot-spaces"></h2>
+		<p id="placeType"></p>
+		<br>
+		<p><b>id:</b> <a id="placeId" href="">23dfd</a></p>
+		<p><b>Location:</b> <span id="placeLocation">12.2323,12.43445</span></p>
+		<div class="table-responsive custom-table">
+			<table class="table table-bordered browse-tag-list" id="opendb-table-tags">
+				<tbody id="opendb-tag-table">
+				<tr>
+					<th class="browse-tag-k"><img did="image-tag-k" src="/api/images/trip-advisor.png" height="20" width="20"> <a did="tag-k" href="">name</a></th>
+					<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
+				</tr>
+				<tr>
+					<th class="browse-tag-k"><img did="image-tag-k" src="/api/images/trip-advisor.png" height="20" width="20"> <a did="tag-k" href="">opening_hours</a></th>
+					<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
+				</tr>
+				<tr>
+					<th class="browse-tag-k"><img did="image-tag-k" src="/api/images/trip-advisor.png" height="20" width="20"> <a did="tag-k" href="">description</a></th>
+					<td class="browse-tag-v" did="tag-v">Ukraine cuisine</td>
+				</tr>
+				<tr>
+					<th class="browse-tag-k"><img did="image-tag-k" src="/api/images/trip-advisor.png" height="20" width="20"> <a did="tag-k" href="">wikipedia</a></th>
+					<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
+				</tr>
+				</tbody>
+			</table>
+		</div>
+		<hr>
+		<div class="wrapper center-block">
+			<div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+				<div class="panel panel-default">
+					<div class="panel-heading" role="tab" id="headingOne">
+						<h4 class="panel-title">
+							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+								<img height="30" width="30" src="/api/images/openStreetMap.png">
+								<span>OpenStreetMap</span>
+								<p>tags <span id="osmTagsAmount">3</span> &#8226 <span id="osmId">3423423423</span></p>
+							</a>
+						</h4>
+					</div>
+					<div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
+						<div class="panel-body">
+							<p><b>Version: </b>#<span id="osmVersion">4</span> &mdash; <b>Changeset </b><a id="placeChangeset" href="">#23423423</a></p>
+							<p><b>Location:</b> <span id="osmLocation">12.2323,12.43445</span></p>
+							<div class="table-responsive custom-table">
+								<table class="table table-bordered browse-tag-list" id="osm-table-tags">
+									<tbody id="osm-tag-table">
+									<tr>
+										<th class="browse-tag-k"><a did="tag-k" href="">name</a></th>
+										<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
+									</tr>
+									<tr>
+										<th class="browse-tag-k"><a did="tag-k" href="">name</a></th>
+										<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
+									</tr>
+									<tr>
+										<th class="browse-tag-k"><a did="tag-k" href="">name</a></th>
+										<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
+									</tr>
+									</tbody>
+
+									<tbody style="display: none">
+									<tr id="tag-template">
+										<th class="browse-tag-k"><img did="image-tag-k"><a did="tag-k"></a></th>
+										<td class="browse-tag-v" did="tag-v" style="word-wrap: break-word"></td>
+									</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="panel panel-default">
+					<div class="panel-heading" role="tab" id="headingTwo">
+						<h4 class="panel-title">
+							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+								<img  height="30" width="30" src="/api/images/trip-advisor.png">
+								<span>TripAdvisor</span>
+								<p>tags <span id="TripAdvisorTagsAmount">3</span> &#8226 g<span id="adv-g">12312</span>-d<span id="adv-d">32423423</span></p>
+							</a>
+						</h4>
+					</div>
+					<div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
+						<div class="panel-body">
+							<div>
+							</div>
+							<div class="form-group margin-top-style" id="trip-advisor-add-block">
+								<div class="row margin-left-style margin-right-style">
+									<input type="text" id="tripAdvisorURL" class="form-control">
+								</div>
+								<button id="add-trip-advisor" class="btn btn-default margin-left-style margin-top-style"><img height="20" width="20" src="/api/images/trip-advisor.png"> Add TripAdvisor</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="panel panel-default">
+					<div class="panel-heading" role="tab" id="headingThree">
+						<h4 class="panel-title">
+							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+								<span>Photos</span>
+							</a>
+						</h4>
+					</div>
+					<div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
+						<div class="panel-body">
+							<!--TODO update photos viewer-->
+							<div class="margin-left-style form-inline">
+								<div class="column">
+									<img src="/api/images/trip-advisor.png" alt="Snow" style="width:20%">
+								</div>
+								<div class="column">
+									<img src="/api/images/trip-advisor.png" alt="Forest" style="width:20%">
+								</div>
+								<div class="column">
+									<img src="/api/images/trip-advisor.png" alt="Mountains" style="width:20%">
+								</div>
+							</div>
+							<div class="form-group margin-top-style">
+								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/plus-icon.jpg"> Add Photos</button>
+								<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">
+								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/mapillary.png"> Connect to Mapillary</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="panel panel-default">
+					<div class="panel-heading" role="tab" id="headingFour">
+						<h4 class="panel-title">
+							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+								<span>Available imports</span>
+							</a>
+						</h4>
+					</div>
+					<div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
+						<div class="panel-body">
+							<div class="form-group margin-top-style" >
+								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/trip-advisor.png"> TripAdvisor</button>
+								<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">
+								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/openStreetMap.png"> OpenStreetMap</button>
+								<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">
+								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/wikipedia.png"> Wikipedia</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="panel panel-default">
+					<div class="panel-heading" role="tab" id="headingFive">
+						<h4 class="panel-title">
+							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+								<span>Similar object</span>
+							</a>
+						</h4>
+					</div>
+					<div id="collapseFive" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFive">
+						<div class="panel-body">
+							<div class="form-group margin-left-style margin-right-style margin-bottom-style">
+								<div class="card">
+									<div class="card-body">
+										<div class="col-md-8" style="padding-left: 0px">
+											<h2 did="placeName" class="remove-element-top-bot-spaces">Pyzata hata</h2>
+											<p did="placeType">Restoran</p>
+											<p><b>id:</b> <a did="placeId" href="">23dfd</a></p>
+											<p did="placeLocation">12.2323,12.43445</p>
+											<br>
+											<button class="btn btn-default">Merge</button>
+										</div>
+										<div class="col-md-4">
+											<img height="100" width="100" src="/api/images/trip-advisor.png">
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="table-responsive custom-table" style="display: none">
+			<table class="table table-bordered browse-tag-list" id="tag-table">
+				<tbody id="main-bot-table">
+				</tbody>
+			</table>
+		</div>
+		<div class="panel-body" style="display: none">
+			<div class="form-group">
+				<div class="input-group">
+					<span class="input-group-btn">
+						<span class="btn btn-default btn-file">
+							Browse<input type="file" id="image-file">
+						</span>
+					</span>
+					<input type="text" class="form-control" readonly>
+				</div>
+				<img id='img-upload' style="display: none"/>
+			</div>
+			<div class="form-group hidden" id="result-hash">
+				<p>Result: <b><span id="result-add-image"></span></b></p>
+			</div>
+			<div class="form-group">
+				<input type="submit" value="Add File" id="add-file-btn" class="btn btn-primary form-control">
+			</div>
+		</div>
+	</div>
+
 	<div id='map-header' class="form-row align-items-center">
-		<div class="col-2">
+		<div class="col-2 group-inline">
 			<input class="form-control d-none" type="date" id="date-filter">
 			<select id="filter" class="form-control d-none">
-					<option selected value="all">Filter...</option>
+				<option selected value="all">Filter...</option>
 			</select>
 		</div>
-		<div>
+		<div class="col-2">
 			<span id='map-header-text'></span>
+		</div>
+		<div class="col-8 group-inline">
+			<nav class="nav"  style="float: right;">
+				<ul>
+					<li class="my_account">
+						<a href="/profile/edit/" id="account_name">My account</a>
+					</li>
+					<li class="avatar_my_account"><a href="/accounts/logout/"><img src="/static/dist/images/avatar-default.92d4a989ea4d.png"></a></li>
+				</ul>
+			</nav>
 		</div>
 	</div>
 	<div id='map'>
@@ -60,7 +263,7 @@
 					this.on('moveend', function (e) {
 						if (!this._loaded)
 							return;  // Never access map bounds if view is not set.
-	
+
 						var view = {
 							lat: this.getCenter().lat,
 							lng: this.getCenter().lng,
@@ -70,7 +273,7 @@
 					}, this);
 					this.__initRestore = true;
 				}
-	
+
 				var view = storage['mapView'];
 				try {
 					view = JSON.parse(view || '');
@@ -82,7 +285,7 @@
 				}
 			}
 		};
-	
+
 		function storageAvailable(type) {
 			try {
 				var storage = window[type],
@@ -96,13 +299,13 @@
 				return false;
 			}
 		}
-	
+
 		L.Map.include(RestoreViewMixin);
 	})();
 </script>
 
 <script>
-	var map = L.map('map');
+    var map = L.map('map');
 	var currentLayer = null;
 	var currentBounds = {};
 	var placesCache = {};
@@ -176,7 +379,8 @@
 		}
 		return popupContent;
 	}
-	
+
+	var addClickListener = false;
 	function refreshData(params="") {
 		$("#map-header-text").text("Loading data...");
 		$.getJSON("data?"+params, function (mp) {
@@ -184,6 +388,7 @@
 			placesCache[""] = { data: data };
 			if("date" in mp.parameters) {
 				$("#date-filter").removeClass("d-none");
+                addClickListener = true;
 			}
 			if(mp.tileBased) {
 				tileBased = true;
@@ -192,6 +397,7 @@
 			if(mp.placeTypes) {
 				var filter = $("#filter");
 				filter.empty();
+                addClickListener = true;
 				filter.append(new Option("Filter...", "all"));
 				for (var type in mp.placeTypes) {
 					filter.append(new Option(mp.placeTypes[type], type));
@@ -204,14 +410,14 @@
 			refreshMapDelay();
 		});
 	}
-	
+
 	function refreshMap() {
 		var msg =  "Loading data...";
 		if (currentLayer) {
 			map.removeLayer(currentLayer);
 			// currentLayer.remove();
 		}
-		var geoJson = { 
+		var geoJson = {
 			"type":"FeatureCollection",
 			"features":[]
 		};
@@ -251,13 +457,101 @@
 			style: function (feature) {
 				return feature.properties && feature.properties.style;
 			},
-			
+
 			pointToLayer: function (feature, latlng) {
 				var iconVal = {};
 				if ('color' in feature.properties && feature.properties.color in coloredMarkers) {
 					iconVal = { icon: coloredMarkers[feature.properties.color] };
 				}
-				return L.marker(latlng, iconVal).bindPopup(getMarkerContent(feature));
+				var marker = L.marker(latlng, iconVal).bindPopup(getMarkerContent(feature));
+				if (addClickListener) {
+                    return marker.on('click', function () {addClickMenuInfo(feature)} );
+				} else {
+                    return marker;
+				}
+				function addClickMenuInfo(feature) {
+                    openNav();
+                    var prop = feature.properties;
+                    var placeName = "";
+                    if (prop.tags && prop.tags.hasOwnProperty("name")) {
+                        placeName = prop.tags["name"];
+                    }
+                    if (placeName === "" && prop.prev.tags.hasOwnProperty("name")) {
+                        placeName = prop.prev.tags["name"];
+					}
+                    $("#placeName").html(placeName);
+                    if(prop.osm_value) {
+                        $("#placeType").html(prop.osm_value);
+                    } else {
+                        $("#placeType").html(prop.place_type);
+                    }
+                    $("#placeId").html(prop.opr_id);
+                    $("#placeLocation").html(feature.geometry.coordinates.toString());
+
+					if (prop.tags) {
+					    $("#osmTagsAmount").html(Object.keys(prop.tags).length);
+					} else {
+                        $("#osmTagsAmount").html(Object.keys(prop.prev.tags).length + Object.keys(prop.next.tags).length);
+					}
+					$("#osmId").html(prop.osm_id);
+
+                    if (prop.version) {
+                        $("#osmVersion").html(prop.version);
+                    } else if (prop.prev){
+                        $("#osmVersion").html(prop.prev.version);
+                    }
+                    if (prop.changeset) {
+                        $("#placeChangeset").html("#" + prop.changeset);
+                    } else if (prop.prev) {
+                        $("#placeChangeset").html("#" + prop.prev.changeset);
+					}
+                    $("#osmLocation").html(feature.geometry.coordinates.toString());
+
+
+                    var table = $("#osm-tag-table");
+                    table.empty();
+                    var template = $("#tag-template");
+
+                    if (prop.tags) {
+                        for (var t in prop.tags) {
+                            let newTemplate = template.clone()
+                                .appendTo(table)
+                                .removeClass("hidden")
+                                .show();
+
+                            fillTemplateFields(newTemplate, t, prop.tags[t]);
+                        }
+                    }
+
+                    if (prop.prev) {
+                        for (let prev in prop.prev) {
+                            if (prev === "tags") {
+                                for (let t in prop.prev.tags) {
+                                    let newTemplate = template.clone()
+                                        .appendTo(table)
+                                        .removeClass("hidden")
+                                        .show();
+
+                                    fillTemplateFields(newTemplate, "prev." + t, prop.prev.tags[t]);
+                                }
+                            }
+                        }
+                    }
+                    if (prop.next) {
+                        for (let next in prop.next) {
+                            if (next === "tags") {
+                                for (let t in prop.next.tags) {
+                                    let newTemplate = template.clone()
+                                        .appendTo(table)
+                                        .removeClass("hidden")
+                                        .show();
+
+                                    fillTemplateFields(newTemplate, "next." + t, prop.next.tags[t]);
+                                }
+                            }
+                        }
+					}
+                }
 				// return L.circleMarker(latlng, {
 				// 	radius: 8,
 				// 	fillColor: "#ff7800",
@@ -293,7 +587,7 @@
 						refreshMapDelay();
 					});
 				} else {
-					placesCache[tileId].access = placesCache[tileId].access + 1; 
+					placesCache[tileId].access = placesCache[tileId].access + 1;
 				}
 			}
 			refreshMapDelay();
@@ -337,7 +631,10 @@
 	$("#date-filter").change(function(){
 		refreshData("date=" + $("#date-filter").val());
 	});
-	
+
+    $(document).ready(function () {
+        sidenavReady();
+	});
 
 </script>
 

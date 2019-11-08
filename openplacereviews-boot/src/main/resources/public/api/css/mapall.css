@@ -1,0 +1,264 @@
+html, body {
+    height: 100%;
+}
+#map-header {
+    margin-top: 5px;
+    margin-left: 5px;
+}
+#map {
+    position: fixed;
+    top:50px;
+    left:0px;
+    right:0px;
+    bottom: 10px;
+    width: 100%;
+}
+/* The side navigation menu */
+.sidenav {
+    height: 100%; /* 100% Full-height */
+    width: 0%; /* 0 width - change this with JavaScript */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Stay on top */
+    top: 50px; /* Stay at the top */
+    left: 0;
+    background-color: white; /* Black*/
+    overflow-x: hidden; /* Disable horizontal scroll */
+    overflow-y: scroll; /* Activate vertical scroll */
+    padding-top: 20px; /* Place content 60px from the top */
+    transition: 0.5s; /* 0.5 second transition effect to slide in the sidenav */
+}
+
+/* The navigation menu links */
+.sidenavA {
+    padding-left: 8px;
+    text-decoration: none;
+    color: gray;
+    display: block;
+}
+
+.sidenav h2 {
+    padding-left: 8px;
+    text-decoration: none;
+    font-size: 20px;
+    color: black;
+    display: block;
+}
+
+.sidenav p {
+    padding-left: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    color: black;
+    display: block;
+    margin-bottom: auto;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidenav a:hover {
+    color: black;
+}
+
+/* Position and style the close button (top right corner) */
+.sidenav .closebtn {
+    position: absolute;
+    top: 0px;
+    right: 8px;
+    font-size: 36px;
+    margin-left: 50px;
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidenav (less padding and a smaller font size) */
+@media screen and (max-height: 450px) {
+    .sidenav {padding-top: 15px;}
+    .sidenav a {font-size: 18px;}
+}
+.btn-file {
+    position: relative;
+    overflow: hidden;
+}
+.btn-file input[type=file] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 100%;
+    min-height: 100%;
+    font-size: 100px;
+    text-align: right;
+    filter: alpha(opacity=0);
+    opacity: 0;
+    outline: none;
+    background: white;
+    cursor: inherit;
+    display: block;
+}
+#img-upload {
+    width: 100%;
+}
+.panel-body {
+    padding: 0;
+}
+.browse-tag-list{
+    padding-left: 8px;
+    table-layout:fixed;
+    margin-bottom: 0;
+}
+.browse-tag-k{
+    font-size:14px;
+    background-color:#F6F6F6;
+}
+.browse-tag-v{
+    font-size:14px;
+}
+.th a {
+    text-decoration: none;
+    font-size: 14px;
+}
+.table-responsive {
+    padding-top: 10px;
+    padding-right: 8px;
+}
+.margin-left-style {
+    margin-left: 8px;
+}
+.margin-right-style {
+    margin-right: 8px;
+}
+.margin-top-style {
+    margin-top:15px;
+}
+.margin-bottom-style {
+    margin-top:10px;
+}
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 350px;
+}
+table tr th, table tr td {
+    border-right: 1px solid #bbb;
+    border-bottom: 1px solid #bbb;
+    padding: 5px;
+}
+
+table tr th {
+    text-align: left;
+}
+
+/* top-left border-radius */
+table tr:first-child th:first-child {
+    border-top-left-radius: 6px;
+}
+
+/* top-right border-radius */
+table tr:first-child td:last-child {
+    border-top-right-radius: 6px;
+}
+
+/* bottom-left border-radius */
+table tr:last-child th:first-child {
+    border-bottom-left-radius: 6px;
+}
+
+/* bottom-right border-radius */
+table tr:last-child td:last-child {
+    border-bottom-right-radius: 6px;
+}
+
+.wrapper{
+    width:100%;
+}
+@media(max-width:992px){
+    .wrapper{
+        width:100%;
+    }
+}
+.panel-heading {
+    padding: 0;
+    border:0;
+}
+.panel-group .panel+.panel {
+    margin-top: 0px;
+}
+
+.panel-title>a, .panel-title>a:active{
+    display:block;
+    padding:15px;
+    color:#555;
+    font-size:16px;
+    background: white;
+    letter-spacing:1px;
+    word-spacing:3px;
+    text-decoration:none;
+}
+.panel-heading p {
+    margin-left: 30px;
+}
+.panel-body table {
+    margin-bottom: 10px;
+}
+.panel-group .panel-heading+.panel-collapse>.panel-body {
+    border-top: 0px;
+}
+.panel-heading  a:before {
+    font-family: 'Glyphicons Halflings';
+    content: "\e114";
+    float: right;
+    transition: all 0.5s;
+}
+.panel-heading.active a:before {
+    -webkit-transform: rotate(180deg);
+    -moz-transform: rotate(180deg);
+    transform: rotate(180deg);
+}
+.remove-border {
+    border: none;
+}
+.remove-element-top-bot-spaces {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+nav {
+    font-style: normal;
+    font-weight: bold;
+    line-height: normal;
+    font-size: 24px;
+    letter-spacing: 0.02em;
+    color: #2D69E0;
+    margin: auto 0 auto auto;
+}
+nav ul {
+    margin: 0;
+    padding: 0;
+    display: block;
+}
+nav ul li {
+    display: inline-block;
+    list-style-type: none;
+    margin-left: 38px;
+}
+nav ul li.active {
+    border-bottom: 2px solid #2D69E0;
+}
+nav ul li.active a {
+    color: #140579;
+}
+nav ul li a:hover {
+    color: #140579;
+    text-decoration: none;
+}
+nav ul li.my_account a:first-child {
+    border-left: 2px solid #E4E7ED;
+    padding: 3px 0 3px 20px;
+}
+nav ul li.avatar_my_account {
+    margin-left: 20px;
+    margin-right: 30px;
+}
+nav ul li.avatar_my_account img {
+    position: absolute;
+    top: 0;
+    width: 30px;
+    height: 30px;
+    margin: auto;
+    bottom: 0;
+}
