@@ -55,6 +55,10 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	public static final String OBJ_CREATED = "Created";
 	public static final String OBJ_EDITED = "Edited";
 	public static final String OBJ_REMOVED = "Removed";
+	
+	protected static final String COLOR_GREEN = "green";
+	protected static final String COLOR_BLUE = "blue";
+	protected static final String COLOR_RED = "red";
 
 	@Autowired
 	private HistoryManager historyManager;
@@ -77,7 +81,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			for (OpOperation opOperation : opOperations) {
 				if (opOperation.getType().equals(OPR_PLACE)) {
 					for (OpObject opObject : opOperation.getCreated()) {
-						generateEntity(fc, block, opOperation.getRawHash(), opObject, OBJ_CREATED, "green");
+						generateEntity(fc, block, opOperation.getRawHash(), opObject, OBJ_CREATED, COLOR_GREEN);
 					}
 					for (OpObject opObject : opOperation.getEdited()) {
 						generateEditedEntityFromOpObject(opObject, fc, block, opOperation.getRawHash());
@@ -104,14 +108,9 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 			List<HistoryManager.HistoryEdit> historyEdits = historyObjectRequest.historySearchResult;
 			HistoryManager.HistoryEdit lastVersion = historyEdits.get(0);
 			OpObject opObject = lastVersion.getObjEdit();
-			generateEntity(fc, opBlock, opHash, opObject, OBJ_REMOVED, "red");
+			generateEntity(fc, opBlock, opHash, opObject, OBJ_REMOVED, COLOR_RED);
 		} else {
-			// TODO we does not have a lat/lon for removed object -> only objId
-//			double lat = 0;
-//			double lon = 0;
-//			Point p = Point.from(lon, lat);
-//			Feature f = Feature.of(p).withProperty(TITLE, new JsonPrimitive(OBJ_REMOVED));
-//			fc.features().add(f);
+			// not supported cause we don't have lat/lon of deleted object
 		}
 	}
 
@@ -159,6 +158,8 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 		Map<String, Object> current = opObject.getStringObjMap(F_CURRENT);
 
 		Set<String> removedPlaces = new HashSet<>();
+		// TODO handle "source.osm[<ind>]": "delete"
+		// TODO display changed fields 
 		for (String key : current.keySet()) {
 			if (key.equals(F_SOURCE + "." + F_OSM + "[" + getOsmIndexFromStringKey(key) + "]")) {
 				removedPlaces.add(key);
@@ -171,7 +172,7 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 				bld.put(OSM_INDEX, new JsonPrimitive(getOsmIndexFromStringKey(key)));
 				bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED + " " + getTitle(osm)));
-				bld.put(COLOR, new JsonPrimitive("red"));
+				bld.put(COLOR, new JsonPrimitive(COLOR_RED));
 				bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
 				generateAllFields(osm, bld);
 				generateObjectBlockInfo(opObject, opBlock, opHash, bld);
