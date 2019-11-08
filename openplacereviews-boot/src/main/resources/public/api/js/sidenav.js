@@ -34,41 +34,38 @@ function getCookie(cname) {
 function addTripAdvisor() {
     var url = $("#tripAdvisorURL").val();
     var placeId = $("#placeId").html();
-    var login = "";
-    var pk = "";
     $.getJSON("/profile/get_private_key/" + getCookie("sessionid"), {}, function (data) {
-        login = data.login;
-        pk = data.private_key;
+        var obj = {
+            "name": data.login,
+            "pwd": "",
+            "privateKey": data.private_key,
+            "addToQueue": true,
+            "dontSignByServer": false
+        };
+        var params = $.param(obj);
+        var id = placeId.split(",");
+        var editOp = {
+            type: "opr.place",
+            edit: [{
+                id: id,
+                change: {
+                    "source.trip-advisor":{
+                        append: url
+                    }
+                },
+                current: {}
+            }]
+        };
+        $.ajax({
+            url: '/api/auth/process-operation?' + params,
+            type: 'POST',
+            data: JSON.stringify(editOp),
+            contentType: 'application/json; charset=utf-8'
+        })
+            .done(function (data) { alert(data) })
+            .fail(function (xhr, status, error) { alert(error) });
     });
-    var obj = {
-        "name": login,
-        "pwd": "",
-        "privateKey": pk,
-        "addToQueue": true,
-        "dontSignByServer": false
-    };
-    var params = $.param(obj);
-    var id = placeId.split(",");
-    var editOp = {
-        type: "opr.place",
-        edit: [{
-            id: id,
-            change: {
-                "source.trip-advisor":{
-                    append: url
-                }
-            },
-            current: {}
-        }]
-    };
-    $.ajax({
-        url: '/api/auth/process-operation?' + params,
-        type: 'POST',
-        data: JSON.stringify(editOp),
-        contentType: 'application/json; charset=utf-8'
-    })
-        .done(function (data) { alert(data) })
-        .fail(function (xhr, status, error) { alert(error) });
+
 }
 
 function readURL(input) {
