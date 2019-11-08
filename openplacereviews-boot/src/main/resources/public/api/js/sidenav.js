@@ -34,9 +34,10 @@ function getCookie(cname) {
 function addTripAdvisor() {
     var url = $("#tripAdvisorURL").val();
     var placeId = $("#placeId").html();
-    $.getJSON("/profile/get_private_key/" + getCookie("sessionid"), {}, function (data) {
+    $.getJSON("/profile/json/", {}, function (data) {
+        $("#account_name").html(data.username);
         var obj = {
-            "name": data.login,
+            "name": data.username,
             "pwd": "",
             "privateKey": data.private_key,
             "addToQueue": true,
