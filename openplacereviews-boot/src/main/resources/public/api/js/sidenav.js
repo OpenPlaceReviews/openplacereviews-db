@@ -41,7 +41,7 @@ function addTripAdvisor() {
             "pwd": "",
             "privateKey": data.private_key,
             "addToQueue": true,
-            "dontSignByServer": false
+            "dontSignByServer": true
         };
         var params = $.param(obj);
         var id = placeId.split(",");
