@@ -37,7 +37,7 @@ function addTripAdvisor() {
     $.getJSON("/profile/json/", {}, function (data) {
         $("#account_name").html(data.username);
         var obj = {
-            "name": data.username,
+            "name": data.username + ":openplacereviews",
             "pwd": "",
             "privateKey": data.private_key,
             "addToQueue": true,
@@ -116,16 +116,6 @@ function sidenavReady() {
     $("#image-file").change(function(){
         readURL(this);
     });
-    //
-    // if (getCookie("sessionid") === "") {
-    //     $("#trip-advisor-add-block").addClass("hidden");
-    //     $("#account_name").html("My account");
-    // } else {
-    //     $("#trip-advisor-add-block").removeClass("hidden");
-    //     $.getJSON("/profile/get_private_key/" + getCookie("sessionid"), {}, function (data) {
-    //         $("#account_name").html(data.login);
-    //     });
-    // }
 
     $("#add-trip-advisor").click(function () {
         addTripAdvisor();
