@@ -75,7 +75,9 @@ function addTripAdvisor() {
             .done(function (data) {
                 $("#tripadvisor-exist-div").removeClass("hidden");
                 $("#missing-tripadvisor").addClass("hidden");
-                $("#tripadv-successfull").html("link on opendb tripadvisor").attr("href", "https://dev.openplacereviews.org/api/admin?view=operations&loadBy=id&key="+data.hash);
+                $("#trip-advisor-add-block").addClass("hidden");
+                console.log(data);
+                $("#tripadv-successfull").html("https://dev.openplacereviews.org/api/admin?view=operations&loadBy=id&key="+data.hash).attr("href", "https://dev.openplacereviews.org/api/admin?view=operations&loadBy=id&key="+data.hash);
             })
             .fail(function (xhr, status, error) { alert(error) });
     });
