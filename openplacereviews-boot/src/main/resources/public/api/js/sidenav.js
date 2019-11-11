@@ -33,10 +33,10 @@ function getCookie(cname) {
 
 function addTripAdvisor() {
     let strUrl = $("#tripAdvisorURL").val();
-    let indexG = strUrl.indexOf("-g");
+    let indexG = strUrl.indexOf("-g") + 1;
     let indexD = strUrl.indexOf("-d");
     let keyG = strUrl.substring(indexG, indexD);
-    let urlPath = strUrl.substring(indexD);
+    let urlPath = strUrl.substring(indexD + 1);
     let indexEndD = urlPath.indexOf("-");
     let keyD = urlPath.substring(indexEndD);
     let placeId = $("#placeId").html();
