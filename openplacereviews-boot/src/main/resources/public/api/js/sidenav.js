@@ -34,13 +34,14 @@ function getCookie(cname) {
 function addTripAdvisor() {
     var url = $("#tripAdvisorURL").val();
     var placeId = $("#placeId").html();
-    $.getJSON("/profile/get_private_key/" + getCookie("sessionid"), {}, function (data) {
+    $.getJSON("/profile/json/", {}, function (data) {
+        $("#account_name").html(data.username);
         var obj = {
-            "name": data.login,
+            "name": data.username + ":openplacereviews",
             "pwd": "",
             "privateKey": data.private_key,
             "addToQueue": true,
-            "dontSignByServer": false
+            "dontSignByServer": true
         };
         var params = $.param(obj);
         var id = placeId.split(",");
@@ -115,16 +116,6 @@ function sidenavReady() {
     $("#image-file").change(function(){
         readURL(this);
     });
-
-    if (getCookie("sessionid") === "") {
-        $("#trip-advisor-add-block").addClass("hidden");
-        $("#account_name").html("My account");
-    } else {
-        $("#trip-advisor-add-block").removeClass("hidden");
-        $.getJSON("/profile/get_private_key/" + getCookie("sessionid"), {}, function (data) {
-            $("#account_name").html(data.login);
-        });
-    }
 
     $("#add-trip-advisor").click(function () {
         addTripAdvisor();
