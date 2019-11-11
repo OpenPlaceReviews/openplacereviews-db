@@ -32,26 +32,29 @@ function getCookie(cname) {
 }
 
 function addTripAdvisor() {
-    var url = $("#tripAdvisorURL").val();
-    var placeId = $("#placeId").html();
+    let url = $("#tripAdvisorURL").val().split("-");
+    let placeId = $("#placeId").html();
+    let osm_id = $("#osmId").html();
     $.getJSON("/profile/json/", {}, function (data) {
         $("#account_name").html(data.username);
-        var obj = {
+        let obj = {
             "name": data.username + ":openplacereviews",
             "pwd": "",
             "privateKey": data.private_key,
             "addToQueue": true,
             "dontSignByServer": true
         };
-        var params = $.param(obj);
-        var id = placeId.split(",");
-        var editOp = {
+        let params = $.param(obj);
+        let id = placeId.split(",");
+        let editOp = {
             type: "opr.place",
             edit: [{
                 id: id,
                 change: {
-                    "source.tripAdvisor":{
-                        append: url
+                    "source.tripAdvisor": {
+                        append: {
+                            [osm_id]: url
+                        }
                     }
                 },
                 current: {}

@@ -114,6 +114,7 @@
 					<div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
 						<div class="panel-body">
 							<div>
+								<a type="button" id="search-trip-advisor" class="btn btn-default margin-left-style margin-top-style" target="_blank"><img height="20" width="20" src="/api/images/trip-advisor.png"> Search TripAdvisor</a>
 							</div>
 							<div class="form-group margin-top-style" id="trip-advisor-add-block">
 								<div class="row margin-left-style margin-right-style">
@@ -479,6 +480,7 @@
                     openNav();
                     var prop = feature.properties;
                     $("#placeName").html(prop.title);
+                    $("#search-trip-advisor").attr("href", "site:tripadvisor.com " + prop.title);
                     $("#placeType").html(prop.subtitle);
                     $("#placeId").html(prop.opr_id).attr("href", "/api/admin?view=objects&browse=type&limit=50&type=opr.place&subtype=id&key=" + prop.opr_id);
                     $("#placeLocation").html(showLocationCoordinates(feature.geometry.coordinates));
