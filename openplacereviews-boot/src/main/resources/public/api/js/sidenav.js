@@ -63,7 +63,7 @@ function addTripAdvisor() {
             data: JSON.stringify(editOp),
             contentType: 'application/json; charset=utf-8'
         })
-            .done(function (data) { alert(data) })
+            .done(function (data) { alert("TripAdvisor id has been added!") })
             .fail(function (xhr, status, error) { alert(error) });
     });
 
