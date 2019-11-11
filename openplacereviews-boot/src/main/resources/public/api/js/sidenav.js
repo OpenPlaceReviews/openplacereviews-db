@@ -128,4 +128,8 @@ function sidenavReady() {
     $('.panel-collapse').on('hide.bs.collapse', function () {
         $(this).siblings('.panel-heading').removeClass('active');
     });
+
+    $.getJSON("/profile/json/", {}, function (data) {
+        $("#account_name").html(data.username);
+    });
 }
