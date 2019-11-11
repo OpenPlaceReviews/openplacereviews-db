@@ -32,9 +32,15 @@ function getCookie(cname) {
 }
 
 function addTripAdvisor() {
-    let url = $("#tripAdvisorURL").val().split("-");
+    let strUrl = $("#tripAdvisorURL").val();
+    let indexG = strUrl.indexOf("-g");
+    let indexD = strUrl.indexOf("-d");
+    let keyG = strUrl.substring(indexG, indexD);
+    let urlPath = strUrl.substring(indexD);
+    let indexEndD = urlPath.indexOf("-");
+    let keyD = urlPath.substring(indexEndD);
     let placeId = $("#placeId").html();
-    let osm_id = $("#osmId").html();
+    let array = [keyG, keyD];
     $.getJSON("/profile/json/", {}, function (data) {
         $("#account_name").html(data.username);
         let obj = {
@@ -53,7 +59,7 @@ function addTripAdvisor() {
                 change: {
                     "source.tripAdvisor": {
                         append: {
-                            [osm_id]: url
+                            "id" : array
                         }
                     }
                 },
