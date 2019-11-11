@@ -133,8 +133,8 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 				for(int ind = 0; ind < listValues.size(); ind++) {
 					JsonObject obj = new JsonObject();
 					Map<String, Object> sourceObj = listValues.get(ind);
-					bld.put(SOURCE_TYPE, new JsonPrimitive(tp));
-					bld.put(SOURCE_INDEX, new JsonPrimitive(ind));
+					obj.add(SOURCE_TYPE, new JsonPrimitive(tp));
+					obj.add(SOURCE_INDEX, new JsonPrimitive(ind));
 					put(obj, ID, sourceObj);
 					put(obj, TYPE, sourceObj);
 					put(obj, VERSION, sourceObj);
@@ -180,8 +180,14 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			obj.add(key, new JsonPrimitive((String) o));
 		} else if(o instanceof Boolean) {
 			obj.add(key, new JsonPrimitive((Boolean) o));
+		} else if(o instanceof List) {
+			JsonArray jsonArray = new JsonArray();
+			for (String object : (List<String>)o) {
+				jsonArray.add(object);
+			}
+			obj.add(key, jsonArray);
 		} else {
-			if(obj != null) {
+			if(o != null) {
 				throw new UnsupportedOperationException();
 			}
 		}

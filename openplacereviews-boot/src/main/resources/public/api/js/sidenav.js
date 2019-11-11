@@ -57,7 +57,7 @@ function addTripAdvisor() {
             edit: [{
                 id: id,
                 change: {
-                    "source.tripAdvisor": {
+                    "source.tripadvisor": {
                         append: {
                             "id" : array
                         }
@@ -72,7 +72,11 @@ function addTripAdvisor() {
             data: JSON.stringify(editOp),
             contentType: 'application/json; charset=utf-8'
         })
-            .done(function (data) { alert("TripAdvisor id has been added!") })
+            .done(function (data) {
+                $("#tripadvisor-exist-div").removeClass("hidden");
+                $("#missing-tripadvisor").addClass("hidden");
+                $("#tripadv-successfull").html("link on opendb tripadvisor").attr("href", "https://dev.openplacereviews.org/api/admin?view=operations&loadBy=id&key="+data.hash);
+            })
             .fail(function (xhr, status, error) { alert(error) });
     });
 
@@ -139,6 +143,11 @@ function sidenavReady() {
     });
 
     $.getJSON("/profile/json/", {}, function (data) {
+        if (data.username === "") {
+            $("#trip-advisor-add-block").addClass("hidden");
+        } else {
+            $("#trip-advisor-add-block").removeClass("hidden");
+        }
         $("#account_name").html(data.username);
     });
 }

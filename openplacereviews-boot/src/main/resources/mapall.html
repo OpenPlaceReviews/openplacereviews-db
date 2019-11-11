@@ -30,22 +30,6 @@
 		<div class="table-responsive custom-table">
 			<table class="table table-bordered browse-tag-list" id="opendb-table-tags">
 				<tbody id="opendb-tag-table">
-				<tr>
-					<th class="browse-tag-k"><img did="image-tag-k" src="/api/images/trip-advisor.png" height="20" width="20"> <a did="tag-k" href="">name</a></th>
-					<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
-				</tr>
-				<tr>
-					<th class="browse-tag-k"><img did="image-tag-k" src="/api/images/trip-advisor.png" height="20" width="20"> <a did="tag-k" href="">opening_hours</a></th>
-					<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
-				</tr>
-				<tr>
-					<th class="browse-tag-k"><img did="image-tag-k" src="/api/images/trip-advisor.png" height="20" width="20"> <a did="tag-k" href="">description</a></th>
-					<td class="browse-tag-v" did="tag-v">Ukraine cuisine</td>
-				</tr>
-				<tr>
-					<th class="browse-tag-k"><img did="image-tag-k" src="/api/images/trip-advisor.png" height="20" width="20"> <a did="tag-k" href="">wikipedia</a></th>
-					<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
-				</tr>
 				</tbody>
 
 				<tbody class="display-none">
@@ -76,18 +60,6 @@
 							<div class="table-responsive custom-table">
 								<table class="table table-bordered browse-tag-list" id="osm-table-tags">
 									<tbody id="osm-tag-table">
-									<tr>
-										<th class="browse-tag-k"><a did="tag-k" href="">name</a></th>
-										<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
-									</tr>
-									<tr>
-										<th class="browse-tag-k"><a did="tag-k" href="">name</a></th>
-										<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
-									</tr>
-									<tr>
-										<th class="browse-tag-k"><a did="tag-k" href="">name</a></th>
-										<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
-									</tr>
 									</tbody>
 
 									<tbody class="display-none">
@@ -107,104 +79,107 @@
 							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
 								<img  height="30" width="30" src="/api/images/trip-advisor.png">
 								<span>TripAdvisor</span>
-								<p>g<span id="adv-g">12312</span>-d<span id="adv-d">32423423</span> &#8226 <span id="TripAdvisorTagsAmount">&#9733&#9733&#9733</span>(<span id="TripAdvisorReviews">123</span>)</p>
+								<p><span id="tripadvisorId"></span> <!--&#8226 <span id="TripAdvisorTagsAmount">&#9733&#9733&#9733</span>(<span id="TripAdvisorReviews">123</span>)--></p>
 							</a>
 						</h4>
 					</div>
 					<div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
 						<div class="panel-body">
-							<div>
-								<a type="button" id="search-trip-advisor" class="btn btn-default margin-left-style margin-top-style" target="_blank"><img height="20" width="20" src="/api/images/trip-advisor.png"> Search TripAdvisor</a>
+							<div class="hidden" id="missing-tripadvisor">
+								<p>Missing ID <a id="tripadvisor-link" href="" target="_blank"></a></p>
 							</div>
-							<div class="form-group margin-top-style" id="trip-advisor-add-block">
+							<div class="form-group margin-top-style hidden" id="trip-advisor-add-block">
 								<div class="row margin-left-style margin-right-style">
 									<input type="text" id="tripAdvisorURL" class="form-control">
 								</div>
-								<button id="add-trip-advisor" class="btn btn-default margin-left-style margin-top-style"><img height="20" width="20" src="/api/images/trip-advisor.png"> Add TripAdvisor</button>
+								<button id="add-trip-advisor" class="btn btn-default margin-left-style margin-top-style hidden"><img height="20" width="20" src="/api/images/trip-advisor.png"> Add TripAdvisor Link</button>
+							</div>
+							<div id="tripadvisor-exist-div" class="hidden">
+								<a id="tripadv-successfull" href=""></a>
 							</div>
 						</div>
 					</div>
 				</div>
-				<div class="panel panel-default">
-					<div class="panel-heading" role="tab" id="headingThree">
-						<h4 class="panel-title">
-							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-								<span>Photos</span>
-							</a>
-						</h4>
-					</div>
-					<div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">
-						<div class="panel-body">
-							<!--TODO update photos viewer-->
-							<div class="margin-left-style form-inline">
-								<div class="column">
-									<img src="/api/images/trip-advisor.png" alt="Snow" class="style-with-20">
-								</div>
-								<div class="column">
-									<img src="/api/images/trip-advisor.png" alt="Forest" class="style-with-20">
-								</div>
-								<div class="column">
-									<img src="/api/images/trip-advisor.png" alt="Mountains" class="style-with-20">
-								</div>
-							</div>
-							<div class="form-group margin-top-style">
-								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/plus-icon.jpg"> Add Photos</button>
-								<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">
-								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/mapillary.png"> Connect to Mapillary</button>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="panel panel-default">
-					<div class="panel-heading" role="tab" id="headingFour">
-						<h4 class="panel-title">
-							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
-								<span>Available imports</span>
-							</a>
-						</h4>
-					</div>
-					<div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">
-						<div class="panel-body">
-							<div class="form-group margin-top-style" >
-								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/trip-advisor.png"> TripAdvisor</button>
-								<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">
-								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/openStreetMap.png"> OpenStreetMap</button>
-								<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">
-								<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/wikipedia.png"> Wikipedia</button>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="panel panel-default">
-					<div class="panel-heading" role="tab" id="headingFive">
-						<h4 class="panel-title">
-							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
-								<span>Similar object</span>
-							</a>
-						</h4>
-					</div>
-					<div id="collapseFive" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFive">
-						<div class="panel-body">
-							<div class="form-group margin-left-style margin-right-style margin-bottom-style">
-								<div class="card">
-									<div class="card-body">
-										<div class="col-md-8 padding-left-0px">
-											<h2 did="placeName" class="remove-element-top-bot-spaces">Pyzata hata</h2>
-											<p did="placeType">Restoran</p>
-											<p><b>id:</b> <a did="placeId" href="">23dfd</a></p>
-											<p did="placeLocation">12.2323,12.43445</p>
-											<br>
-											<button class="btn btn-default">Merge</button>
-										</div>
-										<div class="col-md-4">
-											<img height="100" width="100" src="/api/images/trip-advisor.png">
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
+				<!--<div class="panel panel-default">-->
+					<!--<div class="panel-heading" role="tab" id="headingThree">-->
+						<!--<h4 class="panel-title">-->
+							<!--<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">-->
+								<!--<span>Photos</span>-->
+							<!--</a>-->
+						<!--</h4>-->
+					<!--</div>-->
+					<!--<div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">-->
+						<!--<div class="panel-body">-->
+							<!--&lt;!&ndash;TODO update photos viewer&ndash;&gt;-->
+							<!--<div class="margin-left-style form-inline">-->
+								<!--<div class="column">-->
+									<!--<img src="/api/images/trip-advisor.png" alt="Snow" class="style-with-20">-->
+								<!--</div>-->
+								<!--<div class="column">-->
+									<!--<img src="/api/images/trip-advisor.png" alt="Forest" class="style-with-20">-->
+								<!--</div>-->
+								<!--<div class="column">-->
+									<!--<img src="/api/images/trip-advisor.png" alt="Mountains" class="style-with-20">-->
+								<!--</div>-->
+							<!--</div>-->
+							<!--<div class="form-group margin-top-style">-->
+								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/plus-icon.jpg"> Add Photos</button>-->
+								<!--<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">-->
+								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/mapillary.png"> Connect to Mapillary</button>-->
+							<!--</div>-->
+						<!--</div>-->
+					<!--</div>-->
+				<!--</div>-->
+				<!--<div class="panel panel-default">-->
+					<!--<div class="panel-heading" role="tab" id="headingFour">-->
+						<!--<h4 class="panel-title">-->
+							<!--<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">-->
+								<!--<span>Available imports</span>-->
+							<!--</a>-->
+						<!--</h4>-->
+					<!--</div>-->
+					<!--<div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">-->
+						<!--<div class="panel-body">-->
+							<!--<div class="form-group margin-top-style" >-->
+								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/trip-advisor.png"> TripAdvisor</button>-->
+								<!--<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">-->
+								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/openStreetMap.png"> OpenStreetMap</button>-->
+								<!--<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">-->
+								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/wikipedia.png"> Wikipedia</button>-->
+							<!--</div>-->
+						<!--</div>-->
+					<!--</div>-->
+				<!--</div>-->
+				<!--<div class="panel panel-default">-->
+					<!--<div class="panel-heading" role="tab" id="headingFive">-->
+						<!--<h4 class="panel-title">-->
+							<!--<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFive" aria-expanded="false" aria-controls="collapseFive">-->
+								<!--<span>Similar object</span>-->
+							<!--</a>-->
+						<!--</h4>-->
+					<!--</div>-->
+					<!--<div id="collapseFive" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFive">-->
+						<!--<div class="panel-body">-->
+							<!--<div class="form-group margin-left-style margin-right-style margin-bottom-style">-->
+								<!--<div class="card">-->
+									<!--<div class="card-body">-->
+										<!--<div class="col-md-8 padding-left-0px">-->
+											<!--<h2 did="placeName" class="remove-element-top-bot-spaces">Pyzata hata</h2>-->
+											<!--<p did="placeType">Restoran</p>-->
+											<!--<p><b>id:</b> <a did="placeId" href="">23dfd</a></p>-->
+											<!--<p did="placeLocation">12.2323,12.43445</p>-->
+											<!--<br>-->
+											<!--<button class="btn btn-default">Merge</button>-->
+										<!--</div>-->
+										<!--<div class="col-md-4">-->
+											<!--<img height="100" width="100" src="/api/images/trip-advisor.png">-->
+										<!--</div>-->
+									<!--</div>-->
+								<!--</div>-->
+							<!--</div>-->
+						<!--</div>-->
+					<!--</div>-->
+				<!--</div>-->
 			</div>
 		</div>
 
@@ -470,46 +445,55 @@
 				if ('color' in feature.properties && feature.properties.color in coloredMarkers) {
 					iconVal = { icon: coloredMarkers[feature.properties.color] };
 				}
-				var marker = L.marker(latlng, iconVal).bindPopup(getMarkerContent(feature));
+				var marker = L.marker(latlng, iconVal);
 				if (addClickListener) {
                     return marker.on('click', function () {addClickMenuInfo(feature)} );
 				} else {
-                    return marker;
+                    return marker.bindPopup(getMarkerContent(feature));
 				}
 				function addClickMenuInfo(feature) {
                     openNav();
                     var prop = feature.properties;
                     $("#placeName").html(prop.title);
-                    $("#search-trip-advisor").attr("href", "site:tripadvisor.com " + prop.title);
                     $("#placeType").html(prop.subtitle);
                     $("#placeId").html(prop.opr_id).attr("href", "/api/admin?view=objects&browse=type&limit=50&type=opr.place&subtype=id&key=" + prop.opr_id);
                     $("#placeLocation").html(showLocationCoordinates(feature.geometry.coordinates));
 
-                    console.log(prop);
-                    var source_ind = prop.source_ind;
-                    if (prop.sources) {
-					    $("#osmTagsAmount").html(Object.keys(prop.sources[source_ind].tags).length);
-                        $("#osmId").html(prop.sources[source_ind].id).attr("href", "https://www.openstreetmap.org/" + prop.sources[source_ind].type + "/" +  prop.sources[source_ind].id);
-						$("#osmVersion").html(prop.sources[source_ind].version);
-                        $("#placeChangeset").html("#" + prop.sources[source_ind].changeset).attr("href", "https://www.openstreetmap.org/changeset/" + prop.sources[source_ind].changeset);
-                    }
-                    $("#osmLocation").html(showLocationCoordinates(feature.geometry.coordinates));
-
                     var table = $("#osm-tag-table");
                     table.empty();
                     var template = $("#tag-template");
-
+                    var tripadvisorExist = false;
                     if (prop.sources) {
-                        var obj = prop.sources[source_ind].tags;
-						for (var tag in obj) {
-							let newTemplate = template.clone()
-								.appendTo(table)
-								.removeClass("hidden")
-								.show();
+                        for (var i = 0; i < prop.sources.length; i++) {
+                            var placeObj = prop.sources[i];
+                            if (placeObj.source_type === "osm") {
+                                $("#osmTagsAmount").html(Object.keys(placeObj.tags).length);
+                                $("#osmId").html(placeObj.id).attr("href", "https://www.openstreetmap.org/" + placeObj.type + "/" + placeObj.id);
+                                $("#osmVersion").html(placeObj.version);
+                                $("#placeChangeset").html("#" + placeObj.changeset).attr("href", "https://www.openstreetmap.org/changeset/" + placeObj.changeset);
 
-							fillTemplateFields(newTemplate, tag, obj[tag]);
-                        }
+                                var objTag = placeObj.tags;
+                                for (var tag in objTag) {
+                                    let newTemplate = template.clone()
+                                        .appendTo(table)
+                                        .removeClass("hidden")
+                                        .show();
+
+                                    fillTemplateFields(newTemplate, tag, objTag[tag]);
+                                }
+                            } else if (placeObj.source_type === "tripadvisor" || placeObj.source_type === "tripAdvisor") {
+                                tripadvisorExist = true;
+                                var tripadvisorObj = placeObj.id;
+                                $("#tripadvisorId").html(generateTripAdvisorId(tripadvisorObj)).attr("href", "https://www.tripadvisor.com/" + generateTripAdvisorId(tripadvisorObj))
+							}
+						}
+
                     }
+                    if (!tripadvisorExist) {
+                        $("#missing-tripadvisor").removeClass("hidden");
+                        $("#tripadvisor-link").html("https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title).attr("href", "https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title);
+					}
+                    $("#osmLocation").html(showLocationCoordinates(feature.geometry.coordinates));
 
                     var opendbTable = $("#opendb-tag-table");
                     opendbTable.empty();
@@ -548,6 +532,10 @@
 		map.addLayer(currentLayer);
 		gcPlaceTiles();
 	}
+
+	function generateTripAdvisorId(id) {
+		return id[0] + "-" + id[1];
+    }
 
 	function onMapChange() {
 		var bounds = map.getBounds();
