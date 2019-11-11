@@ -497,6 +497,9 @@
                         $("#add-trip-advisor").removeClass("hidden");
                         $("#tripadvisor-exist-div").addClass("hidden");
                         $("#tripadvisor-link").html("https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title).attr("href", "https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title);
+					} else {
+                        $("#missing-tripadvisor").addClass("hidden");
+                        $("#add-trip-advisor").addClass("hidden");
 					}
                     $("#osmLocation").html(showLocationCoordinates(feature.geometry.coordinates));
 
