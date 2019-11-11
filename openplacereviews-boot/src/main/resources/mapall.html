@@ -25,7 +25,7 @@
 		<h2 id="placeName" class="remove-element-top-bot-spaces"></h2>
 		<p id="placeType"></p>
 		<br>
-		<p><b>id:</b> <a id="placeId" href="">23dfd</a></p>
+		<p><b>ID:</b> <a id="placeId" href="">23dfd</a></p>
 		<p><b>Location:</b> <span id="placeLocation">12.2323,12.43445</span></p>
 		<div class="table-responsive custom-table">
 			<table class="table table-bordered browse-tag-list" id="opendb-table-tags">
@@ -47,6 +47,13 @@
 					<td class="browse-tag-v" did="tag-v">Regent Hotel</td>
 				</tr>
 				</tbody>
+
+				<tbody class="display-none">
+				<tr id="img-tag-template">
+					<th class="browse-tag-k"><img did="image-tag-k" width="20" height="20"> <a did="tag-k"></a></th>
+					<td class="browse-tag-v word-wrap-break-word" did="tag-v"></td>
+				</tr>
+				</tbody>
 			</table>
 		</div>
 		<hr>
@@ -58,7 +65,7 @@
 							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
 								<img height="30" width="30" src="/api/images/openStreetMap.png">
 								<span>OpenStreetMap</span>
-								<p>tags <span id="osmTagsAmount">3</span> &#8226 <span id="osmId">3423423423</span></p>
+								<p><span id="osmId" href></span>  &#8226 <span id="osmTagsAmount"></span> tags</p>
 							</a>
 						</h4>
 					</div>
@@ -83,10 +90,10 @@
 									</tr>
 									</tbody>
 
-									<tbody style="display: none">
+									<tbody class="display-none">
 									<tr id="tag-template">
-										<th class="browse-tag-k"><img did="image-tag-k"><a did="tag-k"></a></th>
-										<td class="browse-tag-v" did="tag-v" style="word-wrap: break-word"></td>
+										<th class="browse-tag-k"><a did="tag-k"></a></th>
+										<td class="browse-tag-v word-wrap-break-word" did="tag-v"></td>
 									</tr>
 									</tbody>
 								</table>
@@ -100,7 +107,7 @@
 							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
 								<img  height="30" width="30" src="/api/images/trip-advisor.png">
 								<span>TripAdvisor</span>
-								<p>tags <span id="TripAdvisorTagsAmount">3</span> &#8226 g<span id="adv-g">12312</span>-d<span id="adv-d">32423423</span></p>
+								<p>g<span id="adv-g">12312</span>-d<span id="adv-d">32423423</span> &#8226 <span id="TripAdvisorTagsAmount">&#9733&#9733&#9733</span>(<span id="TripAdvisorReviews">123</span>)</p>
 							</a>
 						</h4>
 					</div>
@@ -130,13 +137,13 @@
 							<!--TODO update photos viewer-->
 							<div class="margin-left-style form-inline">
 								<div class="column">
-									<img src="/api/images/trip-advisor.png" alt="Snow" style="width:20%">
+									<img src="/api/images/trip-advisor.png" alt="Snow" class="style-with-20">
 								</div>
 								<div class="column">
-									<img src="/api/images/trip-advisor.png" alt="Forest" style="width:20%">
+									<img src="/api/images/trip-advisor.png" alt="Forest" class="style-with-20">
 								</div>
 								<div class="column">
-									<img src="/api/images/trip-advisor.png" alt="Mountains" style="width:20%">
+									<img src="/api/images/trip-advisor.png" alt="Mountains" class="style-with-20">
 								</div>
 							</div>
 							<div class="form-group margin-top-style">
@@ -180,7 +187,7 @@
 							<div class="form-group margin-left-style margin-right-style margin-bottom-style">
 								<div class="card">
 									<div class="card-body">
-										<div class="col-md-8" style="padding-left: 0px">
+										<div class="col-md-8 padding-left-0px">
 											<h2 did="placeName" class="remove-element-top-bot-spaces">Pyzata hata</h2>
 											<p did="placeType">Restoran</p>
 											<p><b>id:</b> <a did="placeId" href="">23dfd</a></p>
@@ -200,13 +207,13 @@
 			</div>
 		</div>
 
-		<div class="table-responsive custom-table" style="display: none">
+		<div class="table-responsive custom-table display-none">
 			<table class="table table-bordered browse-tag-list" id="tag-table">
 				<tbody id="main-bot-table">
 				</tbody>
 			</table>
 		</div>
-		<div class="panel-body" style="display: none">
+		<div class="panel-body display-none">
 			<div class="form-group">
 				<div class="input-group">
 					<span class="input-group-btn">
@@ -216,7 +223,7 @@
 					</span>
 					<input type="text" class="form-control" readonly>
 				</div>
-				<img id='img-upload' style="display: none"/>
+				<img id='img-upload display-none'/>
 			</div>
 			<div class="form-group hidden" id="result-hash">
 				<p>Result: <b><span id="result-add-image"></span></b></p>
@@ -228,7 +235,7 @@
 	</div>
 
 	<div id='map-header' class="form-row align-items-center">
-		<div class="col-2 group-inline">
+		<div class="col-2 group-inline margin-top-style-5">
 			<input class="form-control d-none" type="date" id="date-filter">
 			<select id="filter" class="form-control d-none">
 				<option selected value="all">Filter...</option>
@@ -238,7 +245,7 @@
 			<span id='map-header-text'></span>
 		</div>
 		<div class="col-8 group-inline">
-			<nav class="nav"  style="float: right;">
+			<nav class="nav right-float">
 				<ul>
 					<li class="my_account">
 						<a href="/profile/edit/" id="account_name">My account</a>
@@ -388,7 +395,6 @@
 			placesCache[""] = { data: data };
 			if("date" in mp.parameters) {
 				$("#date-filter").removeClass("d-none");
-                addClickListener = true;
 			}
 			if(mp.tileBased) {
 				tileBased = true;
@@ -472,84 +478,57 @@
 				function addClickMenuInfo(feature) {
                     openNav();
                     var prop = feature.properties;
-                    var placeName = "";
-                    if (prop.tags && prop.tags.hasOwnProperty("name")) {
-                        placeName = prop.tags["name"];
-                    }
-                    if (placeName === "" && prop.prev.tags.hasOwnProperty("name")) {
-                        placeName = prop.prev.tags["name"];
-					}
-                    $("#placeName").html(placeName);
-                    if(prop.osm_value) {
-                        $("#placeType").html(prop.osm_value);
-                    } else {
-                        $("#placeType").html(prop.place_type);
-                    }
-                    $("#placeId").html(prop.opr_id);
-                    $("#placeLocation").html(feature.geometry.coordinates.toString());
+                    $("#placeName").html(prop.title);
+                    $("#placeType").html(prop.subtitle);
+                    $("#placeId").html(prop.opr_id).attr("href", "/api/admin?view=objects&browse=type&limit=50&type=opr.place&subtype=id&key=" + prop.opr_id);
+                    $("#placeLocation").html(showLocationCoordinates(feature.geometry.coordinates));
 
-					if (prop.tags) {
-					    $("#osmTagsAmount").html(Object.keys(prop.tags).length);
-					} else {
-                        $("#osmTagsAmount").html(Object.keys(prop.prev.tags).length + Object.keys(prop.next.tags).length);
-					}
-					$("#osmId").html(prop.osm_id);
-
-                    if (prop.version) {
-                        $("#osmVersion").html(prop.version);
-                    } else if (prop.prev){
-                        $("#osmVersion").html(prop.prev.version);
+                    console.log(prop);
+                    var source_ind = prop.source_ind;
+                    if (prop.sources) {
+					    $("#osmTagsAmount").html(Object.keys(prop.sources[source_ind].tags).length);
+                        $("#osmId").html(prop.sources[source_ind].id).attr("href", "https://www.openstreetmap.org/" + prop.sources[source_ind].type + "/" +  prop.sources[source_ind].id);
+						$("#osmVersion").html(prop.sources[source_ind].version);
+                        $("#placeChangeset").html("#" + prop.sources[source_ind].changeset).attr("href", "https://www.openstreetmap.org/changeset/" + prop.sources[source_ind].changeset);
                     }
-                    if (prop.changeset) {
-                        $("#placeChangeset").html("#" + prop.changeset);
-                    } else if (prop.prev) {
-                        $("#placeChangeset").html("#" + prop.prev.changeset);
-					}
-                    $("#osmLocation").html(feature.geometry.coordinates.toString());
-
+                    $("#osmLocation").html(showLocationCoordinates(feature.geometry.coordinates));
 
                     var table = $("#osm-tag-table");
                     table.empty();
                     var template = $("#tag-template");
 
+                    if (prop.sources) {
+                        var obj = prop.sources[source_ind].tags;
+						for (var tag in obj) {
+							let newTemplate = template.clone()
+								.appendTo(table)
+								.removeClass("hidden")
+								.show();
+
+							fillTemplateFields(newTemplate, tag, obj[tag]);
+                        }
+                    }
+
+                    var opendbTable = $("#opendb-tag-table");
+                    opendbTable.empty();
+                    var imgTemplate = $("#img-tag-template");
+
                     if (prop.tags) {
                         for (var t in prop.tags) {
-                            let newTemplate = template.clone()
-                                .appendTo(table)
+                            var obj = prop.tags[t];
+                            let newTemplate = imgTemplate.clone()
+                                .appendTo(opendbTable)
                                 .removeClass("hidden")
                                 .show();
 
-                            fillTemplateFields(newTemplate, t, prop.tags[t]);
-                        }
-                    }
-
-                    if (prop.prev) {
-                        for (let prev in prop.prev) {
-                            if (prev === "tags") {
-                                for (let t in prop.prev.tags) {
-                                    let newTemplate = template.clone()
-                                        .appendTo(table)
-                                        .removeClass("hidden")
-                                        .show();
-
-                                    fillTemplateFields(newTemplate, "prev." + t, prop.prev.tags[t]);
+                            newTemplate.find("[did='tag-k']").html(t).attr("href", "https://wiki.openstreetmap.org/wiki/Uk:Key:" + t + "?uselang=uk");
+                            newTemplate.find("[did='tag-v']").html(obj.value);
+                            switch (obj.source) {
+								case "osm": {
+                                    newTemplate.find("[did='image-tag-k']").attr("src", "/api/images/openStreetMap.png");
                                 }
                             }
-                        }
-                    }
-                    if (prop.next) {
-                        for (let next in prop.next) {
-                            if (next === "tags") {
-                                for (let t in prop.next.tags) {
-                                    let newTemplate = template.clone()
-                                        .appendTo(table)
-                                        .removeClass("hidden")
-                                        .show();
-
-                                    fillTemplateFields(newTemplate, "next." + t, prop.next.tags[t]);
-                                }
-                            }
-                        }
+						}
 					}
                 }
 				// return L.circleMarker(latlng, {
@@ -607,6 +586,10 @@
 					shadowSize: [41, 41]
 				});
 		}
+	}
+
+	function showLocationCoordinates(coordinates) {
+	    return coordinates[0] + ", " + coordinates[1];
 	}
 
 	initColoredMarkers();

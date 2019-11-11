@@ -1,6 +1,6 @@
 /* Set the width of the side navigation to 25% */
 function openNav() {
-    document.getElementById("mySidenav").style.width = "20%";
+    document.getElementById("mySidenav").style.width = "33%";
 }
 
 /* Set the width of the side navigation to 0 */
@@ -50,7 +50,7 @@ function addTripAdvisor() {
             edit: [{
                 id: id,
                 change: {
-                    "source.trip-advisor":{
+                    "source.tripAdvisor":{
                         append: url
                     }
                 },

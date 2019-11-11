@@ -2,8 +2,10 @@ html, body {
     height: 100%;
 }
 #map-header {
-    margin-top: 5px;
     margin-left: 5px;
+}
+.margin-top-style-5 {
+    margin-top: 5px;
 }
 #map {
     position: fixed;
@@ -144,13 +146,24 @@ table tr th {
     text-align: left;
 }
 
+table tr th:first-child{
+    border-top: 0px;
+    border-right: 0px;
+}
+
+table tr td:last-child{
+    border-top: 0px;
+}
+
 /* top-left border-radius */
 table tr:first-child th:first-child {
+    border-top: 1px solid #ddd;
     border-top-left-radius: 6px;
 }
 
 /* top-right border-radius */
 table tr:first-child td:last-child {
+    border-top: 1px solid #ddd;
     border-top-right-radius: 6px;
 }
 
@@ -210,6 +223,14 @@ table tr:last-child td:last-child {
     -moz-transform: rotate(180deg);
     transform: rotate(180deg);
 }
+.panel {
+    border-right: 0;
+    border-bottom: 0;
+}
+
+.panel-group:last-child {
+    border-bottom: 1px solid #ddd;
+}
 .remove-border {
     border: none;
 }
@@ -261,4 +282,19 @@ nav ul li.avatar_my_account img {
     height: 30px;
     margin: auto;
     bottom: 0;
+}
+.right-float {
+    float: right;
+}
+.display-none {
+    display: none;
+}
+.word-wrap-break-word {
+    word-wrap: break-word;
+}
+.style-with-20 {
+    width: 20%;
+}
+.padding-left-0px {
+    padding-left: 0px;
 }

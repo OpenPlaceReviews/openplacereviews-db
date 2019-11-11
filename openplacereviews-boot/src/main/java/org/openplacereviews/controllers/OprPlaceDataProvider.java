@@ -147,7 +147,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 						Iterator<Entry<String, Object>> it = tagsValue.entrySet().iterator();
 						while (it.hasNext()) {
 							Entry<String, Object> e = it.next();
-							obj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
+							tagsObj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
 							// TODO refactor to be more specific
 							if(ind == 0 && tp.equals("osm")) {
 								JsonObject val = new JsonObject();
