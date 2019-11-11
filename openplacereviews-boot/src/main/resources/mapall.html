@@ -492,7 +492,10 @@
 
                     }
                     if (!tripadvisorExist) {
+                        $("#tripadvisorId").html("");
                         $("#missing-tripadvisor").removeClass("hidden");
+                        $("#add-trip-advisor").removeClass("hidden");
+                        $("#tripadvisor-exist-div").addClass("hidden");
                         $("#tripadvisor-link").html("https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title).attr("href", "https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title);
 					}
                     $("#osmLocation").html(showLocationCoordinates(feature.geometry.coordinates));
