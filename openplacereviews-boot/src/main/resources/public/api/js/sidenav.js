@@ -38,7 +38,7 @@ function addTripAdvisor() {
     let keyG = strUrl.substring(indexG, indexD);
     let urlPath = strUrl.substring(indexD + 1);
     let indexEndD = urlPath.indexOf("-");
-    let keyD = urlPath.substring(indexD + 1, indexEndD);
+    let keyD = urlPath.substring(0, indexEndD);
     let placeId = $("#placeId").html();
     let array = [keyG, keyD];
     $.getJSON("/profile/json/", {}, function (data) {
