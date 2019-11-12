@@ -46,11 +46,13 @@
 				<div class="panel panel-default">
 					<div class="panel-heading" role="tab" id="headingOne">
 						<h4 class="panel-title">
-							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-								<img height="30" width="30" src="/api/images/openStreetMap.png">
-								<span>OpenStreetMap</span>
-								<p><span id="osmId" href></span>  &#8226 <span id="osmTagsAmount"></span> tags</p>
-							</a>
+							<button class="collapsed button-borders" role="button" data-toggle="collapse" data-parent="#accordion" data-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+								<div class="left-float title-style">
+									<img class="margin-left-15px left-float" height="30" width="30" src="/api/images/openStreetMap.png" >
+									<span class="left-float margin-left-style">OpenStreetMap</span>
+									<br><p><a id="osmId" href="" target="_blank"></a>  &#8226 <span id="osmTagsAmount"></span> tags</p>
+								</div>
+							</button>
 						</h4>
 					</div>
 					<div id="collapseOne" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingOne">
@@ -61,7 +63,6 @@
 								<table class="table table-bordered browse-tag-list" id="osm-table-tags">
 									<tbody id="osm-tag-table">
 									</tbody>
-
 									<tbody class="display-none">
 									<tr id="tag-template">
 										<th class="browse-tag-k"><a did="tag-k"></a></th>
@@ -76,11 +77,13 @@
 				<div class="panel panel-default">
 					<div class="panel-heading" role="tab" id="headingTwo">
 						<h4 class="panel-title">
-							<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-								<img  height="30" width="30" src="/api/images/trip-advisor.png">
-								<span>TripAdvisor</span>
-								<p><span id="tripadvisorId"></span> <!--&#8226 <span id="TripAdvisorTagsAmount">&#9733&#9733&#9733</span>(<span id="TripAdvisorReviews">123</span>)--></p>
-							</a>
+							<button class="collapsed button-borders" role="button" data-toggle="collapse" data-parent="#accordion" data-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+								<div class="left-float title-style">
+									<img class="margin-left-15px left-float" height="30" width="30" src="/api/images/trip-advisor.png">
+									<span class="left-float margin-left-style">TripAdvisor</span>
+									<br><p><a id="tripadvisorId" href="" target="_blank"></a> <span></span> <!--&#8226 <span id="TripAdvisorTagsAmount">&#9733&#9733&#9733</span>(<span id="TripAdvisorReviews">123</span>)--></p>
+								</div>
+							</button>
 						</h4>
 					</div>
 					<div id="collapseTwo" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingTwo">
@@ -492,7 +495,7 @@
 
                     }
                     if (!tripadvisorExist) {
-                        $("#tripadvisorId").html("");
+                        $("#tripadvisorId").html("").attr("href", "");
                         $("#missing-tripadvisor").removeClass("hidden");
                         $("#trip-advisor-add-block").removeClass("hidden");
                         $("#tripadvisor-exist-div").addClass("hidden");
