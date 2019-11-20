@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import com.google.gson.Gson;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -93,8 +94,11 @@ public class PlaceOpObjectHelper {
 	
 	public static OpOperation generateEditDeleteOsmIdsForPlace(OpOperation opOperation, PlaceObject po) throws FailedVerificationException {
 		List<Map<String, Object>> currentObject = po.obj.getField(null, F_SOURCE, F_OSM);
-		if (currentObject.size() < po.ind) {
+		if (currentObject.size() == 0) {
 			return null;
+		} else {
+			System.out.println("CURR OBJ: " + new Gson().toJson(currentObject));
+			System.out.println("FULL OBJ: " + new Gson().toJson(po.obj));
 		}
 
 		OpObject editObject = new OpObject();
