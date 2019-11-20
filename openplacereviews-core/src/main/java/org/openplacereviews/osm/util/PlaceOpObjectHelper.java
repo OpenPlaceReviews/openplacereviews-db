@@ -93,14 +93,6 @@ public class PlaceOpObjectHelper {
 	}
 	
 	public static OpOperation generateEditDeleteOsmIdsForPlace(OpOperation opOperation, PlaceObject po) throws FailedVerificationException {
-		List<Map<String, Object>> currentObject = po.obj.getField(null, F_SOURCE, F_OSM);
-		if (currentObject.size() == 0) {
-			return null;
-		} else {
-			System.out.println("CURR OBJ: " + new Gson().toJson(currentObject));
-			System.out.println("FULL OBJ: " + new Gson().toJson(po.obj));
-		}
-
 		OpObject editObject = new OpObject();
 		editObject.putObjectValue(F_ID, po.obj.getId());
 
