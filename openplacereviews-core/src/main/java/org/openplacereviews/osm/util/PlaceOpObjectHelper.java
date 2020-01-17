@@ -138,7 +138,7 @@ public class PlaceOpObjectHelper {
 	}
 
 	private static String addBraces(String field) {
-		if (field.contains(".")) {
+		if (field.contains(".") || field.contains("[") || field.contains("]")) {
 			field = "{" + field + "}";
 		}
 
