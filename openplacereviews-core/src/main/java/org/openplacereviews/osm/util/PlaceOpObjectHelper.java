@@ -122,23 +122,25 @@ public class PlaceOpObjectHelper {
 		TreeSet<String> removedTags = new TreeSet<>(oldM.keySet());
 		removedTags.removeAll(newM.keySet());
 		for(String removedTag : removedTags) {
-			change.put(field + addBraces(removedTag), OpBlockChain.OP_CHANGE_DELETE);
-			current.put(field + addBraces(removedTag), oldM.get(removedTag));
+			change.put(field + addQuotes(removedTag), OpBlockChain.OP_CHANGE_DELETE);
+			current.put(field + addQuotes(removedTag), oldM.get(removedTag));
 		}
 		for(String tag : newM.keySet()) {
 			Object po = oldM.get(tag);
 			Object no = newM.get(tag);
 			if(!OUtils.equals(po, no)) {
-				change.put(field + addBraces(tag), set(no));
+				change.put(field + addQuotes(tag), set(no));
 				if(po != null) {
-					current.put(field + addBraces(tag), po);
+					current.put(field + addQuotes(tag), po);
 				}
 			}
 		}
 	}
-
-	private static String addBraces(String field) {
+	
+	private static String addQuotes(String field) {
 		if (field.contains(".") || field.contains("[") || field.contains("]")) {
+			field = field.replaceAll("\\[", "\\\\[");
+			field = field.replaceAll("\\]", "\\\\]");
 			field = "{" + field + "}";
 		}
 
