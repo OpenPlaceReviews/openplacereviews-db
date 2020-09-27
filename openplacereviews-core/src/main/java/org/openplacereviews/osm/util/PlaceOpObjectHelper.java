@@ -82,7 +82,13 @@ public class PlaceOpObjectHelper {
 		osmObject.put(F_TYPE, te);
 		osmObject.put(F_OSM_TAG, osmTag);
 		osmObject.put(F_OSM_VALUE, entity.getTags().get(osmTag));
-		osmObject.put(F_TAGS, entity.getTags());
+		Map<String, String> tgs = entity.getTags();
+		// remove empty tags
+		if (tgs != null && tgs.containsKey("")) {
+			tgs = new TreeMap<String, String>(tgs);
+			tgs.remove("");
+		}
+		osmObject.put(F_TAGS, tgs);
 		LatLon l = entity.getLatLon();
 		osmObject.put(ATTR_LATITUDE, l.getLatitude());
 		osmObject.put(ATTR_LONGITUDE, l.getLongitude());
