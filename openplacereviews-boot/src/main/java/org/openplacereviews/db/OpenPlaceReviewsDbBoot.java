@@ -12,8 +12,10 @@ import org.openplacereviews.controllers.OprPlaceDataProvider;
 import org.openplacereviews.controllers.OprSummaryPlaceDataProvider;
 import org.openplacereviews.opendb.OpenDBServer;
 import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.service.BotManager;
 import org.openplacereviews.opendb.service.PublicDataManager;
 import org.openplacereviews.opendb.service.SettingsManager;
+import org.openplacereviews.osm.service.TripAdvisorBot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -40,6 +42,8 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	@Autowired
 	public PublicDataManager publicDataManager;
 
+	@Autowired
+	public BotManager botManager;
 	
 	@Value("${opendb.mgmt.user}")
 	public String opendbMgmtUser; 
@@ -64,7 +68,7 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 
 		addOsmIdIndex();
 		addPlaceTypeIndex();
-		
+//		botManager.regSystemBot(new TripAdvisorBot("tripadvisor-sync"));
 		publicDataManager.registerDataProvider(OprSummaryPlaceDataProvider.class);
 		publicDataManager.registerDataProvider(OprPlaceDataProvider.class);
 		publicDataManager.registerDataProvider(OprHistoryChangesProvider.class);
