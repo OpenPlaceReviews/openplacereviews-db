@@ -681,7 +681,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					generateEditDeleteOsmIdsForPlace(editOp, pdo);
 				} else {
 					logError(String.format("Couldn't find object %d: %s", diffEntity.getOldEntity().getId(), diffEntity.getOldEntity().getTags()));
-					
 				}
 			} else if (DiffEntity.DiffEntityType.CREATE == diffEntity.getType()) {
 				processEntity(key, addOp, editOp, diffEntity.getNewEntity());

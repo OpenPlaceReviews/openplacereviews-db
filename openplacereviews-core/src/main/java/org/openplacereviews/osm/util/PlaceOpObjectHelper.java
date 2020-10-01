@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import com.google.gson.Gson;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -81,7 +82,13 @@ public class PlaceOpObjectHelper {
 		osmObject.put(F_TYPE, te);
 		osmObject.put(F_OSM_TAG, osmTag);
 		osmObject.put(F_OSM_VALUE, entity.getTags().get(osmTag));
-		osmObject.put(F_TAGS, entity.getTags());
+		Map<String, String> tgs = entity.getTags();
+		// remove empty tags
+		if (tgs != null && tgs.containsKey("")) {
+			tgs = new TreeMap<String, String>(tgs);
+			tgs.remove("");
+		}
+		osmObject.put(F_TAGS, tgs);
 		LatLon l = entity.getLatLon();
 		osmObject.put(ATTR_LATITUDE, l.getLatitude());
 		osmObject.put(ATTR_LONGITUDE, l.getLongitude());
@@ -121,23 +128,25 @@ public class PlaceOpObjectHelper {
 		TreeSet<String> removedTags = new TreeSet<>(oldM.keySet());
 		removedTags.removeAll(newM.keySet());
 		for(String removedTag : removedTags) {
-			change.put(field + addBraces(removedTag), OpBlockChain.OP_CHANGE_DELETE);
-			current.put(field + addBraces(removedTag), oldM.get(removedTag));
+			change.put(field + addQuotes(removedTag), OpBlockChain.OP_CHANGE_DELETE);
+			current.put(field + addQuotes(removedTag), oldM.get(removedTag));
 		}
 		for(String tag : newM.keySet()) {
 			Object po = oldM.get(tag);
 			Object no = newM.get(tag);
 			if(!OUtils.equals(po, no)) {
-				change.put(field + addBraces(tag), set(no));
+				change.put(field + addQuotes(tag), set(no));
 				if(po != null) {
-					current.put(field + addBraces(tag), po);
+					current.put(field + addQuotes(tag), po);
 				}
 			}
 		}
 	}
-
-	private static String addBraces(String field) {
-		if (field.contains(".")) {
+	
+	private static String addQuotes(String field) {
+		if (field.contains(".") || field.contains("[") || field.contains("]")) {
+			field = field.replaceAll("\\[", "\\\\[");
+			field = field.replaceAll("\\]", "\\\\]");
 			field = "{" + field + "}";
 		}
 
