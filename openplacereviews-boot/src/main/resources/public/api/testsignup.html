@@ -1,4 +1,5 @@
 <html>
+
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -56,8 +57,44 @@
                     </div>
                 </div>
             </div>
-
-
+            <div class="form-group panel panel-info">
+                <div class="panel-heading"><b>Logout</b></div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <div class="form-group form-horizontal">
+                            <label for="logout-name" class="control-label">Nickname: </label>
+                            <input type="text" id="logout-name" class="form-control" placeholder="Nickname" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2 form-group">
+                            <input type="submit" value="Logout" id="logout-btn" class="btn btn-primary form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group panel panel-info">
+                <div class="panel-heading"><b>Login</b></div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <div class="form-group form-horizontal">
+                            <label for="login-name" class="control-label">Nickname: </label>
+                            <input type="text" id="login-name" class="form-control" placeholder="Nickname" />
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label for="login-pwd" class="control-label">Password: </label>
+                                <input type="password" id="login-pwd" class="form-control" placeholder="Password" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2 form-group">
+                            <input type="submit" value="Login" id="login-btn" class="btn btn-primary form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <script>
@@ -70,6 +107,19 @@
                     "userDetails": $("#signup-details").val()
                 };
                 postAction("/api/auth/user-signup", obj)();
+            });
+            $("#login-btn").click(function () {
+                var obj = {
+                    "pwd": $("#login-pwd").val(),
+                    "name": $("#login-name").val()
+                };
+                postAction("/api/auth/user-login", obj)();
+            });
+            $("#logout-btn").click(function () {
+                var obj = {
+                    "name": $("#logout-name").val()
+                };
+                postAction("/api/auth/user-logout", obj)();
             });
         });
 

@@ -170,14 +170,14 @@ public class UserSchemaManager {
 				});
 		return op;
 	}
+	
+	public void removeLogin(String name) {
+		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET lprivkey = null WHERE nickname = ?", name);
+	}
 
 
 	public void createNewLogin(String name, String lprivkey) {
-		// TODO VALIDATION
-		getJdbcTemplate().update(
-				"UPDATE " + USERS_TABLE + " SET lprivkey = ? WHERE nickname =?",
-				lprivkey, name);
-		
+		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET lprivkey = ? WHERE nickname = ?", lprivkey, name);
 	}
 
 }

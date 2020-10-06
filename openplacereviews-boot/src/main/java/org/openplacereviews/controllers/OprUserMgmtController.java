@@ -2,6 +2,7 @@ package org.openplacereviews.controllers;
 
 import java.security.KeyPair;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -40,11 +41,20 @@ import com.sendgrid.SendGrid;
 @Controller
 @RequestMapping("/api/auth")
 public class OprUserMgmtController {
+	
+	// TODO AUTH methods:
+	// login status ? 
+	// resend email
+	// oauth
+	
+	// TODO resend email after expiration
+	// TODO give proper error after login (remove email token)
+	// TODO reset password
 
 	// TODO !!! WebSecurityConfiguration !!!
-	// TODO allow signup if token expired here we could check that verification email expired and delete after 24 h
-	// TODO logout
-	// TODO login after signup
+	// TODO allow register with private key after oauth
+	// TODO Situation that signup is pending email verification
+	//   ? allow signup if token expired here we could check that verification email expired and delete after 24 h
 	// TODO check that email verification is pending
 	protected static final Log LOGGER = LogFactory.getLog(OprUserMgmtController.class);
 
@@ -70,7 +80,9 @@ public class OprUserMgmtController {
 	@GetMapping(path = "/user-signup-confirm")
 	@ResponseBody
 	public ResponseEntity<String> signupConfirm(HttpSession session, @RequestParam(required = true) String name,
-			@RequestParam(required = true) String token) throws FailedVerificationException {
+			@RequestParam(required = true) String token, 
+			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
+
 		OpOperation signinOp = userManager.validateEmail(name, token);
 		String sPrivKey = userManager.getSignupPrivateKey(name);
 		String sPubKey = signinOp.getCreated().get(0).getStringValue(OpBlockchainRules.F_PUBKEY);
@@ -78,17 +90,44 @@ public class OprUserMgmtController {
 		// String pubKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPublic());
 		// op.setSignedBy(signName);
 		String serverUser = manager.getServerUser();
+		KeyPair serverSignedKeyPair = manager.getServerLoginKeyPair();
 		signinOp.setSignedBy(name);
 		signinOp.addOtherSignedBy(serverUser);
-		KeyPair serverSignedKeyPair = manager.getServerLoginKeyPair();
 		manager.generateHashAndSign(signinOp, ownKeyPair, serverSignedKeyPair);
 		manager.addOperation(signinOp);
 		
-		return generateNewLogin(name, ownKeyPair, serverUser, serverSignedKeyPair);
+		return generateNewLogin(name, ownKeyPair, userDetails);
+	}
+	
+	@PostMapping(path = "/user-login")
+	@ResponseBody
+	public ResponseEntity<String> userLogin(HttpSession session, @RequestParam(required = true) String name,
+			@RequestParam(required = true) String pwd, 
+			@RequestParam(required = false) String email, @RequestParam(required = false) String userDetails) throws FailedVerificationException {
+		OpObject signupObj = manager.getLoginObj(name);
+		if (signupObj == null) {
+			throw new IllegalStateException("User was not signed up");
+		}
+		String algo = signupObj.getStringValue(OpBlockchainRules.F_ALGO);
+		String keyGen = signupObj.getStringValue(OpBlockchainRules.F_KEYGEN_METHOD);
+		String salt = signupObj.getStringValue(OpBlockchainRules.F_SALT);
+		String sPubKey = signupObj.getStringValue(OpBlockchainRules.F_PUBKEY);
+		KeyPair newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, pwd);
+		KeyPair ownKeyPair = SecUtils.getKeyPair(SecUtils.ALGO_EC, null, sPubKey);
+		if (!SecUtils.validateKeyPair(SecUtils.ALGO_EC, newKeyPair.getPrivate(), ownKeyPair.getPublic())) {
+			throw new IllegalStateException("Specified password is wrong");
+		}
+		if (userManager.getSignupPrivateKey(name) == null) {
+			userManager.createNewUser(name, null, null,
+					SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPrivate()), signupObj);
+		}
+		deleteLoginIfPresent(name);
+		return generateNewLogin(name, newKeyPair, userDetails);
 	}
 
-	private ResponseEntity<String> generateNewLogin(String name, KeyPair ownKeyPair, String serverUser,
-			KeyPair serverSignedKeyPair) throws FailedVerificationException {
+	private ResponseEntity<String> generateNewLogin(String name, KeyPair ownKeyPair, String userDetails) throws FailedVerificationException {
+		String serverUser = manager.getServerUser();
+		KeyPair serverSignedKeyPair = manager.getServerLoginKeyPair();
 		// generate & save login private key
 		KeyPair loginPair = SecUtils.generateRandomEC256K1KeyPair();
 		String privateKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, loginPair.getPrivate());
@@ -98,17 +137,16 @@ public class OprUserMgmtController {
 		OpOperation loginOp = new OpOperation();
 		Map<String, Object> refs = new TreeMap<String, Object>();
 		refs.put("s", Arrays.asList(OpBlockchainRules.OP_SIGNUP, name));
+		loginOp.putStringValue(OpObject.F_TIMESTAMP_ADDED, OpObject.dateFormat.format(new Date()));
 		loginOp.putObjectValue(OpOperation.F_REF, refs);
 		loginOp.setType(OpBlockchainRules.OP_LOGIN);
 		OpObject loginObj = new OpObject();
 		loginOp.addCreated(loginObj);
-		String userDetails = "";
 		if (!OUtils.isEmpty(userDetails)) {
 			loginObj.putObjectValue(OpBlockchainRules.F_DETAILS, formatter.fromJsonToTreeMap(userDetails));
 		}
 		loginObj.setId(name, PURPOSE_LOGIN);
 		loginObj.putStringValue(OpBlockchainRules.F_ALGO, SecUtils.ALGO_EC);
-		
 		loginObj.putStringValue(OpBlockchainRules.F_PUBKEY,
 				SecUtils.encodeKey(SecUtils.KEY_BASE64, loginPair.getPublic()));
 		
@@ -118,6 +156,38 @@ public class OprUserMgmtController {
 		manager.addOperation(loginOp);
 		loginOp.putCacheObject(OpBlockchainRules.F_PRIVATEKEY, privateKey);
 		return ResponseEntity.ok(formatter.fullObjectToJson(loginOp));
+	}
+	
+	@PostMapping(path = "/user-logout")
+	@ResponseBody
+	public ResponseEntity<String> logout(HttpSession session, @RequestParam(required = true) String name) throws FailedVerificationException {
+		OpOperation op = deleteLoginIfPresent(name);
+		if(op == null) {
+			throw new IllegalArgumentException("There is nothing to edit cause login obj doesn't exist");
+		}
+		return ResponseEntity.ok(formatter.fullObjectToJson(op));
+	}
+
+	private OpOperation deleteLoginIfPresent(String name) throws FailedVerificationException {
+		OpOperation op = new OpOperation();
+		op.setType(OpBlockchainRules.OP_LOGIN);
+		OpObject loginObj = manager.getLoginObj(name + ":" + PURPOSE_LOGIN);
+		if (loginObj == null) {
+			return null;
+		} else {
+			op.addDeleted(loginObj.getId());
+			op.putStringValue(OpObject.F_TIMESTAMP_ADDED, OpObject.dateFormat.format(new Date()));
+		}
+		String serverUser = manager.getServerUser();
+		String sPrivKey = userManager.getSignupPrivateKey(name);
+		KeyPair ownKeyPair = SecUtils.getKeyPair(SecUtils.ALGO_EC, sPrivKey, null);
+		KeyPair serverSignedKeyPair = manager.getServerLoginKeyPair();
+		op.setSignedBy(name);
+		op.addOtherSignedBy(serverUser);
+		manager.generateHashAndSign(op, ownKeyPair, serverSignedKeyPair);
+		manager.addOperation(op);
+		userManager.removeLogin(name);
+		return op;
 	}
 
 	@PostMapping(path = "/user-signup")
