@@ -18,6 +18,9 @@ opendb:
   files-backup:
     overpass-cache: ${OVERPASS_CACHE_DIR:overpass_cache}
 #    directory: ${FILE_BLOCKS_DIR:blocks}
+  serverUrl: ${SERVER_URL:http://localhost:6463/}
+  email:
+    sendgrid-api: ${SENDGRID_API:}
 
 management:
   endpoints:

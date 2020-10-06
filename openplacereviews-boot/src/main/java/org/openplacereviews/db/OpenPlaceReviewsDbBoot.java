@@ -1,17 +1,10 @@
 package org.openplacereviews.db;
 
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
-import javax.sql.DataSource;
 
 import org.openplacereviews.controllers.OprHistoryChangesProvider;
 import org.openplacereviews.controllers.OprPlaceDataProvider;
@@ -27,7 +20,6 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -47,7 +39,6 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	@Autowired
 	public PublicDataManager publicDataManager;
 	
-	private JdbcTemplate userJdbcTemplate;
 	
 	@Autowired
 	public UserSchemaManager userSchemaManager;
@@ -58,15 +49,6 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	@Value("${opendb.mgmt.user}")
 	public String opendbMgmtUser;
 
-
-	@Value("${spring.userdatasource.url}")
-	private String userDataSourceUrl;
-	
-	@Value("${spring.userdatasource.username}")
-	private String userDataSourceUsername;
-	
-	@Value("${spring.userdatasource.password}")
-	private String userDataSourcePassword;
 
 	 
 	public static void main(String[] args)  {
@@ -84,17 +66,15 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 //		}
 		
 		System.setProperty("spring.devtools.restart.enabled", "false");
+
 		SpringApplication.run(OpenPlaceReviewsDbBoot.class, args);
-	}
-	
-	public DataSource userDataSource() {
-		return DataSourceBuilder.create().url(userDataSourceUrl).username(userDataSourceUsername)
-				.password(userDataSourcePassword).build();
 	}
 
 	@Override
 	public void preStartApplication() {
-		initUserDatabase();
+		MetadataDb metadataDB = loadMetadata(userSchemaManager.getJdbcTemplate());
+		userSchemaManager.initializeDatabaseSchema(metadataDB);
+		
 		
 		String usr = opendbMgmtUser.substring(opendbMgmtUser.indexOf(':') + 1);
  		List<String> bootstrapList =
@@ -115,13 +95,6 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 		addGeoIndexReport();
 		addGeoSummaryIndexReport();
 		addDateOSMDataReport();
-	}
-
-	private void initUserDatabase() {
-		userJdbcTemplate = new JdbcTemplate(userDataSource());
-		MetadataDb metadataDB = loadMetadata(userJdbcTemplate);
-		userSchemaManager.initializeDatabaseSchema(metadataDB, userJdbcTemplate);
-		
 	}
 
 	private void addGeoSummaryIndexReport() {
