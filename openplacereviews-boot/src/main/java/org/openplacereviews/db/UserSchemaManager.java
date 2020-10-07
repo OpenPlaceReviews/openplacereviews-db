@@ -108,13 +108,16 @@ public class UserSchemaManager {
 	}
 
 	public void createNewUser(String name, String email, String emailToken, String sprivkey, OpObject obj) {
-		PGobject userObj = new PGobject();
-		userObj.setType("jsonb");
-		try {
-			userObj.setValue(formatter.fullObjectToJson(obj));
-		} catch (SQLException e) {
-			throw new IllegalArgumentException(e);
-		}
+		PGobject userObj = null;
+		if (obj != null) {
+			userObj = new PGobject();
+			userObj.setType("jsonb");
+			try {
+				userObj.setValue(formatter.fullObjectToJson(obj));
+			} catch (SQLException e) {
+				throw new IllegalArgumentException(e);
+			}
+		} 
 		getJdbcTemplate().update(
 				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,sprivkey,signup) VALUES(?,?,?,?,?,?)", name,
 				email, emailToken, new Date(), sprivkey, userObj);
@@ -122,6 +125,18 @@ public class UserSchemaManager {
 	}
 	
 	
+	public boolean userIsRegistered(String name) {
+		return getJdbcTemplate().query("SELECT nickname FROM " + USERS_TABLE + " WHERE nickname = ?",
+				new Object[] { name }, new ResultSetExtractor<Boolean>() {
+					@Override
+					public Boolean extractData(ResultSet arg0) throws SQLException, DataAccessException {
+						if (!arg0.next()) {
+							return false;
+						}
+						return true;
+					}
+				});
+	}
 
 	public String getSignupPrivateKey(String name) {
 		return getJdbcTemplate().query("SELECT sprivkey FROM " + USERS_TABLE + " WHERE nickname = ?",
