@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.openplacereviews.controllers.OprHistoryChangesProvider;
-import org.openplacereviews.controllers.OprOSMDataProvider;
 import org.openplacereviews.controllers.OprPlaceDataProvider;
 import org.openplacereviews.controllers.OprSummaryPlaceDataProvider;
 import org.openplacereviews.opendb.OpenDBServer;
@@ -15,7 +14,6 @@ import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.BotManager;
 import org.openplacereviews.opendb.service.PublicDataManager;
 import org.openplacereviews.opendb.service.SettingsManager;
-import org.openplacereviews.osm.service.TripAdvisorBot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -29,10 +27,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @ComponentScan("org.openplacereviews")
 public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationRunner {
 
-	
 	@Autowired
 	public JdbcTemplate jdbcTemplate;
-
+	
 	@Autowired
 	public BlocksManager blocksManager;
 
@@ -41,21 +38,44 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	
 	@Autowired
 	public PublicDataManager publicDataManager;
+	
+	
+	@Autowired
+	public UserSchemaManager userSchemaManager;
 
 	@Autowired
 	public BotManager botManager;
 	
 	@Value("${opendb.mgmt.user}")
-	public String opendbMgmtUser; 
-	
+	public String opendbMgmtUser;
 
-	public static void main(String[] args) {
+
+	 
+	public static void main(String[] args)  {
+		// here is a test that application.yml is correctly read from file
+//		try {
+//			InputStream rr = OpenPlaceReviewsDbBoot.class.getResourceAsStream("/application.yml");
+//			BufferedReader br = new BufferedReader(new InputStreamReader(rr));
+//			String ln;
+//			while ((ln = br.readLine()) != null) {
+//				System.out.println(ln);
+//			}
+//			br.close();
+//		} catch (IOException e) {
+//			throw new RuntimeException(e);
+//		}
+		
 		System.setProperty("spring.devtools.restart.enabled", "false");
+
 		SpringApplication.run(OpenPlaceReviewsDbBoot.class, args);
 	}
 
 	@Override
 	public void preStartApplication() {
+		MetadataDb metadataDB = loadMetadata(userSchemaManager.getJdbcTemplate());
+		userSchemaManager.initializeDatabaseSchema(metadataDB);
+		
+		
 		String usr = opendbMgmtUser.substring(opendbMgmtUser.indexOf(':') + 1);
  		List<String> bootstrapList =
 				Arrays.asList("opr-0-" + usr + "-user", BlocksManager.BOOT_STD_OPS_DEFINTIONS,
