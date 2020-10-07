@@ -59,6 +59,9 @@ public class OprUserMgmtController {
 	// SIGNUP: DB signup private key <-> matches signup Blockchain public key (security check)
 	
 	// Unexpected scenarios:
+	// 0. Client login private key doesn't match db private key:
+	//    - Test: with api method user-check-loginkey
+	//    - Solution: logout / login (doesn't require loginkey)
 	// 1. User login was deleted or has changed in blockchain (signup is still present): UI -> 
 	//    - Test: with api method user-check-loginkey
 	//    - Solution: logout / login (doesn't require loginkey)
