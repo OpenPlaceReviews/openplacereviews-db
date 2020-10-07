@@ -45,10 +45,7 @@ import com.sendgrid.SendGrid;
 public class OprUserMgmtController {
 	
 	
-	// TODO reset password - UI
-	// TODO reset password - confirm + UI
 	// TODO check if something has changed in blockchain (during login / logout / signup verify / pwd reset)
-	
 	// TODO Situation that signup is pending email verification (allow another signup or cleaning 24H)	
 	// TODO resend email after expiration ?
 
