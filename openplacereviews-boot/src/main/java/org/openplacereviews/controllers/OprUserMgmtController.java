@@ -46,6 +46,18 @@ public class OprUserMgmtController {
 	// TODO OAUTH 
 	// TODO !!! WebSecurityConfiguration !!! - CSRF ?
 
+	
+	// Short introduction of user management:
+	// - BLOCKCHAIN: Signup / login objects are maintained by blockchain and could be not synchronized with database.
+	// - BLOCKCHAIN doesn't have any private key and doesn't have email (or any other personal info)
+	// - DB: user_table has user name, signup private key (if present - not oauth), login private key (so user can do operations in blockchain).
+	// - CLIENT: clients receives through API *login* private key after email is confirmed
+	// - CLIENT: could revoke login private key (logout), get new private key (login) or change signup private key (change password)
+	
+	// THESE ENTITIES should be synchronized, so unexpected scenarios should be handled:
+	// LOGIN: CLIENT private key <-> matches DB login private key <-> matches Blockchain public key (security check)
+	// SIGNUP: DB signup private key <-> matches signup Blockchain public key (security check)
+	
 	// Unexpected scenarios:
 	// 1. User login was deleted or has changed in blockchain (signup is still present): UI -> 
 	//    - Test: with api method user-check-loginkey
