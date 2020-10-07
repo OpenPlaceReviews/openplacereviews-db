@@ -17,7 +17,7 @@
 </head>
 
 <body>
-    <div class="alert alert-dismissible fade in" hidden id="alert-template">
+    <div class="alert alert-dismissible fade in" id="alert-template">
         <a href="#" class="close" aria-label="close" onclick="hideAlert()">&times;</a>
         <strong id="alert-status"></strong><span id="result"></span>
     </div>
@@ -95,6 +95,52 @@
                     </div>
                 </div>
             </div>
+            <div class="form-group panel panel-info">
+                <div class="panel-heading"><b>Reset password (email)</b></div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <div class="form-group form-horizontal">
+                            <label for="resetpwd-name" class="control-label">Nickname: </label>
+                            <input type="text" id="resetpwd-name" class="form-control" placeholder="Nickname" />
+                        </div>
+                        <div class="form-group form-horizontal">
+                            <label for="resetpwd-email" class="control-label">Email: </label>
+                            <input type="text" id="resetpwd-email" class="form-control" placeholder="Email" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2 form-group">
+                            <input type="submit" value="Reset password" id="resetpwd-btn" class="btn btn-primary form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group panel panel-info">
+                <div class="panel-heading"><b>Reset password (confirm)</b></div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <div class="form-group form-horizontal">
+                            <label for="resetconfirm-name" class="control-label">Nickname: </label>
+                            <input type="text" id="resetconfirm-name" class="form-control" placeholder="Nickname" />
+                        </div>
+                        <div class="form-group form-horizontal">
+                            <label for="resetconfirm-token" class="control-label">Token: </label>
+                            <input type="text" id="resetconfirm-token" class="form-control" placeholder="Token" />
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label for="resetconfirm-pwd" class="control-label">New password: </label>
+                                <input type="password" id="resetconfirm-pwd" class="form-control" placeholder="Password" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2 form-group">
+                            <input type="submit" value="Reset password" id="resetconfirm-btn" class="btn btn-primary form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <script>
@@ -121,8 +167,26 @@
                 };
                 postAction("/api/auth/user-logout", obj)();
             });
+            $("#resetpwd-btn").click(function () {
+                var obj = {
+                    "name": $("#resetpwd-name").val(),
+                    "email": $("#resetpwd-email").val()
+                };
+                postAction("/api/auth/user-reset-password-email", obj)();
+            });
+            $("#resetconfirm-btn").click(function () {
+                var obj = {
+                    "name": $("#resetconfirm-name").val(),
+                    "token": $("#resetconfirm-token").val(),
+                    "newPwd": $("#resetconfirm-pwd").val()
+                };
+                postAction("/api/auth/user-reset-password-confirm", obj)();
+            });
         });
 
+        function hideAlert() {
+            $("#alert-template").hide();
+        }
         function postHandler(method, update) {
             return method
                 .done(function (data) { done(data, update); })

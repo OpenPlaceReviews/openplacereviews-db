@@ -31,6 +31,7 @@ public class UserSchemaManager {
 
 	protected static final Log LOGGER = LogFactory.getLog(UserSchemaManager.class);
 	private static final int USER_SCHEMA_VERSION = 0;
+	public static final long EMAIL_TOKEN_EXPIRATION_TIME = 24 * 60 * 60 * 1000l;
 	
 	// //////////SYSTEM TABLES DDL ////////////
 	private static final String SETTING_VERSION_KEY = "version";
@@ -119,9 +120,24 @@ public class UserSchemaManager {
 				email, emailToken, new Date(), sprivkey, userObj);
 
 	}
+	
+	
 
 	public String getSignupPrivateKey(String name) {
 		return getJdbcTemplate().query("SELECT sprivkey FROM " + USERS_TABLE + " WHERE nickname = ?",
+				new Object[] { name }, new ResultSetExtractor<String>() {
+					@Override
+					public String extractData(ResultSet arg0) throws SQLException, DataAccessException {
+						if (!arg0.next()) {
+							return null;
+						}
+						return arg0.getString(1);
+					}
+				});
+	}
+	
+	public String getUserEmail(String name) {
+		return getJdbcTemplate().query("SELECT email FROM " + USERS_TABLE + " WHERE nickname = ?",
 				new Object[] { name }, new ResultSetExtractor<String>() {
 					@Override
 					public String extractData(ResultSet arg0) throws SQLException, DataAccessException {
@@ -156,14 +172,12 @@ public class UserSchemaManager {
 						if (!rs.next()) {
 							throw new IllegalStateException("User wasn't registered yet");
 						}
-//						long expirationTime = 1000l;
-						long expirationTime = 24 * 60 * 60 * 1000l;
-						if (System.currentTimeMillis() - rs.getDate(3).getTime() > expirationTime) {
+						if (System.currentTimeMillis() - rs.getDate(3).getTime() > EMAIL_TOKEN_EXPIRATION_TIME) {
 							throw new IllegalStateException("Registration link has expired");
 						}
 						OpOperation signupOp = formatter.parseOperation(rs.getString(1));
 						if (!token.equals(rs.getString(2))) {
-							throw new IllegalArgumentException("Registration Link is broken, please signup again");
+							throw new IllegalArgumentException("Registration token doesn't match, please signup again or reset password");
 						}
 						return signupOp;
 					}
@@ -171,13 +185,18 @@ public class UserSchemaManager {
 		return op;
 	}
 	
-	public void removeLogin(String name) {
-		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET lprivkey = null WHERE nickname = ?", name);
+	public void resetEmailToken(String name, String emailToken) {
+		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET emailtoken = ?, tokendate = ? WHERE nickname = ?", 
+				emailToken, new Date(), name);
+
 	}
-
-
-	public void createNewLogin(String name, String lprivkey) {
-		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET lprivkey = ? WHERE nickname = ?", lprivkey, name);
+	
+	public void updateLoginKey(String name, String lprivkey) {
+		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET lprivkey = ?, emailtoken = null WHERE nickname = ?", lprivkey, name);
+	}
+	
+	public void updateSignupKey(String name, String sprivkey) {
+		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET sprivkey = ?, emailtoken = null WHERE nickname = ?", sprivkey, name);
 	}
 
 }
