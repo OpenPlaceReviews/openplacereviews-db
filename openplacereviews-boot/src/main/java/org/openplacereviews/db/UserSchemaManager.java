@@ -12,6 +12,7 @@ import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.openplacereviews.controllers.OprUserMgmtController;
 import org.openplacereviews.opendb.OpenDBServer.MetadataDb;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -164,7 +165,10 @@ public class UserSchemaManager {
 				});
 	}
 	
-	public String getLoginPrivateKey(String name) {
+	public String getLoginPrivateKey(String name, String purpose) {
+		if (!OprUserMgmtController.DEFAULT_PURPOSE_LOGIN.equals(purpose)) {
+			throw new UnsupportedOperationException("Unsupported purpose to get login private key " + purpose);
+		}
 		return getJdbcTemplate().query("SELECT lprivkey FROM " + USERS_TABLE + " WHERE nickname = ?",
 				new Object[] { name }, new ResultSetExtractor<String>() {
 					@Override
@@ -206,8 +210,12 @@ public class UserSchemaManager {
 
 	}
 	
-	public void updateLoginKey(String name, String lprivkey) {
-		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET lprivkey = ?, emailtoken = null WHERE nickname = ?", lprivkey, name);
+	public void updateLoginKey(String name, String lprivkey, String purpose) {
+		if (!OprUserMgmtController.DEFAULT_PURPOSE_LOGIN.equals(purpose)) {
+			return;
+		}
+		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET lprivkey = ?, emailtoken = null WHERE nickname = ?",
+				lprivkey, name);
 	}
 	
 	public void updateSignupKey(String name, String sprivkey) {

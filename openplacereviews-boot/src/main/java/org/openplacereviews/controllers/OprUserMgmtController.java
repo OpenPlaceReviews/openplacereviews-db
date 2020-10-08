@@ -44,7 +44,19 @@ import com.sendgrid.SendGrid;
 @RequestMapping("/api/auth")
 public class OprUserMgmtController {
 	// TODO OAUTH 
-	// TODO !!! WebSecurityConfiguration !!! - CSRF ?
+	// TODO <nickname>:osmand - purpose key
+	
+	// CSRF / XSS
+	// Could be configured in WebSecurityConfiguration class 
+	// - Login provides privateKey which could be stored for now in a cookie
+	// - There is no way to use Session or Cookie to authorize operations for now
+	// - Each time private key should be passed as a form parameter and taken from cookie or internal 
+	// - We don't use CrossOrigin / CORS restrictions cause there are multiple clients Android, Web
+	// - Web-client always need to check if cookie expired or not 
+	
+	// In future:
+	// - We can provide special token instead of private specially for Web-Client and implement CORS
+	// - We can also implement CORS (always check Origin:HOST for <username>:opr-web login and don't use it for <username>:osmand)
 
 	
 	// Short introduction of user management:
@@ -80,7 +92,7 @@ public class OprUserMgmtController {
 	// In future: allow to change oauth <-> pwd
 	protected static final Log LOGGER = LogFactory.getLog(OprUserMgmtController.class);
 
-	private static final String PURPOSE_LOGIN = "opr-web";
+	public static final String DEFAULT_PURPOSE_LOGIN = "opr-web";
 	private static final String RESET_PASSWORD_URL = "api/test-signup.html";
 	
 	@Value("${opendb.email.sendgrid-api}")
@@ -104,6 +116,7 @@ public class OprUserMgmtController {
 	@ResponseBody
 	public ResponseEntity<String> signupConfirm(HttpSession session, @RequestParam(required = true) String name,
 			@RequestParam(required = true) String token, 
+			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose,
 			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
 		// TODO redirect if email expired
 		OpOperation signinOp = userManager.validateEmail(name, token);
@@ -122,28 +135,31 @@ public class OprUserMgmtController {
 		// In case user already exists, operation will fail and user will need to login or wait email expiration
 		manager.addOperation(signinOp);
 		// 2. Signup was added, so login will be generated 
-		return generateNewLogin(name, ownKeyPair, userDetails);
+		return generateNewLogin(name, ownKeyPair, userDetails, purpose);
 	}
 	
 	
 
 	@GetMapping(path = "/user-check-loginkey")
 	@ResponseBody
-	public ResponseEntity<String> userСheckLogin(HttpSession session, @RequestParam(required = true) String name, 
-			@RequestParam(required = true) String privateKey) throws FailedVerificationException {
-		OpObject loginObj = manager.getLoginObj(name + ":" + PURPOSE_LOGIN);
+	public ResponseEntity<String> checkLogin(HttpSession session, @RequestParam(required = true) String name, 
+			@RequestParam(required = true) String privateKey,
+			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
+		OpObject loginObj = manager.getLoginObj(name + ":" + purpose);
 		if (loginObj == null) {
 			throw new IllegalStateException("User is not logged in into blockchain");
 		}
-		String loginPrivateKey = userManager.getLoginPrivateKey(name);
-		if (loginPrivateKey == null) {
-			throw new IllegalStateException("User is not logged in to the website");
-		}
-		if (!OUtils.equalsStringValue(loginPrivateKey, privateKey)) {
-			throw new IllegalStateException("Private key provided by the client doesn't match db key");
+		if (OprUserMgmtController.DEFAULT_PURPOSE_LOGIN.equals(purpose)) {
+			String loginPrivateKey = userManager.getLoginPrivateKey(name, purpose);
+			if (loginPrivateKey == null) {
+				throw new IllegalStateException("User is not logged in to the website");
+			}
+			if (!OUtils.equalsStringValue(loginPrivateKey, privateKey)) {
+				throw new IllegalStateException("Private key provided by the client doesn't match db key");
+			}
 		}
 		KeyPair signKeyPair = SecUtils.getKeyPair(loginObj.getStringValue(OpBlockchainRules.F_ALGO), 
-				loginPrivateKey, loginObj.getStringValue(OpBlockchainRules.F_PUBKEY));
+				privateKey, loginObj.getStringValue(OpBlockchainRules.F_PUBKEY));
 		if(!SecUtils.validateKeyPair(OpBlockchainRules.F_ALGO, signKeyPair.getPrivate(), signKeyPair.getPublic())) {
 			throw new IllegalStateException("User db private key doesn't public key in blockchain");
 		}
@@ -153,7 +169,8 @@ public class OprUserMgmtController {
 	@PostMapping(path = "/user-reset-password-email")
 	@ResponseBody
 	public ResponseEntity<String> resetPwdSendEmail(HttpSession session, @RequestParam(required = true) String name, 
-			@RequestParam(required = true) String email) throws FailedVerificationException {
+			@RequestParam(required = true) String email,
+			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
 		checkUserSignupPrivateKeyIsPresent(name);
 		String userEmail = userManager.getUserEmail(name);
 		if (userEmail == null) {
@@ -162,7 +179,7 @@ public class OprUserMgmtController {
 		if (!OUtils.equals(userEmail, email)) {
 			throw new IllegalStateException("Provided email doesn't match email in the database");
 		}
-		deleteLoginIfPresent(name);
+		deleteLoginIfPresent(name, purpose);
 		String emailToken = UUID.randomUUID().toString();
 		String href = getServerUrl() + RESET_PASSWORD_URL + "?name=" + name + "&token=" + emailToken;
 		sendEmail(name, email, href, getResetEmailContent(name, href, emailToken).toString());
@@ -177,7 +194,8 @@ public class OprUserMgmtController {
 	public ResponseEntity<String> resetPwdConfirm(HttpSession session, @RequestParam(required = true) String name, 
 			@RequestParam(required = true) String token, 
 			@RequestParam(required = true) String newPwd, 
-			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
+			@RequestParam(required = false) String userDetails, 
+			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
 		checkUserSignupPrivateKeyIsPresent(name);
 		userManager.validateEmail(name, token);
 		OpObject signupObj = manager.getLoginObj(name);
@@ -210,7 +228,7 @@ public class OprUserMgmtController {
 		} else if (!OUtils.equalsStringValue(userManager.getSignupPrivateKey(name), privateKey)) {
 			userManager.updateSignupKey(name, privateKey);
 		}
-		return generateNewLogin(name, newKeyPair, userDetails);
+		return generateNewLogin(name, newKeyPair, userDetails, purpose);
 	}
 
 	private void checkUserSignupPrivateKeyIsPresent(String name) {
@@ -222,9 +240,10 @@ public class OprUserMgmtController {
 	
 	@PostMapping(path = "/user-login")
 	@ResponseBody
-	public ResponseEntity<String> userLogin(HttpSession session, @RequestParam(required = true) String name,
+	public ResponseEntity<String> login(HttpSession session, @RequestParam(required = true) String name,
 			@RequestParam(required = true) String pwd, 
-			@RequestParam(required = false) String email, @RequestParam(required = false) String userDetails) throws FailedVerificationException {
+			@RequestParam(required = false) String email, @RequestParam(required = false) String userDetails, 
+			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
 		OpObject signupObj = manager.getLoginObj(name);
 		if (signupObj == null) {
 			throw new IllegalStateException("User was not signed up in blockchain");
@@ -245,18 +264,19 @@ public class OprUserMgmtController {
 		} else if (!OUtils.equalsStringValue(userManager.getSignupPrivateKey(name), privateKey)) {
 			userManager.updateSignupKey(name, privateKey);
 		}
-		deleteLoginIfPresent(name);
+		deleteLoginIfPresent(name, purpose);
 		// here all logins are deleted
-		return generateNewLogin(name, newKeyPair, userDetails);
+		return generateNewLogin(name, newKeyPair, userDetails, purpose);
 	}
 
 	
 	@PostMapping(path = "/user-logout")
 	@ResponseBody
-	public ResponseEntity<String> logout(HttpSession session, @RequestParam(required = true) String name)
+	public ResponseEntity<String> logout(HttpSession session, @RequestParam(required = true) String name,
+			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose)
 			throws FailedVerificationException {
 		checkUserSignupPrivateKeyIsPresent(name);
-		OpOperation op = deleteLoginIfPresent(name);
+		OpOperation op = deleteLoginIfPresent(name, purpose);
 		if (op == null) {
 			throw new IllegalArgumentException("There is nothing to edit cause login obj doesn't exist");
 		}
@@ -320,10 +340,10 @@ public class OprUserMgmtController {
 		return ResponseEntity.ok(formatter.fullObjectToJson(op));
 	}
 	
-	private OpOperation deleteLoginIfPresent(String name) throws FailedVerificationException {
+	private OpOperation deleteLoginIfPresent(String name, String purpose) throws FailedVerificationException {
 		OpOperation op = new OpOperation();
 		op.setType(OpBlockchainRules.OP_LOGIN);
-		OpObject loginObj = manager.getLoginObj(name + ":" + PURPOSE_LOGIN);
+		OpObject loginObj = manager.getLoginObj(name + ":" + purpose);
 		if (loginObj == null) {
 			return null;
 		} else {
@@ -338,17 +358,17 @@ public class OprUserMgmtController {
 		op.addOtherSignedBy(serverUser);
 		manager.generateHashAndSign(op, ownKeyPair, serverSignedKeyPair);
 		manager.addOperation(op);
-		userManager.updateLoginKey(name, null);
+		userManager.updateLoginKey(name, null, purpose);
 		return op;
 	}
 	
-	private ResponseEntity<String> generateNewLogin(String name, KeyPair ownKeyPair, String userDetails) throws FailedVerificationException {
+	private ResponseEntity<String> generateNewLogin(String name, KeyPair ownKeyPair, String userDetails, String purpose) throws FailedVerificationException {
 		String serverUser = manager.getServerUser();
 		KeyPair serverSignedKeyPair = manager.getServerLoginKeyPair();
 		// generate & save login private key
 		KeyPair loginPair = SecUtils.generateRandomEC256K1KeyPair();
 		String privateKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, loginPair.getPrivate());
-		userManager.updateLoginKey(name, privateKey);
+		userManager.updateLoginKey(name, privateKey, purpose);
 
 		// create login object & store in blockchain
 		OpOperation loginOp = new OpOperation();
@@ -362,7 +382,7 @@ public class OprUserMgmtController {
 		if (!OUtils.isEmpty(userDetails)) {
 			loginObj.putObjectValue(OpBlockchainRules.F_DETAILS, formatter.fromJsonToTreeMap(userDetails));
 		}
-		loginObj.setId(name, PURPOSE_LOGIN);
+		loginObj.setId(name, purpose);
 		loginObj.putStringValue(OpBlockchainRules.F_ALGO, SecUtils.ALGO_EC);
 		loginObj.putStringValue(OpBlockchainRules.F_PUBKEY,
 				SecUtils.encodeKey(SecUtils.KEY_BASE64, loginPair.getPublic()));
