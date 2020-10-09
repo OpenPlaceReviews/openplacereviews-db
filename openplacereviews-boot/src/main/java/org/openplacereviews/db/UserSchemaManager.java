@@ -119,41 +119,43 @@ public class UserSchemaManager {
 				throw new IllegalArgumentException(e);
 			}
 		} 
+		getJdbcTemplate().update("DELETE FROM " + USERS_TABLE + " WHERE nickname = ?", name);
 		getJdbcTemplate().update(
 				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,sprivkey,signup) VALUES(?,?,?,?,?,?)", name,
 				email, emailToken, new Date(), sprivkey, userObj);
 
 	}
 	
+	public static class UserStatus {
+		public String name;
+		public String email;
+		public String emailToken;
+		public Date tokenDate;
+		public boolean tokenExpired;
+	}
 	
-	public boolean userIsRegistered(String name) {
-		return getJdbcTemplate().query("SELECT nickname FROM " + USERS_TABLE + " WHERE nickname = ?",
-				new Object[] { name }, new ResultSetExtractor<Boolean>() {
+	public UserStatus userGetStatus(String name) {
+		return getJdbcTemplate().query("SELECT nickname, email, emailtoken, tokendate  FROM " + USERS_TABLE + " WHERE nickname = ?",
+				new Object[] { name }, new ResultSetExtractor<UserStatus>() {
 					@Override
-					public Boolean extractData(ResultSet arg0) throws SQLException, DataAccessException {
+					public UserStatus extractData(ResultSet arg0) throws SQLException, DataAccessException {
 						if (!arg0.next()) {
-							return false;
+							return null;
 						}
-						return true;
+						UserStatus s = new UserStatus();
+						s.name = name;
+						s.email = arg0.getString(2);
+						s.emailToken = arg0.getString(3);
+						s.tokenDate = arg0.getDate(4);
+						s.tokenExpired = s.tokenDate == null ? false : 
+							(System.currentTimeMillis() - s.tokenDate.getTime()) > EMAIL_TOKEN_EXPIRATION_TIME;
+						return s;
 					}
 				});
 	}
 
 	public String getSignupPrivateKey(String name) {
 		return getJdbcTemplate().query("SELECT sprivkey FROM " + USERS_TABLE + " WHERE nickname = ?",
-				new Object[] { name }, new ResultSetExtractor<String>() {
-					@Override
-					public String extractData(ResultSet arg0) throws SQLException, DataAccessException {
-						if (!arg0.next()) {
-							return null;
-						}
-						return arg0.getString(1);
-					}
-				});
-	}
-	
-	public String getUserEmail(String name) {
-		return getJdbcTemplate().query("SELECT email FROM " + USERS_TABLE + " WHERE nickname = ?",
 				new Object[] { name }, new ResultSetExtractor<String>() {
 					@Override
 					public String extractData(ResultSet arg0) throws SQLException, DataAccessException {

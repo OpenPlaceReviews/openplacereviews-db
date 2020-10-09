@@ -13,6 +13,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.db.UserSchemaManager;
+import org.openplacereviews.db.UserSchemaManager.UserStatus;
 import org.openplacereviews.opendb.SecUtils;
 import org.openplacereviews.opendb.ops.OpBlockchainRules;
 import org.openplacereviews.opendb.ops.OpObject;
@@ -43,10 +44,10 @@ import com.sendgrid.SendGrid;
 @Controller
 @RequestMapping("/api/auth")
 public class OprUserMgmtController {
-    //  - TODO consolidateSignup -> user-signup-confirm
 	
 	// TODO OAUTH with 5 scenarios
-	// TODO describe in future how to change signup methods
+	// IN FUTURE: how to change signup methods (pwd <-> OAUTH)
+	// IN FUTURE: ask user-Email at login if it's missing in DB   
 	
 	// CSRF / XSS
 	// Could be configured in WebSecurityConfiguration class 
@@ -79,16 +80,19 @@ public class OprUserMgmtController {
 	//    - Test: with api method user-check-loginkey
 	//    - Solution: logout / login (doesn't require loginkey)
 	// 2. User signup is present in blockchain but it is not in database:
-    //    - TODO consolidateSignup will do the trick 
-	// 3. TODO Sign up Email token expired 24 H
-	//    - Resignup & clean up user?
-	//    - TODO clean up user if email wasn't confirmed 24 H 
+    //    - Solution: ui can check /user-status and suggest login
+	//    - User will select Login anyway which should work fine
+	//    - IN FUTURE: we could ask email / confirm it if user email wasn't registered
+	// 3. Sign up Email token expired 24 H
+	//    - Solution: suggest user to signup again
+	//    - There is no check if user is already in database during signup (there is only check if user is already in blockchain)
+	//    - So Multiple signup is OK before email confirmation & blockchain registration.
 	// 4. Email to reset password has expired
 	//    - Solution: reset password again
 	// 5. User signup has changed in blockchain or deleted but the old one is present in database :
 	//    - This could also happen if email was sent and user signed up in between 2 emails
-	//    - checkSignupKey - will validate if db signup key is ok and user can just login, so website will work fine
-	//    - TODO consolidateSignup - updates signup if it's present in blockchain and valid email is provided
+	//    - Solution: User can login again and signup key will be updated
+	//    - Client could check that situation happened by cal /user-check-signupkey
 	
 	// In future: allow to change oauth <-> pwd
 	// In future: user can specify private key (token) for web operations
@@ -121,23 +125,32 @@ public class OprUserMgmtController {
 			@RequestParam(required = true) String token, 
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose,
 			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
-		OpOperation signinOp = userManager.validateEmail(name, token);
+		OpOperation signupOp = userManager.validateEmail(name, token);
 		OpObject signupObj = manager.getLoginObj(name);
-		if (signinOp != null) {
-			signupObj = signinOp.getCreated().get(0);
+		boolean userAlreadySignedUp = false;
+		if(signupObj != null) {
+			 userAlreadySignedUp = true;
+		} else if(signupOp != null) {
+			signupObj = signupOp.getCreated().get(0);
+		} else {
+			throw new IllegalStateException("User signup operation wasn't successful");
 		}
 		String sPrivKey = userManager.getSignupPrivateKey(name);
 		String sPubKey = signupObj.getStringValue(OpBlockchainRules.F_PUBKEY);
 		String algo = signupObj.getStringValue(OpBlockchainRules.F_ALGO);
 		KeyPair ownKeyPair = SecUtils.getKeyPair(algo, sPrivKey, sPubKey);
+		if (!SecUtils.validateKeyPair(algo, ownKeyPair.getPrivate(), ownKeyPair.getPublic())) {
+			throw new IllegalStateException(
+					"Signup operation is not successful, please try to login with different password.");
+		}
 		// if it's operation to consolidate signup we don't need to add operation to blockchain
-		if (signinOp != null) {
-			signinOp.setSignedBy(name);
-			signinOp.addOtherSignedBy(manager.getServerUser());
-			manager.generateHashAndSign(signinOp, ownKeyPair, manager.getServerLoginKeyPair());
+		if (!userAlreadySignedUp) {
+			signupOp.setSignedBy(name);
+			signupOp.addOtherSignedBy(manager.getServerUser());
+			manager.generateHashAndSign(signupOp, ownKeyPair, manager.getServerLoginKeyPair());
 			// 1. Add operation, so the user signup is confirmed and everything is ok
 			// In case user already exists, operation will fail and user will need to login or wait email expiration
-			manager.addOperation(signinOp);
+			manager.addOperation(signupOp);
 		}
 		// 2. Signup was added, so login will be generated 
 		return generateNewLogin(name, ownKeyPair, userDetails, purpose);
@@ -189,6 +202,26 @@ public class OprUserMgmtController {
 		}
 		return ResponseEntity.ok(formatter.fullObjectToJson(Collections.singletonMap("result", "OK")));
 	}
+
+	@GetMapping(path = "/user-status")
+	@ResponseBody
+	public ResponseEntity<String> userExists(@RequestParam(required = true) String name)
+			throws FailedVerificationException {
+		OpObject signupObj = manager.getLoginObj(name);
+		Map<String, String> mp = new TreeMap<String, String>();
+		mp.put("blockchain", signupObj == null ? "none" : "ok");
+		UserStatus status = userManager.userGetStatus(name);
+		mp.put("db-name", status == null ? "none" : "ok");
+		if (status != null) {
+			String signupPrivateKey = userManager.getSignupPrivateKey(name);
+			mp.put("db-key", signupPrivateKey == null ? "none" : "ok");
+			mp.put("email", OUtils.isEmpty(status.email) ? "none" : "ok");
+			mp.put("email-expired", Boolean.toString(status.tokenExpired));
+		}
+		return ResponseEntity.ok(formatter.fullObjectToJson(mp));
+	}
+
+	
 	
 	@PostMapping(path = "/user-reset-password-email")
 	@ResponseBody
@@ -196,8 +229,9 @@ public class OprUserMgmtController {
 			@RequestParam(required = true) String email,
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
 		checkUserSignupPrivateKeyIsPresent(name);
-		String userEmail = userManager.getUserEmail(name);
-		if (userEmail == null) {
+		UserStatus status = userManager.userGetStatus(name);
+		String userEmail =  status == null ? null : status.email;
+		if (OUtils.isEmpty(userEmail)) {
 			throw new IllegalStateException("User email was not registered");
 		}
 		if (!OUtils.equals(userEmail, email)) {
@@ -247,7 +281,7 @@ public class OprUserMgmtController {
 		manager.addOperation(editSigninOp);
 
 		String privateKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPrivate());
-		if (!userManager.userIsRegistered(name)) {
+		if (userManager.userGetStatus(name) == null) {
 			userManager.createNewUser(name, null, null, privateKey, null);
 		} else if (!OUtils.equalsStringValue(userManager.getSignupPrivateKey(name), privateKey)) {
 			userManager.updateSignupKey(name, privateKey);
@@ -283,7 +317,7 @@ public class OprUserMgmtController {
 			throw new IllegalStateException("Specified password is wrong");
 		}
 		String privateKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPrivate());
-		if (!userManager.userIsRegistered(name)) {
+		if (userManager.userGetStatus(name) == null) {
 			userManager.createNewUser(name, null, null, privateKey, null);
 		} else if (!OUtils.equalsStringValue(userManager.getSignupPrivateKey(name), privateKey)) {
 			userManager.updateSignupKey(name, privateKey);
@@ -318,12 +352,15 @@ public class OprUserMgmtController {
 		if (!OpBlockchainRules.validateNickname(name)) {
 			throw new IllegalArgumentException(String.format("The nickname '%s' couldn't be validated", name));
 		}
+		if (OUtils.isEmpty(email)) {
+			throw new IllegalArgumentException("Email is required for signup");
+		}
 		if (OUtils.isEmpty(pwd) && OUtils.isEmpty(oauthId)) {
 			throw new IllegalArgumentException("Signup method is not specified");
 		}
 		OpObject loginObj = manager.getLoginObj(name);
 		if (loginObj != null) {
-			throw new UnsupportedOperationException("User is already registered");
+			throw new UnsupportedOperationException("User is already registered, please use login method");
 		}
 		OpOperation op = new OpOperation();
 		op.setType(OpBlockchainRules.OP_SIGNUP);
