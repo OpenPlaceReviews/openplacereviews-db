@@ -194,10 +194,10 @@ public class UserSchemaManager {
 						if (System.currentTimeMillis() - rs.getDate(3).getTime() > EMAIL_TOKEN_EXPIRATION_TIME) {
 							throw new IllegalStateException("Registration link has expired");
 						}
-						OpOperation signupOp = formatter.parseOperation(rs.getString(1));
 						if (!token.equals(rs.getString(2))) {
 							throw new IllegalArgumentException("Registration token doesn't match, please signup again or reset password");
 						}
+						OpOperation signupOp = formatter.parseOperation(rs.getString(1));
 						return signupOp;
 					}
 				});

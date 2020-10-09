@@ -43,8 +43,10 @@ import com.sendgrid.SendGrid;
 @Controller
 @RequestMapping("/api/auth")
 public class OprUserMgmtController {
-	// TODO OAUTH 
-	// TODO <nickname>:osmand - purpose key
+    //  - TODO consolidateSignup -> user-signup-confirm
+	
+	// TODO OAUTH with 5 scenarios
+	// TODO describe in future how to change signup methods
 	
 	// CSRF / XSS
 	// Could be configured in WebSecurityConfiguration class 
@@ -53,7 +55,6 @@ public class OprUserMgmtController {
 	// - Each time private key should be passed as a form parameter and taken from cookie or internal 
 	// - We don't use CrossOrigin / CORS restrictions cause there are multiple clients Android, Web
 	// - Web-client always need to check if cookie expired or not 
-	
 	// In future:
 	// - We can provide special token instead of private specially for Web-Client and implement CORS
 	// - We can also implement CORS (always check Origin:HOST for <username>:opr-web login and don't use it for <username>:osmand)
@@ -77,19 +78,21 @@ public class OprUserMgmtController {
 	// 1. User login was deleted or has changed in blockchain (signup is still present): UI -> 
 	//    - Test: with api method user-check-loginkey
 	//    - Solution: logout / login (doesn't require loginkey)
-	// TODO
-	// 2. User signup is present in blockchain but is not in database:
-	//    - This could happen if email was sent and user signed up in between 2 emails
-	// TODO
-	// 3. Sign up Email token expired 24 H
+	// 2. User signup is present in blockchain but it is not in database:
+    //    - TODO consolidateSignup will do the trick 
+	// 3. TODO Sign up Email token expired 24 H
 	//    - Resignup & clean up user?
+	//    - TODO clean up user if email wasn't confirmed 24 H 
 	// 4. Email to reset password has expired
-	//    - Solution reset password again
-	// TODO
-	// 5. User signup has changed in blockchain or deleted but not in database:
-	//    - Resignup user ? Method to validate signup ?
+	//    - Solution: reset password again
+	// 5. User signup has changed in blockchain or deleted but the old one is present in database :
+	//    - This could also happen if email was sent and user signed up in between 2 emails
+	//    - checkSignupKey - will validate if db signup key is ok and user can just login, so website will work fine
+	//    - TODO consolidateSignup - updates signup if it's present in blockchain and valid email is provided
 	
 	// In future: allow to change oauth <-> pwd
+	// In future: user can specify private key (token) for web operations
+	
 	protected static final Log LOGGER = LogFactory.getLog(OprUserMgmtController.class);
 
 	public static final String DEFAULT_PURPOSE_LOGIN = "opr-web";
@@ -118,27 +121,47 @@ public class OprUserMgmtController {
 			@RequestParam(required = true) String token, 
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose,
 			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
-		// TODO redirect if email expired
 		OpOperation signinOp = userManager.validateEmail(name, token);
+		OpObject signupObj = manager.getLoginObj(name);
+		if (signinOp != null) {
+			signupObj = signinOp.getCreated().get(0);
+		}
 		String sPrivKey = userManager.getSignupPrivateKey(name);
-		String sPubKey = signinOp.getCreated().get(0).getStringValue(OpBlockchainRules.F_PUBKEY);
-		KeyPair ownKeyPair = SecUtils.getKeyPair(SecUtils.ALGO_EC, sPrivKey, sPubKey);
-		// String pubKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPublic());
-		// op.setSignedBy(signName);
-		String serverUser = manager.getServerUser();
-		KeyPair serverSignedKeyPair = manager.getServerLoginKeyPair();
-		signinOp.setSignedBy(name);
-		signinOp.addOtherSignedBy(serverUser);
-		manager.generateHashAndSign(signinOp, ownKeyPair, serverSignedKeyPair);
-		
-		// 1. Add operation, so the user signup is confirmed and everything is ok
-		// In case user already exists, operation will fail and user will need to login or wait email expiration
-		manager.addOperation(signinOp);
+		String sPubKey = signupObj.getStringValue(OpBlockchainRules.F_PUBKEY);
+		String algo = signupObj.getStringValue(OpBlockchainRules.F_ALGO);
+		KeyPair ownKeyPair = SecUtils.getKeyPair(algo, sPrivKey, sPubKey);
+		// if it's operation to consolidate signup we don't need to add operation to blockchain
+		if (signinOp != null) {
+			signinOp.setSignedBy(name);
+			signinOp.addOtherSignedBy(manager.getServerUser());
+			manager.generateHashAndSign(signinOp, ownKeyPair, manager.getServerLoginKeyPair());
+			// 1. Add operation, so the user signup is confirmed and everything is ok
+			// In case user already exists, operation will fail and user will need to login or wait email expiration
+			manager.addOperation(signinOp);
+		}
 		// 2. Signup was added, so login will be generated 
 		return generateNewLogin(name, ownKeyPair, userDetails, purpose);
 	}
 	
 	
+	@GetMapping(path = "/user-check-signupkey")
+	@ResponseBody
+	public ResponseEntity<String> checkLogin(HttpSession session, @RequestParam(required = true) String name) throws FailedVerificationException {
+		OpObject loginObj = manager.getLoginObj(name );
+		if (loginObj == null) {
+			throw new IllegalStateException("User is not logged in into blockchain");
+		}
+		String signupPrivateKey = userManager.getSignupPrivateKey(name);
+		if (signupPrivateKey == null) {
+			throw new IllegalStateException("User is not logged in to the website");
+		}
+		String algo = loginObj.getStringValue(OpBlockchainRules.F_ALGO);
+		KeyPair signKeyPair = SecUtils.getKeyPair(algo, signupPrivateKey, loginObj.getStringValue(OpBlockchainRules.F_PUBKEY));
+		if(!SecUtils.validateKeyPair(algo, signKeyPair.getPrivate(), signKeyPair.getPublic())) {
+			throw new IllegalStateException("User db private key doesn't have public key in blockchain");
+		}
+		return ResponseEntity.ok(formatter.fullObjectToJson(Collections.singletonMap("result", "OK")));
+	}
 
 	@GetMapping(path = "/user-check-loginkey")
 	@ResponseBody
@@ -158,10 +181,11 @@ public class OprUserMgmtController {
 				throw new IllegalStateException("Private key provided by the client doesn't match db key");
 			}
 		}
-		KeyPair signKeyPair = SecUtils.getKeyPair(loginObj.getStringValue(OpBlockchainRules.F_ALGO), 
+		String algo = loginObj.getStringValue(OpBlockchainRules.F_ALGO);
+		KeyPair signKeyPair = SecUtils.getKeyPair(algo, 
 				privateKey, loginObj.getStringValue(OpBlockchainRules.F_PUBKEY));
-		if(!SecUtils.validateKeyPair(OpBlockchainRules.F_ALGO, signKeyPair.getPrivate(), signKeyPair.getPublic())) {
-			throw new IllegalStateException("User db private key doesn't public key in blockchain");
+		if(!SecUtils.validateKeyPair(algo, signKeyPair.getPrivate(), signKeyPair.getPublic())) {
+			throw new IllegalStateException("User db private key doesn't have public key in blockchain");
 		}
 		return ResponseEntity.ok(formatter.fullObjectToJson(Collections.singletonMap("result", "OK")));
 	}
