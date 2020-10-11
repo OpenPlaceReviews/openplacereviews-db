@@ -100,7 +100,7 @@ public class OprUserMgmtController {
 	protected static final Log LOGGER = LogFactory.getLog(OprUserMgmtController.class);
 
 	public static final String DEFAULT_PURPOSE_LOGIN = "opr-web";
-	private static final String RESET_PASSWORD_URL = "api/test-signup.html";
+	private static final String RESET_PASSWORD_URL = "api/test-auth.html";
 	
 	@Value("${opendb.email.sendgrid-api}")
 	private String sendGridApiKey;

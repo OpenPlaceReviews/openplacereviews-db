@@ -22,6 +22,11 @@ opendb:
   email:
     sendgrid-api: ${SENDGRID_API:}
 
+oauth:
+  osm:
+    apiKey: ${OSM_OAUTH_KEY:}
+    secret: ${OSM_OAUTH_SECRET:}
+
 management:
   endpoints:
     web:
