@@ -7,6 +7,8 @@ import static org.openplacereviews.opendb.ops.de.ColumnDef.IndexType.NOT_INDEXED
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
+import java.util.Map;
+import java.util.TreeMap;
 
 import javax.sql.DataSource;
 
@@ -38,6 +40,7 @@ public class UserSchemaManager {
 	private static final String SETTING_VERSION_KEY = "version";
 	protected static final String SETTINGS_TABLE = "user_settings";
 	protected static final String USERS_TABLE = "users";
+	protected static final String OAUTH_TOKENS_TABLE = "oauth_tokens";
 
 	private static DBSchemaHelper dbschema = new DBSchemaHelper(SETTINGS_TABLE);
 	protected static final int BATCH_SIZE = 1000;
@@ -66,8 +69,32 @@ public class UserSchemaManager {
 		dbschema.registerColumn(USERS_TABLE, "sprivkey", "text", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "lprivkey", "text", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "signup", "jsonb", NOT_INDEXED);
-//		dbschema.registerColumn(USERS_TABLE, "loginkey", "text", NOT_INDEXED);
+		
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "uid", "serial", INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_provider", "text", NOT_INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_uid", "text", INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_token", "text", INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_secret", "text", NOT_INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "details", "jsonb", NOT_INDEXED);
 
+	}
+	
+	public static class OAuthUserDetails {
+		public static final String KEY_LAT = "lat";
+		public static final String KEY_LON = "lon";
+		public static final String KEY_AVATAR_URL = "avatar";
+		public static final String KEY_EMAIL = "email";
+		public static final String KEY_LANGUAGES = "languages";
+		
+		public final String oauthProvider;
+		public final Map<String, String> details = new TreeMap<>();
+		public String nickname;
+		public String accessToken;
+		public String uid;
+		
+		public OAuthUserDetails(String oauthProvider) {
+			this.oauthProvider = oauthProvider;
+		}
 	}
 	
 

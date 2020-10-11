@@ -154,10 +154,14 @@
         	let obj = {
         			"token" : searchParams.get('oauth_token'),
         			"oauthVerifier" : searchParams.get('oauth_verifier'),
+        			"code" : searchParams.get('code')
         	};
-            postAction("/api/auth/user-osm-postauth", obj,
+            postAction("/api/auth/user-oauth-postauth", obj,
             		function (res) {
             	 		$("#signup-name").val(res.nickname);
+            	 		if (res.email) {
+            	 			$("#signup-email").val(res.email);
+            	 		}
             	 		$("#signup-details").val(JSON.stringify({"lang":res.languages}));
             	 		$("#logout-name").val(res.nickname);
             	 		$("#login-name").val(res.nickname);

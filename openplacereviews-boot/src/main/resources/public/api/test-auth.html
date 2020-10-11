@@ -145,13 +145,21 @@
             <div class="form-group panel panel-info">
                 <div class="panel-heading"><b>OAuth</b></div>
                 <div class="panel-body">
-                    <div class="row">
-                        <div class="col-md-2 form-group">
-                        	<form id="osm-btn-form" action="/api/auth/user-osm-auth">
-                            	<input type="submit" value="OSM" id="osm-btn" class="btn btn-primary form-control" />
-                            </form>
-                        </div>
-                    </div>
+                	<form id="oauth-btn-form" action="/api/auth/user-oauth-auth">
+                		<div class="form-group form-horizontal">
+                        	<label for="oauth-provider" class="control-label">OAuth provider: </label>
+                        	<select id="oauth-provider" name="oauthProvider" class="form-control" >
+                        		<option value="osm">OSM</option>
+                        		<option value="github">Github</option>
+                        		<option value="google">Google</option>
+                        	</select>
+                    	</div>
+                    	<div class="row">
+                        	<div class="col-md-2 form-group">
+                            	<input type="submit" value="Auth" id="oauth-btn" class="btn btn-primary form-control" />
+                        	</div>
+                    	</div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -195,9 +203,11 @@
                 };
                 postAction("/api/auth/user-reset-password-confirm", obj)();
             });
-            $("#osm-btn").click(function () {
-                var obj = {};
-                $("#osm-btn-form").submit()
+            $("#oauth-btn").click(function () {
+                var obj = {
+                //	"oauthProvider": $("#oauthProvider").val()
+                };
+                $("#oauth-btn-form").submit();
             });
         });
 
