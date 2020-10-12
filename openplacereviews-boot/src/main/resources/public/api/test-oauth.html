@@ -159,10 +159,11 @@
             postAction("/api/auth/user-oauth-postauth", obj,
             		function (res) {
             	 		$("#signup-name").val(res.nickname);
-            	 		if (res.email) {
-            	 			$("#signup-email").val(res.email);
+            	 		if (res.details.email) {
+            	 			$("#signup-email").val(res.details.email);
+            	 			delete res.details.email;
             	 		}
-            	 		$("#signup-details").val(JSON.stringify({"lang":res.languages}));
+            	 		$("#signup-details").val(JSON.stringify(res));
             	 		$("#logout-name").val(res.nickname);
             	 		$("#login-name").val(res.nickname);
             		}

@@ -70,11 +70,12 @@ public class UserSchemaManager {
 		dbschema.registerColumn(USERS_TABLE, "lprivkey", "text", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "signup", "jsonb", NOT_INDEXED);
 		
-		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "uid", "serial", INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "nickname", "text", INDEXED);
 		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_provider", "text", NOT_INDEXED);
-		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_uid", "text", INDEXED);
-		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_token", "text", INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_uid", "text", NOT_INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_token", "text", NOT_INDEXED);
 		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_secret", "text", NOT_INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "date", "timestamp", NOT_INDEXED);
 		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "details", "jsonb", NOT_INDEXED);
 
 	}
@@ -82,15 +83,21 @@ public class UserSchemaManager {
 	public static class OAuthUserDetails {
 		public static final String KEY_LAT = "lat";
 		public static final String KEY_LON = "lon";
+		public static final String KEY_NICKNAME = "nickname";
 		public static final String KEY_AVATAR_URL = "avatar";
 		public static final String KEY_EMAIL = "email";
 		public static final String KEY_LANGUAGES = "languages";
 		
 		public final String oauthProvider;
-		public final Map<String, String> details = new TreeMap<>();
+		public final Map<String, Object> details = new TreeMap<>();
 		public String nickname;
-		public String accessToken;
 		public String uid;
+		
+		// token available for client, so we can't authenticate him and prevent csrf
+		public String accessToken;
+		// secret part of token should not be available for client
+		public transient String accessTokenSecret;
+		public transient String requestUserCode;
 		
 		public OAuthUserDetails(String oauthProvider) {
 			this.oauthProvider = oauthProvider;
@@ -135,7 +142,7 @@ public class UserSchemaManager {
 		}
 	}
 
-	public void createNewUser(String name, String email, String emailToken, String sprivkey, OpObject obj) {
+	public void createNewUser(String name, String email, String emailToken, OAuthUserDetails oauthUserDetails, String sprivkey, OpObject obj) {
 		PGobject userObj = null;
 		if (obj != null) {
 			userObj = new PGobject();
@@ -150,7 +157,49 @@ public class UserSchemaManager {
 		getJdbcTemplate().update(
 				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,sprivkey,signup) VALUES(?,?,?,?,?,?)", name,
 				email, emailToken, new Date(), sprivkey, userObj);
+		if (oauthUserDetails != null) {
+			PGobject userOAuthObj = null;
+			if (oauthUserDetails.details != null) {
+				userOAuthObj = new PGobject();
+				userOAuthObj.setType("jsonb");
+				try {
+					userOAuthObj.setValue(formatter.fullObjectToJson(oauthUserDetails.details));
+				} catch (SQLException e) {
+					throw new IllegalArgumentException(e);
+				}
+			} 
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "nickname", "text", INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_provider", "text", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_uid", "text", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_token", "text", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_secret", "text", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "date", "timestamp", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "details", "jsonb", NOT_INDEXED);
+			getJdbcTemplate().update(
+					"INSERT INTO " + OAUTH_TOKENS_TABLE
+							+ "(nickname,oauth_provider,oauth_uid,oauth_access_token,oauth_access_secret,date,details) VALUES(?,?,?,?,?,?,?)",
+					name, oauthUserDetails.oauthProvider,  oauthUserDetails.uid, oauthUserDetails.accessToken, oauthUserDetails.accessTokenSecret, new Date(), userOAuthObj);
+		}
 
+	}
+	
+	public OAuthUserDetails getOAuthLatestLogin(String name) {
+		return getJdbcTemplate().query("SELECT nickname,oauth_provider,oauth_uid,oauth_access_token,oauth_access_secret,date,details  FROM " + OAUTH_TOKENS_TABLE + " WHERE nickname = ? ORDER BY date DESC ",
+				new Object[] { name }, new ResultSetExtractor<OAuthUserDetails>() {
+					@Override
+					public OAuthUserDetails extractData(ResultSet rs) throws SQLException, DataAccessException {
+						if (!rs.next()) {
+							return null;
+						}
+						OAuthUserDetails s = new OAuthUserDetails(rs.getString(2));
+						s.nickname = name;
+						s.uid = rs.getString(3);
+						s.accessToken = rs.getString(4);
+						s.accessTokenSecret = rs.getString(5);
+						s.details.putAll(formatter.fromJsonToTreeMap(rs.getString(7)));
+						return s;
+					}
+				});
 	}
 	
 	public static class UserStatus {
@@ -250,5 +299,8 @@ public class UserSchemaManager {
 	public void updateSignupKey(String name, String sprivkey) {
 		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET sprivkey = ?, emailtoken = null WHERE nickname = ?", sprivkey, name);
 	}
+
+
+	
 
 }

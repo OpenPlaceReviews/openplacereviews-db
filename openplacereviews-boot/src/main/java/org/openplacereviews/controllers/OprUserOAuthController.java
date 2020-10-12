@@ -6,10 +6,10 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
-import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.openplacereviews.db.UserSchemaManager.OAuthUserDetails;
 import org.openplacereviews.opendb.util.JsonFormatter;
@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
-import com.github.pcan.SelfExpiringHashMap;
 import com.github.scribejava.apis.GitHubApi;
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.builder.api.DefaultApi10a;
@@ -49,6 +48,9 @@ public class OprUserOAuthController {
 	public static final String OAUTH_PROVIDER_OSM = "osm";
 	public static final String OAUTH_PROVIDER_GITHUB = "github";
 	public static final String OAUTH_PROVIDER_GOOGLE = "google";
+	
+	private static final String REQUEST_TOKEN = "request_token";
+	private static final String USER_DETAILS = "user_details";
 
 	@Value("${oauth.osm.apiKey}")
 	private String osmApiKey;
@@ -69,12 +71,8 @@ public class OprUserOAuthController {
 	private JsonFormatter formatter;
 
 	private OAuth10aService osmService;
+	
 	private OAuth20Service githubService;
-
-	private SelfExpiringHashMap<String, OAuth1RequestToken> requestTokens = 
-			new SelfExpiringHashMap<>(TimeUnit.HOURS.toMillis(3));
-	private SelfExpiringHashMap<String, OAuth1AccessToken> accessTokens = 
-			new SelfExpiringHashMap<>(TimeUnit.HOURS.toMillis(3));
 
 	private OAuth20Service getGithubService() {
 		if (githubService != null) {
@@ -118,21 +116,22 @@ public class OprUserOAuthController {
 	}
 	
 	@RequestMapping(path = "/user-oauth-auth")
-	public String userOsmOauth(HttpServletResponse httpServletResponse, 
+	public String userOsmOauth(HttpSession httpSession,
 			@RequestParam(required = true) String oauthProvider)
 			throws FailedVerificationException, IOException, InterruptedException, ExecutionException {
 		OAuthService service = getOAuthProviderService(oauthProvider);
+		// logout from session
+		httpSession.removeAttribute(USER_DETAILS);
 		String urlToAuthorize;
 		if(service instanceof OAuth10aService) {
 			OAuth1RequestToken token = ((OAuth10aService) service).getRequestToken();
-			requestTokens.put(token.getToken(), token);
+			httpSession.setAttribute(REQUEST_TOKEN, token);
 			urlToAuthorize = ((OAuth10aService) service).getAuthorizationUrl(token);
 		} else if(service instanceof OAuth20Service) {
 			urlToAuthorize = ((OAuth20Service) service).getAuthorizationUrl();
 		} else {
 			throw new UnsupportedOperationException("Unsupported oauth provider");
 		}
-//	    httpServletResponse.sendRedirect(u);
 	    return "redirect:" + urlToAuthorize;
 	}
 	
@@ -149,30 +148,41 @@ public class OprUserOAuthController {
 
 	@RequestMapping(path = "/user-oauth-postauth")
 	@ResponseBody
-	public ResponseEntity<String> userOsmOauth(HttpServletResponse httpServletResponse, 
-			@RequestParam(required = false) String token, @RequestParam(required = false) String oauthVerifier
-			, @RequestParam(required = false) String code)
+	public ResponseEntity<String> userOsmOauth(HttpSession httpSession, 
+			@RequestParam(required = false) String token, @RequestParam(required = false) String oauthVerifier,
+			@RequestParam(required = false) String code)
 			throws FailedVerificationException, IOException, InterruptedException, ExecutionException, XmlPullParserException {
-		OAuthUserDetails userDetails;
-		if(!OUtils.isEmpty(oauthVerifier)) {
-			userDetails = authorizeOsmUserDetails(token, oauthVerifier);
+		OAuthUserDetails userDetails = (OAuthUserDetails) httpSession.getAttribute(USER_DETAILS);
+		if (userDetails != null) {
+			// details are present
+			if(!OUtils.equalsStringValue(userDetails.requestUserCode, code) && !OUtils.equalsStringValue(userDetails.requestUserCode, oauthVerifier)) {
+				throw new IllegalArgumentException("XSS / CSRF protection: please submit oauth request code to get details");
+			}
+		} else if(!OUtils.isEmpty(oauthVerifier)) {
+			userDetails = authorizeOsmUserDetails(httpSession, token, oauthVerifier);
+			userDetails.requestUserCode = oauthVerifier;
 		} else if(!OUtils.isEmpty(code)) {
-			userDetails = authorizeGithub(code);
+			userDetails = authorizeGithub(httpSession, code);
+			userDetails.requestUserCode = code;
 		} else {
 			throw new IllegalArgumentException("Not enough parameters are specified");
 		}
+		httpSession.setAttribute(USER_DETAILS, userDetails);
 		return ResponseEntity.ok(formatter.fullObjectToJson(userDetails));
+	}
+	
+	public OAuthUserDetails getUserDetails(HttpSession httpSession) {
+		return (OAuthUserDetails) httpSession.getAttribute(USER_DETAILS);
 	}
 	
 
 	
-	private OAuthUserDetails authorizeGithub(String code) throws InterruptedException, ExecutionException, IOException {
+	private OAuthUserDetails authorizeGithub(HttpSession httpSession, String code) throws InterruptedException, ExecutionException, IOException {
 		OAuthUserDetails userDetails = new OAuthUserDetails(OAUTH_PROVIDER_GITHUB);
 		OAuth20Service githubService = getGithubService();
 		OAuth2AccessToken accessToken = githubService.getAccessToken(code);
-		userDetails.accessToken = accessToken.getAccessToken();
-		// TODO
-		// accessTokens.put(accessToken.getAccessToken(), accessToken);
+		userDetails.accessToken = UUID.randomUUID().toString();
+		userDetails.accessTokenSecret = accessToken.getAccessToken();
 		OAuthRequest req = new OAuthRequest(Verb.GET, "https://api.github.com/user");
 		githubService.signRequest(userDetails.accessToken, req);
 		req.addHeader("Content-Type", "application/json");
@@ -181,12 +191,13 @@ public class OprUserOAuthController {
 		TreeMap<String, Object> res = formatter.fromJsonToTreeMap(body);
 		userDetails.uid = String.valueOf(res.get("id"));
 		userDetails.nickname = String.valueOf(res.get("login"));
+		userDetails.details.put(OAuthUserDetails.KEY_NICKNAME, userDetails.nickname);
 		Object aurl = res.get("avatar_url");
 		if (aurl instanceof String) {
 			userDetails.details.put(OAuthUserDetails.KEY_AVATAR_URL, (String) aurl);
 		}
 		OAuthRequest emlRequerst = new OAuthRequest(Verb.GET, "https://api.github.com/user/emails");
-		githubService.signRequest(userDetails.accessToken, emlRequerst);
+		githubService.signRequest(userDetails.accessTokenSecret, emlRequerst);
 		emlRequerst.addHeader("Content-Type", "application/json");
 		Response emailResponse = githubService.execute(emlRequerst);
 		String emailBody = emailResponse.getBody();
@@ -201,25 +212,17 @@ public class OprUserOAuthController {
 		return userDetails;
 	}
 
-	private OAuthUserDetails authorizeOsmUserDetails(String token, String oauthVerifier)
+	private OAuthUserDetails authorizeOsmUserDetails(HttpSession httpSession, String token, String oauthVerifier)
 			throws InterruptedException, ExecutionException, IOException, XmlPullParserException {
 		OAuthUserDetails details = new OAuthUserDetails(OAUTH_PROVIDER_OSM);
-		OAuth1RequestToken requestToken = requestTokens.remove(token);
-		OAuth1AccessToken accessToken = null;
+		OAuth1RequestToken requestToken = (OAuth1RequestToken) httpSession.getAttribute(REQUEST_TOKEN);
 		if (requestToken == null) {
-			accessToken = accessTokens.get(token);
-		}
-		if (requestToken == null && accessToken == null) {
 			throw new IllegalArgumentException("Illegal request token: " + token);
 		}
-		if (accessToken == null) {
-			accessToken = osmService.getAccessToken(requestToken, oauthVerifier);
-			
-		}
+		OAuth1AccessToken accessToken = osmService.getAccessToken(requestToken, oauthVerifier);
 		details.accessToken = accessToken.getToken(); 
-		accessTokens.put(accessToken.getToken(), accessToken);
+		details.accessTokenSecret = accessToken.getTokenSecret();
 		// save for reuse of request ( they usually don't match and should'nt be an issue)
-		accessTokens.put(token, accessToken);
 		String url = "https://api.openstreetmap.org/api/0.6/user/details";
 		OAuthRequest req = new OAuthRequest(Verb.GET, url);
 		osmService.signRequest(accessToken, req);
@@ -234,6 +237,7 @@ public class OprUserOAuthController {
 				String name = parser.getName();
 				if ("user".equals(name)) {
 					details.nickname = parser.getAttributeValue("", "display_name");
+					details.details.put(OAuthUserDetails.KEY_NICKNAME, details.nickname);
 					details.uid = parser.getAttributeValue("", "id");
 				} else if ("home".equals(name)) {
 					details.details.put(OAuthUserDetails.KEY_LAT, parser.getAttributeValue("", "lat"));
