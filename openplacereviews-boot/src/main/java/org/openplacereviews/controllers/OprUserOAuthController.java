@@ -44,8 +44,6 @@ import com.google.gson.reflect.TypeToken;
 @RequestMapping("/api/auth")
 public class OprUserOAuthController {
 
-	public static final String OSM_OAUTH_URL = "api/test-auth.html";
-	
 	public static final String OAUTH_PROVIDER_OSM = "osm";
 	public static final String OAUTH_PROVIDER_GITHUB = "github";
 	public static final String OAUTH_PROVIDER_GOOGLE = "google";
@@ -80,7 +78,7 @@ public class OprUserOAuthController {
 			return githubService;
 		}
 		githubService = new ServiceBuilder(githubApiKey).apiSecret(githubApiSecret).
-				callback(serverUrl + OSM_OAUTH_URL).defaultScope("user:email").
+				callback(serverUrl + OprUserMgmtController.OSM_OAUTH_CALLBACK_URL).defaultScope("user:email").
 				build(GitHubApi.instance());
 		return githubService;
 	}
@@ -89,7 +87,7 @@ public class OprUserOAuthController {
 		if (osmService != null) {
 			return osmService;
 		}
-		osmService = new ServiceBuilder(osmApiKey).apiSecret(osmApiSecret).callback(serverUrl + OSM_OAUTH_URL)
+		osmService = new ServiceBuilder(osmApiKey).apiSecret(osmApiSecret).callback(serverUrl + OprUserMgmtController.OSM_OAUTH_CALLBACK_URL)
 				.build(new DefaultApi10a() {
 
 					@Override

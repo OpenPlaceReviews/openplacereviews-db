@@ -98,7 +98,12 @@ public class OprUserMgmtController {
 	// In future: user can specify private key (token) for web operations
 	
 	protected static final Log LOGGER = LogFactory.getLog(OprUserMgmtController.class);
+	
+	// TODO make url customizable
 	public static final String RESET_PASSWORD_URL = "api/test-auth.html";
+	public static final String SIGNUP_CONFIRM_URL = "api/auth/user-signup-confirm";
+	public static final String OSM_OAUTH_CALLBACK_URL = "api/test-auth.html";
+	
 	public static final String DEFAULT_PURPOSE_LOGIN = "opr-web";
 	
 	@Value("${opendb.email.sendgrid-api}")
@@ -262,7 +267,7 @@ public class OprUserMgmtController {
 		}
 		deleteLoginIfPresent(name, purpose);
 		String emailToken = UUID.randomUUID().toString();
-		String href = getServerUrl() + RESET_PASSWORD_URL + "?name=" + name + "&token=" + emailToken;
+		String href = getServerUrl() + RESET_PASSWORD_URL + "?op=reset_pwd&name=" + name + "&token=" + emailToken;
 		sendEmail(name, email, href, getResetEmailContent(name, href, emailToken).toString());
 		userManager.resetEmailToken(name, emailToken);
 		return ResponseEntity.ok(formatter.fullObjectToJson(Collections.singletonMap("result", "OK")));
@@ -480,7 +485,7 @@ public class OprUserMgmtController {
 			// return generateNewLogin(name, ownKeyPair, userDetails, purpose);
 		} else {
 			String emailToken = UUID.randomUUID().toString();
-			String href = getServerUrl() + "api/auth/user-signup-confirm?name=" + name + "&token=" + emailToken;
+			String href = getServerUrl() + SIGNUP_CONFIRM_URL +"?op=signup_confirm&name=" + name + "&token=" + emailToken;
 			sendEmail(name, email, href, getSignupEmailContent(name, href).toString());
 			userManager.createNewUser(name, email, emailToken, oauthUserDetails, sKeyPair, signupOp);
 			return ResponseEntity.ok(formatter.fullObjectToJson(signupOp));
