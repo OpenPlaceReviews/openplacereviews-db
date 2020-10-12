@@ -98,9 +98,8 @@ public class OprUserMgmtController {
 	// In future: user can specify private key (token) for web operations
 	
 	protected static final Log LOGGER = LogFactory.getLog(OprUserMgmtController.class);
-
+	public static final String RESET_PASSWORD_URL = "api/test-auth.html";
 	public static final String DEFAULT_PURPOSE_LOGIN = "opr-web";
-	private static final String RESET_PASSWORD_URL = "api/test-auth.html";
 	
 	@Value("${opendb.email.sendgrid-api}")
 	private String sendGridApiKey;
@@ -472,7 +471,6 @@ public class OprUserMgmtController {
 		}
 		if (oauthEmailVerified) {
 			signupOp.setSignedBy(manager.getServerUser());
-			signupOp.addOtherSignedBy(manager.getServerUser());
 			manager.generateHashAndSign(signupOp, manager.getServerLoginKeyPair());
 			manager.addOperation(signupOp);
 			String href = getServerUrl();

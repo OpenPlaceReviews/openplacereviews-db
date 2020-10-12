@@ -25,6 +25,28 @@
         <div id="reg" class="">
             <h3>Users</h3>
             <div class="form-group panel panel-info">
+                <div class="panel-heading"><b>OAuth</b></div>
+                <div class="panel-body">
+                	<form id="oauth-btn-form" action="/api/auth/user-oauth-auth">
+                		<div class="form-group form-horizontal">
+                        	<label for="oauth-provider" class="control-label">OAuth provider: </label>
+                        	<select id="oauth-provider" name="oauthProvider" class="form-control" >
+                        		<option value="osm">OSM</option>
+                        		<option value="github">Github</option>
+                        		<option value="google">Google</option>
+                        	</select>
+                    	</div>
+                    	<div class="row">
+                        	<div class="col-md-2 form-group">
+                            	<input type="submit" value="Auth" id="oauth-btn" class="btn btn-primary form-control" />
+                        	</div>
+                    	</div>
+                    </form>
+                </div>
+            </div>
+            
+            
+            <div class="form-group panel panel-info">
                 <div class="panel-heading"><b>Signup</b></div>
                 <div class="panel-body">
                     <div class="form-group">
@@ -33,9 +55,13 @@
                             <input type="text" id="signup-name" class="form-control" placeholder="Nickname" />
                         </div>
                         <div class="row">
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label for="signup-pwd" class="control-label">Password: </label>
                                 <input type="password" id="signup-pwd" class="form-control" placeholder="Password" />
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label for="signup-oauth-token" class="control-label">Or OAuth token: </label>
+                                <input type="text" id="signup-oauth-token" class="form-control"/>
                             </div>
                         </div>
                         <div class="row">
@@ -82,9 +108,13 @@
                             <input type="text" id="login-name" class="form-control" placeholder="Nickname" />
                         </div>
                         <div class="row">
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label for="login-pwd" class="control-label">Password: </label>
                                 <input type="password" id="login-pwd" class="form-control" placeholder="Password" />
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label for="login-oauth-token" class="control-label">Or OAuth token: </label>
+                                <input type="text" id="login-oauth-token" class="form-control"/>
                             </div>
                         </div>
                     </div>
@@ -142,34 +172,49 @@
                 </div>
             </div>
             
-            <div class="form-group panel panel-info">
-                <div class="panel-heading"><b>OAuth</b></div>
-                <div class="panel-body">
-                	<form id="oauth-btn-form" action="/api/auth/user-oauth-auth">
-                		<div class="form-group form-horizontal">
-                        	<label for="oauth-provider" class="control-label">OAuth provider: </label>
-                        	<select id="oauth-provider" name="oauthProvider" class="form-control" >
-                        		<option value="osm">OSM</option>
-                        		<option value="github">Github</option>
-                        		<option value="google">Google</option>
-                        	</select>
-                    	</div>
-                    	<div class="row">
-                        	<div class="col-md-2 form-group">
-                            	<input type="submit" value="Auth" id="oauth-btn" class="btn btn-primary form-control" />
-                        	</div>
-                    	</div>
-                    </form>
-                </div>
-            </div>
+            
         </div>
     </div>
     <script>
+    	// could be stored in cookie
+    	var oauthAccessToken;
+    	function isEmpty(str) {
+        	return (!str || 0 === str.length);
+    	}
+    
         $(document).ready(function () {
+        	let searchParams = new URLSearchParams(window.location.search)
+        	if (!isEmpty(searchParams.get('oauth_token')) || !isEmpty(searchParams.get('oauth_verifier')) || 
+        			!isEmpty(searchParams.get('code'))) {
+        		let obj = {
+        				"token" : searchParams.get('oauth_token'),
+        				"oauthVerifier" : searchParams.get('oauth_verifier'),
+        				"code" : searchParams.get('code')
+        		};
+            	postAction("/api/auth/user-oauth-postauth", obj,
+            		function (res) {
+            			oauthAccessToken = res.accessToken; 
+            	 		$("#signup-name").val(res.nickname);
+            	 		$("#signup-oauth-token").val(res.accessToken);
+            	 		if (res.details.email) {
+            	 			$("#signup-email").val(res.details.email);
+            	 			delete res.details.email;
+            	 		}
+            	 		// COULD be used
+            	 		// $("#signup-details").val(JSON.stringify(res.details));
+            	 		$("#logout-name").val(res.nickname);
+            	 		$("#login-name").val(res.nickname);
+            	 		$("#login-oauth-token").val(res.accessToken);
+            	 		$("#oauth-btn").hide();
+            		}
+           		)();
+        	}
+            
             $("#signup-btn").click(function () {
                 var obj = {
                     "pwd": $("#signup-pwd").val(),
                     "name": $("#signup-name").val(),
+                    "oauthAccessToken": $("#signup-oauth-token").val(),
                     "email": $("#signup-email").val(),
                     "userDetails": $("#signup-details").val()
                 };
@@ -178,6 +223,7 @@
             $("#login-btn").click(function () {
                 var obj = {
                     "pwd": $("#login-pwd").val(),
+                    "oauthAccessToken": $("#login-oauth-token").val(),
                     "name": $("#login-name").val()
                 };
                 postAction("/api/auth/user-login", obj)();
@@ -221,7 +267,7 @@
         }
         function postAction(url, obj, update) {
             return function () {
-                postHandler($.post(url, obj ? obj : {}, update))
+                postHandler($.post(url, obj ? obj : {}), update)
             }
         }
 
@@ -243,6 +289,9 @@
             } else {
                 $("#alert-status").html("OK");
                 $("#result").html("");
+            }
+            if (update) {
+            	update(data);
             }
         }
 

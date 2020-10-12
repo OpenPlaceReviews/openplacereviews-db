@@ -44,7 +44,8 @@ import com.google.gson.reflect.TypeToken;
 @RequestMapping("/api/auth")
 public class OprUserOAuthController {
 
-	private static final String OSM_OAUTH_URL = "api/test-oauth.html";
+	public static final String OSM_OAUTH_URL = "api/test-auth.html";
+	
 	public static final String OAUTH_PROVIDER_OSM = "osm";
 	public static final String OAUTH_PROVIDER_GITHUB = "github";
 	public static final String OAUTH_PROVIDER_GOOGLE = "google";
@@ -184,7 +185,7 @@ public class OprUserOAuthController {
 		userDetails.accessToken = UUID.randomUUID().toString();
 		userDetails.accessTokenSecret = accessToken.getAccessToken();
 		OAuthRequest req = new OAuthRequest(Verb.GET, "https://api.github.com/user");
-		githubService.signRequest(userDetails.accessToken, req);
+		githubService.signRequest(userDetails.accessTokenSecret, req);
 		req.addHeader("Content-Type", "application/json");
 		Response response = githubService.execute(req);
 		String body = response.getBody();
