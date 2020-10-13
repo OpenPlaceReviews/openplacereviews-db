@@ -288,7 +288,7 @@ public class OprUserMgmtController {
 			throw new IllegalStateException("User was not signed up");
 		}
 		// could be same for private key as well
-		if (OpBlockchainRules.METHOD_PWD.equals(signupObj.getStringValue(OpBlockchainRules.F_AUTH_METHOD))) {
+		if (!OpBlockchainRules.METHOD_PWD.equals(signupObj.getStringValue(OpBlockchainRules.F_AUTH_METHOD))) {
 			throw new IllegalStateException("Wrong signup method was used: " + signupObj.getStringValue(OpBlockchainRules.F_AUTH_METHOD));
 		}
 		KeyPair oldSignKeyPair = SecUtils.getKeyPair(signupObj.getStringValue(OpBlockchainRules.F_ALGO), 
