@@ -506,11 +506,15 @@ public class OprUserMgmtController {
 		}
 		String serverUser = manager.getServerUser();
 		String sPrivKey = userManager.getSignupPrivateKey(name);
-		KeyPair ownKeyPair = SecUtils.getKeyPair(SecUtils.ALGO_EC, sPrivKey, null);
-		KeyPair serverSignedKeyPair = manager.getServerLoginKeyPair();
-		op.setSignedBy(name);
-		op.addOtherSignedBy(serverUser);
-		manager.generateHashAndSign(op, ownKeyPair, serverSignedKeyPair);
+		if (sPrivKey == null) {
+			KeyPair ownKeyPair = SecUtils.getKeyPair(SecUtils.ALGO_EC, sPrivKey, null);
+			op.setSignedBy(name);
+			op.addOtherSignedBy(serverUser);
+			manager.generateHashAndSign(op, ownKeyPair, manager.getServerLoginKeyPair());
+		} else {
+			op.setSignedBy(serverUser);
+			manager.generateHashAndSign(op, manager.getServerLoginKeyPair());
+		}
 		manager.addOperation(op);
 		userManager.updateLoginKey(name, null, purpose);
 		return op;
