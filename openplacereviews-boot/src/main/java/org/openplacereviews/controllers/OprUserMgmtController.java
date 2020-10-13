@@ -148,9 +148,8 @@ public class OprUserMgmtController {
 			validateOAuthMethod(oAuthUserDetails, signupObj);
 			// if it's operation to consolidate signup we don't need to add operation to blockchain
 			if (!userAlreadySignedUp) {
-				signupOp.setSignedBy(name);
-				signupOp.addOtherSignedBy(manager.getServerUser());
-				manager.generateHashAndSign(signupOp, ownKeyPair, manager.getServerLoginKeyPair());
+				signupOp.setSignedBy(manager.getServerUser());
+				manager.generateHashAndSign(signupOp, manager.getServerLoginKeyPair());
 				// 1. Add operation, so the user signup is confirmed and everything is ok
 				// In case user already exists, operation will fail and user will need to login or wait email expiration
 				manager.addOperation(signupOp);

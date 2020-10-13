@@ -230,6 +230,7 @@
            		)();
         	}
         	if (searchParams.get('op') == 'signup_confirm') {
+        		let name = searchParams.get('name');
                 $("#signupconfirm-token").val(searchParams.get('token'));
                 $("#signupconfirm-name").val(name);
                 $("#logout-name").val(name);
