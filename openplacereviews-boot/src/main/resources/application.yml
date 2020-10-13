@@ -30,6 +30,9 @@ oauth:
   github:
     apiKey: ${GITHUB_OAUTH_KEY:}
     secret: ${GITHUB_OAUTH_SECRET:}
+  google:
+    apiKey: ${GOOGLE_OAUTH_KEY:}
+    secret: ${GOOGLE_OAUTH_SECRET:}    
 
 management:
   endpoints:

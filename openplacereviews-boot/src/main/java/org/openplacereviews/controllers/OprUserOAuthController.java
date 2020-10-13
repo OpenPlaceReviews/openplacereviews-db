@@ -5,6 +5,7 @@ import java.io.StringReader;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -26,6 +27,7 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import com.github.scribejava.apis.GitHubApi;
+import com.github.scribejava.apis.GoogleApi20;
 import com.github.scribejava.core.builder.ServiceBuilder;
 import com.github.scribejava.core.builder.api.DefaultApi10a;
 import com.github.scribejava.core.builder.api.OAuth1SignatureType;
@@ -50,6 +52,7 @@ public class OprUserOAuthController {
 	
 	private static final String REQUEST_TOKEN = "request_token";
 	private static final String USER_DETAILS = "user_details";
+	private static final String OAUTH_PROVIDER = "oauth_provider";
 
 	@Value("${oauth.osm.apiKey}")
 	private String osmApiKey;
@@ -62,6 +65,12 @@ public class OprUserOAuthController {
 
 	@Value("${oauth.github.secret}")
 	private String githubApiSecret;
+	
+	@Value("${oauth.google.apiKey}")
+	private String googleApiKey;
+
+	@Value("${oauth.google.secret}")
+	private String googleApiSecret;
 
 	@Value("${opendb.serverUrl}")
 	private String serverUrl;
@@ -73,8 +82,8 @@ public class OprUserOAuthController {
 	private JsonFormatter formatter;
 
 	private OAuth10aService osmService;
-	
 	private OAuth20Service githubService;
+	private OAuth20Service googleService;
 
 	private OAuth20Service getGithubService() {
 		if (githubService != null) {
@@ -84,6 +93,17 @@ public class OprUserOAuthController {
 				callback(serverUrl + authUrl).defaultScope("user:email").
 				build(GitHubApi.instance());
 		return githubService;
+	}
+	
+	private OAuth20Service getGoogleService() {
+		if (googleService != null) {
+			return googleService;
+		}
+		// https://www.googleapis.com/auth/userinfo.email
+		googleService = new ServiceBuilder(googleApiKey).apiSecret(googleApiSecret).
+				defaultScope("https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email").callback(serverUrl + authUrl).
+				build(GoogleApi20.instance());
+		return googleService;
 	}
 	
 	private OAuth10aService getOsmService() {
@@ -124,6 +144,7 @@ public class OprUserOAuthController {
 		OAuthService service = getOAuthProviderService(oauthProvider);
 		// logout from session
 		httpSession.removeAttribute(USER_DETAILS);
+		httpSession.setAttribute(OAUTH_PROVIDER, oauthProvider);
 		String urlToAuthorize;
 		if(service instanceof OAuth10aService) {
 			OAuth1RequestToken token = ((OAuth10aService) service).getRequestToken();
@@ -141,43 +162,92 @@ public class OprUserOAuthController {
 	private OAuthService getOAuthProviderService(String oauthProvider) {
 		if (oauthProvider.equalsIgnoreCase(OAUTH_PROVIDER_OSM)) {
 			return getOsmService();
-		}
-		if (oauthProvider.equalsIgnoreCase(OAUTH_PROVIDER_GITHUB)) {
+		} else if (oauthProvider.equalsIgnoreCase(OAUTH_PROVIDER_GITHUB)) {
 			return getGithubService();
+		} else if (oauthProvider.equalsIgnoreCase(OAUTH_PROVIDER_GOOGLE)) {
+			return getGoogleService();
 		}
 		throw new UnsupportedOperationException("Unsupported oauth provider");
 	}
 
 	@RequestMapping(path = "/user-oauth-postauth")
 	@ResponseBody
-	public ResponseEntity<String> userOsmOauth(HttpSession httpSession, 
+	public ResponseEntity<String> userPostOauth(HttpSession httpSession, 
 			@RequestParam(required = false) String token, @RequestParam(required = false) String oauthVerifier,
 			@RequestParam(required = false) String code)
 			throws FailedVerificationException, IOException, InterruptedException, ExecutionException, XmlPullParserException {
 		OAuthUserDetails userDetails = (OAuthUserDetails) httpSession.getAttribute(USER_DETAILS);
+		String provider = (String) httpSession.getAttribute(OAUTH_PROVIDER);
 		if (userDetails != null) {
 			// details are present
 			if(!OUtils.equalsStringValue(userDetails.requestUserCode, code) && !OUtils.equalsStringValue(userDetails.requestUserCode, oauthVerifier)) {
 				throw new IllegalArgumentException("XSS / CSRF protection: please submit oauth request code to get details");
 			}
-		} else if(!OUtils.isEmpty(oauthVerifier)) {
-			userDetails = authorizeOsmUserDetails(httpSession, token, oauthVerifier);
-			userDetails.requestUserCode = oauthVerifier;
-		} else if(!OUtils.isEmpty(code)) {
-			userDetails = authorizeGithub(httpSession, code);
-			userDetails.requestUserCode = code;
-		} else {
+		} else  {
+			if(OAUTH_PROVIDER_GITHUB.equals(provider)) {
+				if(!OUtils.isEmpty(oauthVerifier)) {
+					userDetails = authorizeOsmUserDetails(httpSession, token, oauthVerifier);
+					userDetails.requestUserCode = oauthVerifier;
+				}
+			} else if(OAUTH_PROVIDER_GITHUB.equals(provider)) {
+				if(!OUtils.isEmpty(code)) {
+					userDetails = authorizeGithub(httpSession, code);
+					userDetails.requestUserCode = code;
+				}
+			} else if(OAUTH_PROVIDER_GOOGLE.equals(provider)) {
+				if(!OUtils.isEmpty(code)) {
+					userDetails = authorizeGoogle(httpSession, code);
+					userDetails.requestUserCode = code;
+				}
+			}
+		}
+		if(userDetails == null){
 			throw new IllegalArgumentException("Not enough parameters are specified");
 		}
 		httpSession.setAttribute(USER_DETAILS, userDetails);
 		return ResponseEntity.ok(formatter.fullObjectToJson(userDetails));
 	}
+
 	
 	public OAuthUserDetails getUserDetails(HttpSession httpSession) {
 		return (OAuthUserDetails) httpSession.getAttribute(USER_DETAILS);
 	}
 	
+	private OAuthUserDetails authorizeGoogle(HttpSession httpSession, String code) throws InterruptedException, ExecutionException, IOException {
+		OAuthUserDetails userDetails = new OAuthUserDetails(OAUTH_PROVIDER_GOOGLE);
+		OAuth20Service googleService = getGoogleService();
+		OAuth2AccessToken accessToken = googleService.getAccessToken(code);
+		userDetails.accessToken = UUID.randomUUID().toString();
+		userDetails.accessTokenSecret = accessToken.getAccessToken();
+		
+		Map<String, Object> res = getJsonInfoMap(userDetails, googleService, "https://www.googleapis.com/oauth2/v1/userinfo?alt=json");
+		userDetails.uid = String.valueOf(res.get("id"));
+		userDetails.nickname = String.valueOf(res.get("name"));
+		userDetails.details.put(OAuthUserDetails.KEY_NICKNAME, userDetails.nickname);
+		Object aurl = res.get("picture");
+		if (aurl instanceof String) {
+			userDetails.details.put(OAuthUserDetails.KEY_AVATAR_URL, (String) aurl);
+		}
+		if (res.get("locale") != null) {
+			// "verified_email": true,
+			userDetails.details.put(OAuthUserDetails.KEY_LANGUAGES, (String) res.get("locale"));
+		}
+		if (res.get("email") != null) {
+			// "verified_email": true,
+			userDetails.details.put(OAuthUserDetails.KEY_EMAIL, (String) res.get("email"));
+		}
+		return userDetails;
+	}
 
+	private Map<String, Object> getJsonInfoMap(OAuthUserDetails userDetails, OAuth20Service githubService, String url)
+			throws InterruptedException, ExecutionException, IOException {
+		OAuthRequest req = new OAuthRequest(Verb.GET, url);
+		githubService.signRequest(userDetails.accessTokenSecret, req);
+		req.addHeader("Content-Type", "application/json");
+		Response response = githubService.execute(req);
+		String body = response.getBody();
+		return formatter.fromJsonToTreeMap(body);
+	}
 	
 	private OAuthUserDetails authorizeGithub(HttpSession httpSession, String code) throws InterruptedException, ExecutionException, IOException {
 		OAuthUserDetails userDetails = new OAuthUserDetails(OAUTH_PROVIDER_GITHUB);
@@ -185,12 +255,7 @@ public class OprUserOAuthController {
 		OAuth2AccessToken accessToken = githubService.getAccessToken(code);
 		userDetails.accessToken = UUID.randomUUID().toString();
 		userDetails.accessTokenSecret = accessToken.getAccessToken();
-		OAuthRequest req = new OAuthRequest(Verb.GET, "https://api.github.com/user");
-		githubService.signRequest(userDetails.accessTokenSecret, req);
-		req.addHeader("Content-Type", "application/json");
-		Response response = githubService.execute(req);
-		String body = response.getBody();
-		TreeMap<String, Object> res = formatter.fromJsonToTreeMap(body);
+		Map<String, Object> res = getJsonInfoMap(userDetails, googleService, "https://api.github.com/user");
 		userDetails.uid = String.valueOf(res.get("id"));
 		userDetails.nickname = String.valueOf(res.get("login"));
 		userDetails.details.put(OAuthUserDetails.KEY_NICKNAME, userDetails.nickname);
@@ -213,6 +278,7 @@ public class OprUserOAuthController {
 		}
 		return userDetails;
 	}
+	
 
 	private OAuthUserDetails authorizeOsmUserDetails(HttpSession httpSession, String token, String oauthVerifier)
 			throws InterruptedException, ExecutionException, IOException, XmlPullParserException {
