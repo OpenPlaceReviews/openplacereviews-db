@@ -84,6 +84,26 @@
                 </div>
             </div>
             <div class="form-group panel panel-info">
+                <div class="panel-heading"><b>Signup confirm (after email)</b></div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <div class="form-group form-horizontal">
+                            <label for="signupconfirm-name" class="control-label">Nickname: </label>
+                            <input type="text" id="signupconfirm-name" class="form-control" />
+                        </div>
+                        <div class="form-group form-horizontal">
+                            <label for="signupconfirm-token" class="control-label">Token: </label>
+                            <input type="text" id="signupconfirm-token" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-2 form-group">
+                            <input type="submit" value="Confirm signup" id="signupconfirm-btn" class="btn btn-primary form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group panel panel-info">
                 <div class="panel-heading"><b>Logout</b></div>
                 <div class="panel-body">
                     <div class="form-group">
@@ -210,12 +230,8 @@
            		)();
         	}
         	if (searchParams.get('op') == 'signup_confirm') {
-        		let name = searchParams.get('name');
-        		var obj = {
-                        "name": searchParams.get('name'),
-                        "token": searchParams.get('token')
-                    };
-                postAction("/api/auth/user-signup-confirm", obj)();
+                $("#signupconfirm-token").val(searchParams.get('token'));
+                $("#signupconfirm-name").val(name);
                 $("#logout-name").val(name);
         	 	$("#login-name").val(name);
         	 	$("#signup-name").val(name);
@@ -229,7 +245,15 @@
         	 	$("#resetconfirm-token").val(token);
         	 	$("#resetconfirm-name").val(name);
         	}
+            $()
             
+            $("#signupconfirm-btn").click(function () {
+                var obj = {
+                    "name": $("#signupconfirm-name").val(),
+                    "token": $("#signupconfirm-token").val()
+                };
+                postAction("/api/auth/user-signup-confirm", obj)();
+            });
             $("#signup-btn").click(function () {
                 var obj = {
                     "pwd": $("#signup-pwd").val(),

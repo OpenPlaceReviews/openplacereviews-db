@@ -125,7 +125,7 @@ public class OprUserMgmtController {
 
 	private SendGrid sendGridClient;
 
-	@GetMapping(path = "/user-signup-confirm")
+	@RequestMapping(path = "/user-signup-confirm")
 	@ResponseBody
 	public ResponseEntity<String> signupConfirm(HttpSession session, @RequestParam(required = true) String name,
 			@RequestParam(required = true) String token, 
