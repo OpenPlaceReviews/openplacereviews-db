@@ -397,7 +397,11 @@ public class OprUserMgmtController {
 	public ResponseEntity<String> logout(HttpSession session, @RequestParam(required = true) String name,
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose)
 			throws FailedVerificationException {
-		checkUserSignupPrivateKeyIsPresent(name);
+		String spk = userManager.getSignupPrivateKey(name);
+		OAuthUserDetails oauth = userManager.getOAuthLatestLogin(name);
+		if (spk == null && oauth == null) {
+			throw new IllegalStateException("User is not registered on the website.");
+		}
 		OpOperation op = deleteLoginIfPresent(name, purpose);
 		if (op == null) {
 			throw new IllegalArgumentException("There is nothing to edit cause login obj doesn't exist");
