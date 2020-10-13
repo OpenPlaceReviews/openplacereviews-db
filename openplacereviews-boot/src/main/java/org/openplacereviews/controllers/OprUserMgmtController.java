@@ -506,7 +506,7 @@ public class OprUserMgmtController {
 		}
 		String serverUser = manager.getServerUser();
 		String sPrivKey = userManager.getSignupPrivateKey(name);
-		if (sPrivKey == null) {
+		if (sPrivKey != null) {
 			KeyPair ownKeyPair = SecUtils.getKeyPair(SecUtils.ALGO_EC, sPrivKey, null);
 			op.setSignedBy(name);
 			op.addOtherSignedBy(serverUser);
