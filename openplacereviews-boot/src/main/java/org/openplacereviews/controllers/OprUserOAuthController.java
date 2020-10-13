@@ -66,6 +66,9 @@ public class OprUserOAuthController {
 	@Value("${opendb.serverUrl}")
 	private String serverUrl;
 	
+	@Value("${opendb.authUrl}")
+	private String authUrl;
+	
 	@Autowired
 	private JsonFormatter formatter;
 
@@ -78,7 +81,7 @@ public class OprUserOAuthController {
 			return githubService;
 		}
 		githubService = new ServiceBuilder(githubApiKey).apiSecret(githubApiSecret).
-				callback(serverUrl + OprUserMgmtController.OSM_OAUTH_CALLBACK_URL).defaultScope("user:email").
+				callback(serverUrl + authUrl).defaultScope("user:email").
 				build(GitHubApi.instance());
 		return githubService;
 	}
@@ -87,7 +90,7 @@ public class OprUserOAuthController {
 		if (osmService != null) {
 			return osmService;
 		}
-		osmService = new ServiceBuilder(osmApiKey).apiSecret(osmApiSecret).callback(serverUrl + OprUserMgmtController.OSM_OAUTH_CALLBACK_URL)
+		osmService = new ServiceBuilder(osmApiKey).apiSecret(osmApiSecret).callback(serverUrl + authUrl)
 				.build(new DefaultApi10a() {
 
 					@Override

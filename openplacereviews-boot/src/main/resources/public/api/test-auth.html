@@ -209,6 +209,26 @@
             		}
            		)();
         	}
+        	if (searchParams.get('op') == 'signup_confirm') {
+        		let name = searchParams.get('name');
+        		var obj = {
+                        "name": searchParams.get('name'),
+                        "token": searchParams.get('token')
+                    };
+                postAction("/api/auth/user-signup-confirm", obj)();
+                $("#logout-name").val(name);
+        	 	$("#login-name").val(name);
+        	 	$("#signup-name").val(name);
+        	}
+        	if (searchParams.get('op') == 'reset_pwd') {
+        		let name = searchParams.get('name');
+        		let token = searchParams.get('token');
+                $("#logout-name").val(name);
+        	 	$("#login-name").val(name);
+        	 	$("#signup-name").val(name);
+        	 	$("#resetconfirm-token").val(token);
+        	 	$("#resetconfirm-name").val(name);
+        	}
             
             $("#signup-btn").click(function () {
                 var obj = {
