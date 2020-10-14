@@ -255,7 +255,7 @@ public class OprUserOAuthController {
 		OAuth2AccessToken accessToken = githubService.getAccessToken(code);
 		userDetails.accessToken = UUID.randomUUID().toString();
 		userDetails.accessTokenSecret = accessToken.getAccessToken();
-		Map<String, Object> res = getJsonInfoMap(userDetails, googleService, "https://api.github.com/user");
+		Map<String, Object> res = getJsonInfoMap(userDetails, githubService, "https://api.github.com/user");
 		userDetails.uid = String.valueOf(res.get("id"));
 		userDetails.nickname = String.valueOf(res.get("login"));
 		userDetails.details.put(OAuthUserDetails.KEY_NICKNAME, userDetails.nickname);
@@ -287,6 +287,7 @@ public class OprUserOAuthController {
 		if (requestToken == null) {
 			throw new IllegalArgumentException("Illegal request token: " + token);
 		}
+		OAuth10aService osmService = getOsmService();
 		OAuth1AccessToken accessToken = osmService.getAccessToken(requestToken, oauthVerifier);
 		details.accessToken = accessToken.getToken(); 
 		details.accessTokenSecret = accessToken.getTokenSecret();
