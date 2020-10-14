@@ -7,11 +7,14 @@ import static org.openplacereviews.opendb.ops.de.ColumnDef.IndexType.NOT_INDEXED
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
+import java.util.Map;
+import java.util.TreeMap;
 
 import javax.sql.DataSource;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.openplacereviews.controllers.OprUserMgmtController;
 import org.openplacereviews.opendb.OpenDBServer.MetadataDb;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -37,6 +40,7 @@ public class UserSchemaManager {
 	private static final String SETTING_VERSION_KEY = "version";
 	protected static final String SETTINGS_TABLE = "user_settings";
 	protected static final String USERS_TABLE = "users";
+	protected static final String OAUTH_TOKENS_TABLE = "oauth_tokens";
 
 	private static DBSchemaHelper dbschema = new DBSchemaHelper(SETTINGS_TABLE);
 	protected static final int BATCH_SIZE = 1000;
@@ -65,8 +69,39 @@ public class UserSchemaManager {
 		dbschema.registerColumn(USERS_TABLE, "sprivkey", "text", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "lprivkey", "text", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "signup", "jsonb", NOT_INDEXED);
-//		dbschema.registerColumn(USERS_TABLE, "loginkey", "text", NOT_INDEXED);
+		
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "nickname", "text", INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_provider", "text", NOT_INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_uid", "text", NOT_INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_token", "text", NOT_INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_secret", "text", NOT_INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "date", "timestamp", NOT_INDEXED);
+		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "details", "jsonb", NOT_INDEXED);
 
+	}
+	
+	public static class OAuthUserDetails {
+		public static final String KEY_LAT = "lat";
+		public static final String KEY_LON = "lon";
+		public static final String KEY_NICKNAME = "nickname";
+		public static final String KEY_AVATAR_URL = "avatar";
+		public static final String KEY_EMAIL = "email";
+		public static final String KEY_LANGUAGES = "languages";
+		
+		public final String oauthProvider;
+		public final Map<String, Object> details = new TreeMap<>();
+		public String nickname;
+		public String uid;
+		
+		// token available for client, so we can't authenticate him and prevent csrf
+		public String accessToken;
+		// secret part of token should not be available for client
+		public transient String accessTokenSecret;
+		public transient String requestUserCode;
+		
+		public OAuthUserDetails(String oauthProvider) {
+			this.oauthProvider = oauthProvider;
+		}
 	}
 	
 
@@ -107,21 +142,93 @@ public class UserSchemaManager {
 		}
 	}
 
-	public void createNewUser(String name, String email, String emailToken, String sprivkey, OpObject obj) {
-		PGobject userObj = new PGobject();
-		userObj.setType("jsonb");
-		try {
-			userObj.setValue(formatter.fullObjectToJson(obj));
-		} catch (SQLException e) {
-			throw new IllegalArgumentException(e);
-		}
+	public void createNewUser(String name, String email, String emailToken, OAuthUserDetails oauthUserDetails, String sprivkey, OpObject obj) {
+		PGobject userObj = null;
+		if (obj != null) {
+			userObj = new PGobject();
+			userObj.setType("jsonb");
+			try {
+				userObj.setValue(formatter.fullObjectToJson(obj));
+			} catch (SQLException e) {
+				throw new IllegalArgumentException(e);
+			}
+		} 
+		getJdbcTemplate().update("DELETE FROM " + USERS_TABLE + " WHERE nickname = ?", name);
 		getJdbcTemplate().update(
 				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,sprivkey,signup) VALUES(?,?,?,?,?,?)", name,
 				email, emailToken, new Date(), sprivkey, userObj);
+		if (oauthUserDetails != null) {
+			PGobject userOAuthObj = null;
+			if (oauthUserDetails.details != null) {
+				userOAuthObj = new PGobject();
+				userOAuthObj.setType("jsonb");
+				try {
+					userOAuthObj.setValue(formatter.fullObjectToJson(oauthUserDetails.details));
+				} catch (SQLException e) {
+					throw new IllegalArgumentException(e);
+				}
+			} 
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "nickname", "text", INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_provider", "text", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_uid", "text", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_token", "text", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_secret", "text", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "date", "timestamp", NOT_INDEXED);
+			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "details", "jsonb", NOT_INDEXED);
+			getJdbcTemplate().update(
+					"INSERT INTO " + OAUTH_TOKENS_TABLE
+							+ "(nickname,oauth_provider,oauth_uid,oauth_access_token,oauth_access_secret,date,details) VALUES(?,?,?,?,?,?,?)",
+					name, oauthUserDetails.oauthProvider,  oauthUserDetails.uid, oauthUserDetails.accessToken, oauthUserDetails.accessTokenSecret, new Date(), userOAuthObj);
+		}
 
 	}
 	
+	public OAuthUserDetails getOAuthLatestLogin(String name) {
+		return getJdbcTemplate().query("SELECT nickname,oauth_provider,oauth_uid,oauth_access_token,oauth_access_secret,date,details  FROM " + OAUTH_TOKENS_TABLE + " WHERE nickname = ? ORDER BY date DESC ",
+				new Object[] { name }, new ResultSetExtractor<OAuthUserDetails>() {
+					@Override
+					public OAuthUserDetails extractData(ResultSet rs) throws SQLException, DataAccessException {
+						if (!rs.next()) {
+							return null;
+						}
+						OAuthUserDetails s = new OAuthUserDetails(rs.getString(2));
+						s.nickname = name;
+						s.uid = rs.getString(3);
+						s.accessToken = rs.getString(4);
+						s.accessTokenSecret = rs.getString(5);
+						s.details.putAll(formatter.fromJsonToTreeMap(rs.getString(7)));
+						return s;
+					}
+				});
+	}
 	
+	public static class UserStatus {
+		public String name;
+		public String email;
+		public String emailToken;
+		public Date tokenDate;
+		public boolean tokenExpired;
+	}
+	
+	public UserStatus userGetStatus(String name) {
+		return getJdbcTemplate().query("SELECT nickname, email, emailtoken, tokendate  FROM " + USERS_TABLE + " WHERE nickname = ?",
+				new Object[] { name }, new ResultSetExtractor<UserStatus>() {
+					@Override
+					public UserStatus extractData(ResultSet arg0) throws SQLException, DataAccessException {
+						if (!arg0.next()) {
+							return null;
+						}
+						UserStatus s = new UserStatus();
+						s.name = name;
+						s.email = arg0.getString(2);
+						s.emailToken = arg0.getString(3);
+						s.tokenDate = arg0.getDate(4);
+						s.tokenExpired = s.tokenDate == null ? false : 
+							(System.currentTimeMillis() - s.tokenDate.getTime()) > EMAIL_TOKEN_EXPIRATION_TIME;
+						return s;
+					}
+				});
+	}
 
 	public String getSignupPrivateKey(String name) {
 		return getJdbcTemplate().query("SELECT sprivkey FROM " + USERS_TABLE + " WHERE nickname = ?",
@@ -136,20 +243,10 @@ public class UserSchemaManager {
 				});
 	}
 	
-	public String getUserEmail(String name) {
-		return getJdbcTemplate().query("SELECT email FROM " + USERS_TABLE + " WHERE nickname = ?",
-				new Object[] { name }, new ResultSetExtractor<String>() {
-					@Override
-					public String extractData(ResultSet arg0) throws SQLException, DataAccessException {
-						if (!arg0.next()) {
-							return null;
-						}
-						return arg0.getString(1);
-					}
-				});
-	}
-	
-	public String getLoginPrivateKey(String name) {
+	public String getLoginPrivateKey(String name, String purpose) {
+		if (!OprUserMgmtController.DEFAULT_PURPOSE_LOGIN.equals(purpose)) {
+			throw new UnsupportedOperationException("Unsupported purpose to get login private key " + purpose);
+		}
 		return getJdbcTemplate().query("SELECT lprivkey FROM " + USERS_TABLE + " WHERE nickname = ?",
 				new Object[] { name }, new ResultSetExtractor<String>() {
 					@Override
@@ -175,10 +272,10 @@ public class UserSchemaManager {
 						if (System.currentTimeMillis() - rs.getDate(3).getTime() > EMAIL_TOKEN_EXPIRATION_TIME) {
 							throw new IllegalStateException("Registration link has expired");
 						}
-						OpOperation signupOp = formatter.parseOperation(rs.getString(1));
 						if (!token.equals(rs.getString(2))) {
 							throw new IllegalArgumentException("Registration token doesn't match, please signup again or reset password");
 						}
+						OpOperation signupOp = formatter.parseOperation(rs.getString(1));
 						return signupOp;
 					}
 				});
@@ -191,12 +288,19 @@ public class UserSchemaManager {
 
 	}
 	
-	public void updateLoginKey(String name, String lprivkey) {
-		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET lprivkey = ?, emailtoken = null WHERE nickname = ?", lprivkey, name);
+	public void updateLoginKey(String name, String lprivkey, String purpose) {
+		if (!OprUserMgmtController.DEFAULT_PURPOSE_LOGIN.equals(purpose)) {
+			return;
+		}
+		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET lprivkey = ?, emailtoken = null WHERE nickname = ?",
+				lprivkey, name);
 	}
 	
 	public void updateSignupKey(String name, String sprivkey) {
 		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET sprivkey = ?, emailtoken = null WHERE nickname = ?", sprivkey, name);
 	}
+
+
+	
 
 }

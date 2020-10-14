@@ -19,8 +19,20 @@ opendb:
     overpass-cache: ${OVERPASS_CACHE_DIR:overpass_cache}
 #    directory: ${FILE_BLOCKS_DIR:blocks}
   serverUrl: ${SERVER_URL:http://localhost:6463/}
+  authUrl: ${AUTH_URL:api/test-auth.html}
   email:
     sendgrid-api: ${SENDGRID_API:}
+
+oauth:
+  osm:
+    apiKey: ${OSM_OAUTH_KEY:}
+    secret: ${OSM_OAUTH_SECRET:}
+  github:
+    apiKey: ${GITHUB_OAUTH_KEY:}
+    secret: ${GITHUB_OAUTH_SECRET:}
+  google:
+    apiKey: ${GOOGLE_OAUTH_KEY:}
+    secret: ${GOOGLE_OAUTH_SECRET:}    
 
 management:
   endpoints:
