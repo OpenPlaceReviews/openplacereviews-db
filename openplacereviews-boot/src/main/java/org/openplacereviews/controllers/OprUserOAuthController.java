@@ -183,25 +183,25 @@ public class OprUserOAuthController {
 			if(!OUtils.equalsStringValue(userDetails.requestUserCode, code) && !OUtils.equalsStringValue(userDetails.requestUserCode, oauthVerifier)) {
 				throw new IllegalArgumentException("XSS / CSRF protection: please submit oauth request code to get details");
 			}
-		} else  {
-			if(OAUTH_PROVIDER_GITHUB.equals(provider)) {
-				if(!OUtils.isEmpty(oauthVerifier)) {
+		} else {
+			if (OAUTH_PROVIDER_OSM.equals(provider)) {
+				if (!OUtils.isEmpty(oauthVerifier)) {
 					userDetails = authorizeOsmUserDetails(httpSession, token, oauthVerifier);
 					userDetails.requestUserCode = oauthVerifier;
 				}
-			} else if(OAUTH_PROVIDER_GITHUB.equals(provider)) {
-				if(!OUtils.isEmpty(code)) {
+			} else if (OAUTH_PROVIDER_GITHUB.equals(provider)) {
+				if (!OUtils.isEmpty(code)) {
 					userDetails = authorizeGithub(httpSession, code);
 					userDetails.requestUserCode = code;
 				}
-			} else if(OAUTH_PROVIDER_GOOGLE.equals(provider)) {
-				if(!OUtils.isEmpty(code)) {
+			} else if (OAUTH_PROVIDER_GOOGLE.equals(provider)) {
+				if (!OUtils.isEmpty(code)) {
 					userDetails = authorizeGoogle(httpSession, code);
 					userDetails.requestUserCode = code;
 				}
 			}
 		}
-		if(userDetails == null){
+		if (userDetails == null) {
 			throw new IllegalArgumentException("Not enough parameters are specified");
 		}
 		httpSession.setAttribute(USER_DETAILS, userDetails);
