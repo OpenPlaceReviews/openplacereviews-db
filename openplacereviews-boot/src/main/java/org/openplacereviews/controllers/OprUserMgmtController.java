@@ -264,11 +264,15 @@ public class OprUserMgmtController {
 			throw new IllegalStateException("Provided email doesn't match email in the database");
 		}
 		deleteLoginIfPresent(name, purpose);
-		String emailToken = UUID.randomUUID().toString();
+		String emailToken = generateEmailToken();
 		String href = getServerUrl() + authUrl + "?op=reset_pwd&name=" + name + "&token=" + emailToken;
-		sendEmail(name, email, href, getResetEmailContent(name, href, emailToken).toString());
+		sendEmail(name, email, href, "OpenPlaceReviews - Reset password", getResetEmailContent(name, href, emailToken).toString());
 		userManager.resetEmailToken(name, emailToken);
 		return ResponseEntity.ok(formatter.fullObjectToJson(Collections.singletonMap("result", "OK")));
+	}
+
+	private static String generateEmailToken() {
+		return UUID.randomUUID().toString().substring(0, 8);
 	}
 	
 	
@@ -481,14 +485,14 @@ public class OprUserMgmtController {
 			manager.generateHashAndSign(signupOp, manager.getServerLoginKeyPair());
 			manager.addOperation(signupOp);
 			String href = getServerUrl();
-			sendEmail(name, email, href, getSignupWelcomeEmailContent(name, href).toString());
+			sendEmail(name, email, href, "Signup to OpenPlaceReviews", getSignupWelcomeEmailContent(name, href).toString());
 			userManager.createNewUser(name, email, null, oauthUserDetails, sKeyPair, signupOp);
 			return ResponseEntity.ok(formatter.fullObjectToJson(signupOp));
 			// return generateNewLogin(name, ownKeyPair, userDetails, purpose);
 		} else {
-			String emailToken = UUID.randomUUID().toString();
+			String emailToken = generateEmailToken();
 			String href = getServerUrl() + authUrl +"?op=signup_confirm&name=" + name + "&token=" + emailToken;
-			sendEmail(name, email, href, getSignupEmailContent(name, href).toString());
+			sendEmail(name, email, href, "Signup to OpenPlaceReviews", getSignupEmailContent(name, href).toString());
 			userManager.createNewUser(name, email, emailToken, oauthUserDetails, sKeyPair, signupOp);
 			return ResponseEntity.ok(formatter.fullObjectToJson(signupOp));
 		}
@@ -565,7 +569,7 @@ public class OprUserMgmtController {
 		return serverUrl;
 	}
 
-	private void sendEmail(String nickname, String email, String href, String contentStr) {
+	private void sendEmail(String nickname, String email, String href, String topicStr, String contentStr) {
 		if (OUtils.isEmpty(sendGridApiKey)) {
 			// allow test server
 			LOGGER.info("Email server is not configured to send emailToken: " + href);
@@ -581,7 +585,7 @@ public class OprUserMgmtController {
 		Email to = new Email(email);
 		
 		Content content = new Content("text/html", contentStr);
-		Mail mail = new Mail(from, "Signup to OpenPlaceReviews", to, content);
+		Mail mail = new Mail(from, topicStr, to, content);
 		mail.from = from;
 		// mail.setTemplateId(templateId);
 		// MailSettings mailSettings = new MailSettings();
