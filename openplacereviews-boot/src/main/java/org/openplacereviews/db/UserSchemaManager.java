@@ -271,7 +271,7 @@ public class UserSchemaManager {
 		if(userDetails != null && !OUtils.isEmpty(userDetails.oauthProvider) && 
 				!OUtils.isEmpty(userDetails.oauthUid)) {
 			getJdbcTemplate().query(
-					"SELECT nickname FROM " + USERS_TABLE + " WHERE oauth_uid = ? and oauth_provider = ?",
+					"SELECT nickname FROM " + OAUTH_TOKENS_TABLE + " WHERE oauth_uid = ? and oauth_provider = ?",
 					new Object[] { userDetails.oauthUid, userDetails.oauthProvider }, new RowCallbackHandler() {
 
 						@Override
