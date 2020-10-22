@@ -269,7 +269,7 @@ public class UserSchemaManager {
 	
 	public void loadPossibleSignups(OAuthUserDetails userDetails) {
 		if(userDetails != null && !OUtils.isEmpty(userDetails.oauthProvider) && 
-				OUtils.isEmpty(userDetails.oauthProvider)) {
+				!OUtils.isEmpty(userDetails.oauthUid)) {
 			getJdbcTemplate().query(
 					"SELECT nickname FROM " + USERS_TABLE + " WHERE oauth_uid = ? and oauth_provider = ?",
 					new Object[] { userDetails.oauthUid, userDetails.oauthProvider }, new RowCallbackHandler() {
