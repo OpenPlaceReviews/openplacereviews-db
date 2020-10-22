@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutionException;
 
 import javax.servlet.http.HttpSession;
 
+import org.openplacereviews.db.UserSchemaManager;
 import org.openplacereviews.db.UserSchemaManager.OAuthUserDetails;
 import org.openplacereviews.opendb.util.JsonFormatter;
 import org.openplacereviews.opendb.util.OUtils;
@@ -80,6 +81,9 @@ public class OprUserOAuthController {
 	
 	@Autowired
 	private JsonFormatter formatter;
+	
+	@Autowired
+	public UserSchemaManager userSchemaManager;
 
 	private OAuth10aService osmService;
 	private OAuth20Service githubService;
@@ -200,6 +204,7 @@ public class OprUserOAuthController {
 					userDetails.requestUserCode = code;
 				}
 			}
+			userSchemaManager.loadPossibleSignups(userDetails);
 		}
 		if (userDetails == null) {
 			throw new IllegalArgumentException("Not enough parameters are specified");
@@ -209,6 +214,8 @@ public class OprUserOAuthController {
 	}
 
 	
+	
+
 	public OAuthUserDetails getUserDetails(HttpSession httpSession) {
 		return (OAuthUserDetails) httpSession.getAttribute(USER_DETAILS);
 	}
@@ -221,9 +228,9 @@ public class OprUserOAuthController {
 		userDetails.accessTokenSecret = accessToken.getAccessToken();
 		
 		Map<String, Object> res = getJsonInfoMap(userDetails, googleService, "https://www.googleapis.com/oauth2/v1/userinfo?alt=json");
-		userDetails.uid = String.valueOf(res.get("id"));
-		userDetails.nickname = String.valueOf(res.get("name"));
-		userDetails.details.put(OAuthUserDetails.KEY_NICKNAME, userDetails.nickname);
+		userDetails.oauthUid = String.valueOf(res.get("id"));
+		userDetails.oauthNickname = String.valueOf(res.get("name"));
+		userDetails.details.put(OAuthUserDetails.KEY_NICKNAME, userDetails.oauthNickname);
 		Object aurl = res.get("picture");
 		if (aurl instanceof String) {
 			userDetails.details.put(OAuthUserDetails.KEY_AVATAR_URL, (String) aurl);
@@ -256,9 +263,9 @@ public class OprUserOAuthController {
 		userDetails.accessToken = UUID.randomUUID().toString();
 		userDetails.accessTokenSecret = accessToken.getAccessToken();
 		Map<String, Object> res = getJsonInfoMap(userDetails, githubService, "https://api.github.com/user");
-		userDetails.uid = String.valueOf(res.get("id"));
-		userDetails.nickname = String.valueOf(res.get("login"));
-		userDetails.details.put(OAuthUserDetails.KEY_NICKNAME, userDetails.nickname);
+		userDetails.oauthUid = String.valueOf(res.get("id"));
+		userDetails.oauthNickname = String.valueOf(res.get("login"));
+		userDetails.details.put(OAuthUserDetails.KEY_NICKNAME, userDetails.oauthNickname);
 		Object aurl = res.get("avatar_url");
 		if (aurl instanceof String) {
 			userDetails.details.put(OAuthUserDetails.KEY_AVATAR_URL, (String) aurl);
@@ -305,9 +312,9 @@ public class OprUserOAuthController {
 			if (tok == XmlPullParser.START_TAG) {
 				String name = parser.getName();
 				if ("user".equals(name)) {
-					details.nickname = parser.getAttributeValue("", "display_name");
-					details.details.put(OAuthUserDetails.KEY_NICKNAME, details.nickname);
-					details.uid = parser.getAttributeValue("", "id");
+					details.oauthNickname = parser.getAttributeValue("", "display_name");
+					details.details.put(OAuthUserDetails.KEY_NICKNAME, details.oauthNickname);
+					details.oauthUid = parser.getAttributeValue("", "id");
 				} else if ("home".equals(name)) {
 					details.details.put(OAuthUserDetails.KEY_LAT, parser.getAttributeValue("", "lat"));
 					details.details.put(OAuthUserDetails.KEY_LON, parser.getAttributeValue("", "lon"));

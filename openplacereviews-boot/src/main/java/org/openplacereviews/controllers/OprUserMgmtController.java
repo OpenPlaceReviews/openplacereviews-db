@@ -131,6 +131,7 @@ public class OprUserMgmtController {
 			@RequestParam(required = true) String token, 
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose,
 			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
+		name = stdNickName(name);
 		OpOperation signupOp = userManager.validateEmail(name, token);
 		OpObject signupObj = manager.getLoginObj(name);
 		boolean userAlreadySignedUp = false;
@@ -186,6 +187,7 @@ public class OprUserMgmtController {
 	@GetMapping(path = "/user-check-signupkey")
 	@ResponseBody
 	public ResponseEntity<String> checkLogin(HttpSession session, @RequestParam(required = true) String name) throws FailedVerificationException {
+		name = stdNickName(name);
 		OpObject loginObj = manager.getLoginObj(name );
 		if (loginObj == null) {
 			throw new IllegalStateException("User is not logged in into blockchain");
@@ -207,6 +209,7 @@ public class OprUserMgmtController {
 	public ResponseEntity<String> checkLogin(HttpSession session, @RequestParam(required = true) String name, 
 			@RequestParam(required = true) String privateKey,
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
+		name = stdNickName(name);
 		OpObject loginObj = manager.getLoginObj(name + ":" + purpose);
 		if (loginObj == null) {
 			throw new IllegalStateException("User is not logged in into blockchain");
@@ -233,6 +236,7 @@ public class OprUserMgmtController {
 	@ResponseBody
 	public ResponseEntity<String> userExists(@RequestParam(required = true) String name)
 			throws FailedVerificationException {
+		name = stdNickName(name);
 		OpObject signupObj = manager.getLoginObj(name);
 		Map<String, String> mp = new TreeMap<String, String>();
 		mp.put("blockchain", signupObj == null ? "none" : "ok");
@@ -254,6 +258,7 @@ public class OprUserMgmtController {
 	public ResponseEntity<String> resetPwdSendEmail(HttpSession session, @RequestParam(required = true) String name, 
 			@RequestParam(required = true) String email,
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
+		name = stdNickName(name);
 		checkUserSignupPrivateKeyIsPresent(name);
 		UserStatus status = userManager.userGetStatus(name);
 		String userEmail =  status == null ? null : status.email;
@@ -275,8 +280,6 @@ public class OprUserMgmtController {
 		return UUID.randomUUID().toString().substring(0, 8);
 	}
 	
-	
-	
 	@PostMapping(path = "/user-reset-password-confirm")
 	@ResponseBody
 	public ResponseEntity<String> resetPwdConfirm(HttpSession session, @RequestParam(required = true) String name, 
@@ -284,6 +287,7 @@ public class OprUserMgmtController {
 			@RequestParam(required = true) String newPwd, 
 			@RequestParam(required = false) String userDetails, 
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
+		name = stdNickName(name);
 		checkUserSignupPrivateKeyIsPresent(name);
 		userManager.validateEmail(name, token);
 		OpObject signupObj = manager.getLoginObj(name);
@@ -337,6 +341,7 @@ public class OprUserMgmtController {
 			@RequestParam(required = false) String oauthAccessToken,
 			@RequestParam(required = false) String email, @RequestParam(required = false) String userDetails, 
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
+		name = stdNickName(name);
 		OpObject signupObj = manager.getLoginObj(name);
 		if (signupObj == null) {
 			throw new IllegalStateException("User was not signed up in blockchain");
@@ -388,7 +393,7 @@ public class OprUserMgmtController {
 		}
 		String salt = signupObj.getStringValue(OpBlockchainRules.F_SALT);
 		String exHash = signupObj.getStringValue(OpBlockchainRules.F_OAUTHID_HASH);
-		String oAuthHash = SecUtils.calculateHashWithAlgo(SecUtils.HASH_SHA256, salt, oAuthUserDetails.uid);
+		String oAuthHash = SecUtils.calculateHashWithAlgo(SecUtils.HASH_SHA256, salt, oAuthUserDetails.oauthUid);
 		if (!OUtils.equals(oAuthHash, exHash) || !oAuthUserDetails.oauthProvider
 				.equals(signupObj.getStringValue(OpBlockchainRules.F_OAUTH_PROVIDER))) {
 			throw new IllegalStateException("User was signed up with another oauth method");
@@ -401,6 +406,7 @@ public class OprUserMgmtController {
 	public ResponseEntity<String> logout(HttpSession session, @RequestParam(required = true) String name,
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose)
 			throws FailedVerificationException {
+		name = stdNickName(name);
 		String spk = userManager.getSignupPrivateKey(name);
 		OAuthUserDetails oauth = userManager.getOAuthLatestLogin(name);
 		if (spk == null && oauth == null) {
@@ -420,7 +426,7 @@ public class OprUserMgmtController {
 			// @RequestParam(required = false) String privateKey, @RequestParam(required = false) String publicKey,
 			@RequestParam(required = false) String oauthAccessToken,
 			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
-		name = name.trim(); // reduce errors by having trailing spaces
+		name = stdNickName(name);
 		if (!OpBlockchainRules.validateNickname(name)) {
 			throw new IllegalArgumentException(String.format("The nickname '%s' couldn't be validated", name));
 		}
@@ -472,7 +478,7 @@ public class OprUserMgmtController {
 			obj.putStringValue(OpBlockchainRules.F_AUTH_METHOD, OpBlockchainRules.METHOD_OAUTH);
 			obj.putStringValue(OpBlockchainRules.F_SALT, name);
 			obj.putStringValue(OpBlockchainRules.F_OAUTHID_HASH,
-					SecUtils.calculateHashWithAlgo(SecUtils.HASH_SHA256, name, oauthUserDetails.uid));
+					SecUtils.calculateHashWithAlgo(SecUtils.HASH_SHA256, name, oauthUserDetails.oauthUid));
 			obj.putStringValue(OpBlockchainRules.F_OAUTH_PROVIDER, oauthUserDetails.oauthProvider);
 		}
 		if (newKeyPair != null) {
@@ -498,6 +504,14 @@ public class OprUserMgmtController {
 		}
 	}
 	
+	private String stdNickName(String name) {
+		return name.trim(); // reduce errors by having trailing spaces
+	}
+
+
+
+
+
 	private OpOperation deleteLoginIfPresent(String name, String purpose) throws FailedVerificationException {
 		OpOperation op = new OpOperation();
 		op.setType(OpBlockchainRules.OP_LOGIN);

@@ -6,7 +6,9 @@ import static org.openplacereviews.opendb.ops.de.ColumnDef.IndexType.NOT_INDEXED
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -20,6 +22,7 @@ import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.DBSchemaHelper;
 import org.openplacereviews.opendb.util.JsonFormatter;
+import org.openplacereviews.opendb.util.OUtils;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +30,7 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ResultSetExtractor;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -90,14 +94,17 @@ public class UserSchemaManager {
 		
 		public final String oauthProvider;
 		public final Map<String, Object> details = new TreeMap<>();
-		public String nickname;
-		public String uid;
+		public String oauthNickname;
+		public String oauthUid;
 		
 		// token available for client, so we can't authenticate him and prevent csrf
 		public String accessToken;
+		public List<String> possibleSignups = new ArrayList<String>();
 		// secret part of token should not be available for client
 		public transient String accessTokenSecret;
 		public transient String requestUserCode;
+		
+		
 		
 		public OAuthUserDetails(String oauthProvider) {
 			this.oauthProvider = oauthProvider;
@@ -178,7 +185,7 @@ public class UserSchemaManager {
 			getJdbcTemplate().update(
 					"INSERT INTO " + OAUTH_TOKENS_TABLE
 							+ "(nickname,oauth_provider,oauth_uid,oauth_access_token,oauth_access_secret,date,details) VALUES(?,?,?,?,?,?,?)",
-					name, oauthUserDetails.oauthProvider,  oauthUserDetails.uid, oauthUserDetails.accessToken, oauthUserDetails.accessTokenSecret, new Date(), userOAuthObj);
+					name, oauthUserDetails.oauthProvider,  oauthUserDetails.oauthUid, oauthUserDetails.accessToken, oauthUserDetails.accessTokenSecret, new Date(), userOAuthObj);
 		}
 
 	}
@@ -192,11 +199,12 @@ public class UserSchemaManager {
 							return null;
 						}
 						OAuthUserDetails s = new OAuthUserDetails(rs.getString(2));
-						s.nickname = name;
-						s.uid = rs.getString(3);
+						// oauthNickname is in details & name is not specified here
+						s.oauthUid = rs.getString(3);
 						s.accessToken = rs.getString(4);
 						s.accessTokenSecret = rs.getString(5);
 						s.details.putAll(formatter.fromJsonToTreeMap(rs.getString(7)));
+						s.oauthNickname = (String) s.details.get(OAuthUserDetails.KEY_NICKNAME);
 						return s;
 					}
 				});
@@ -258,6 +266,21 @@ public class UserSchemaManager {
 					}
 				});
 	}
+	
+	public void loadPossibleSignups(OAuthUserDetails userDetails) {
+		if(userDetails != null && !OUtils.isEmpty(userDetails.oauthProvider) && 
+				OUtils.isEmpty(userDetails.oauthProvider)) {
+			getJdbcTemplate().query(
+					"SELECT nickname FROM " + USERS_TABLE + " WHERE oauth_uid = ? and oauth_provider = ?",
+					new Object[] { userDetails.oauthUid, userDetails.oauthProvider }, new RowCallbackHandler() {
+
+						@Override
+						public void processRow(ResultSet arg0) throws SQLException {
+							userDetails.possibleSignups.add(arg0.getString(1));
+						}
+					});
+		}
+	}
 
 	public OpOperation validateEmail(String name, String token) {
 		OpOperation op = getJdbcTemplate().query(
@@ -299,6 +322,9 @@ public class UserSchemaManager {
 	public void updateSignupKey(String name, String sprivkey) {
 		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET sprivkey = ?, emailtoken = null WHERE nickname = ?", sprivkey, name);
 	}
+
+
+	
 
 
 	
