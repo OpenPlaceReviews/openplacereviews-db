@@ -304,7 +304,7 @@ public class OprUserMgmtController {
 		String algo = SecUtils.ALGO_EC;
 		String salt = name;
 		String keyGen = SecUtils.KEYGEN_PWD_METHOD_1;
-		KeyPair newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, newPwd);
+		KeyPair newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, newPwd, true);
 		
 		OpObjectDiffBuilder bld = OpOperation.createDiffOperation(signupObj);
 		bld.setNewTag(OpBlockchainRules.F_PUBKEY, SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPublic()));
@@ -356,7 +356,7 @@ public class OprUserMgmtController {
 				throw new IllegalArgumentException("User wasn't registered with OAuth on this website.");
 			}
 		} else if (OpBlockchainRules.METHOD_PWD.equals(signupMethod)) {
-			ownKeyPair = validatePwd(pwd, signupObj);
+			ownKeyPair = validateLoginPwd(pwd, signupObj);
 			String privateKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, ownKeyPair.getPrivate());
 			if (userManager.userGetStatus(name) == null) {
 				userManager.createNewUser(name, null, null, null, privateKey, null);
@@ -373,12 +373,12 @@ public class OprUserMgmtController {
 	}
 
 
-	private KeyPair validatePwd(String pwd, OpObject signupObj) throws FailedVerificationException {
+	private KeyPair validateLoginPwd(String pwd, OpObject signupObj) throws FailedVerificationException {
 		String algo = signupObj.getStringValue(OpBlockchainRules.F_ALGO);
 		String keyGen = signupObj.getStringValue(OpBlockchainRules.F_KEYGEN_METHOD);
 		String salt = signupObj.getStringValue(OpBlockchainRules.F_SALT);
 		String sPubKey = signupObj.getStringValue(OpBlockchainRules.F_PUBKEY);
-		KeyPair newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, pwd);
+		KeyPair newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, pwd, false);
 		KeyPair ownKeyPair = SecUtils.getKeyPair(SecUtils.ALGO_EC, null, sPubKey);
 		// the user password matches pwd specified in the blockchain
 		if (!SecUtils.validateKeyPair(SecUtils.ALGO_EC, newKeyPair.getPrivate(), ownKeyPair.getPublic())) {
@@ -458,7 +458,7 @@ public class OprUserMgmtController {
 			algo = SecUtils.ALGO_EC;
 			String salt = name;
 			String keyGen = SecUtils.KEYGEN_PWD_METHOD_1;
-			newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, pwd);
+			newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, pwd, true);
 			obj.putStringValue(OpBlockchainRules.F_SALT, salt);
 			obj.putStringValue(OpBlockchainRules.F_KEYGEN_METHOD, keyGen);
 			sKeyPair = SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPrivate());
@@ -572,6 +572,7 @@ public class OprUserMgmtController {
 			manager.generateHashAndSign(loginOp, serverSignedKeyPair);
 		}
 		manager.addOperation(loginOp);
+//		OpOperation copyLoygin = new OpOperation(loginOp, true);
 		loginOp.putCacheObject(OpBlockchainRules.F_PRIVATEKEY, privateKey);
 		return ResponseEntity.ok(formatter.fullObjectToJson(loginOp));
 	}
