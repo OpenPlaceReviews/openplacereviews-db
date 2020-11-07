@@ -329,8 +329,8 @@ public class OprUserMgmtController {
 
 	private void checkUserSignupPrivateKeyIsPresent(String name) {
 		String spk = userManager.getSignupPrivateKey(name);
-		if (spk == null) {
-			throw new IllegalStateException("User is not registered in database.");
+		if (spk == null || spk.length() == 0) {
+			throw new IllegalStateException("User was not registered using any password");
 		}
 	}
 	
