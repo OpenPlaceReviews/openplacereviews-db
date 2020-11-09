@@ -1,13 +1,25 @@
 package org.openplacereviews.controllers;
 
-import com.github.filosganga.geogson.model.Feature;
-import com.github.filosganga.geogson.model.FeatureCollection;
-import com.github.filosganga.geogson.model.Point;
-import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableMap;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import static org.openplacereviews.controllers.MapCollection.TYPE_DATE;
+import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
+import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
+import static org.openplacereviews.opendb.service.HistoryManager.DESC_SORT;
+import static org.openplacereviews.opendb.service.HistoryManager.HISTORY_BY_OBJECT;
+import static org.openplacereviews.osm.model.Entity.ATTR_ID;
+import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
+import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -21,17 +33,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.InputStreamResource;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.*;
-
-import static org.openplacereviews.controllers.MapCollection.TYPE_DATE;
-import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
-import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
-import static org.openplacereviews.opendb.service.HistoryManager.DESC_SORT;
-import static org.openplacereviews.opendb.service.HistoryManager.HISTORY_BY_OBJECT;
-import static org.openplacereviews.osm.model.Entity.*;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
+import com.github.filosganga.geogson.model.Feature;
+import com.github.filosganga.geogson.model.FeatureCollection;
+import com.github.filosganga.geogson.model.Point;
+import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableMap;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
@@ -151,26 +160,31 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 		Map<String, Object> tagsValue = (Map<String, Object>) osm.get(F_TAGS);
 		generateTagsForEntity(bld, tagsValue);
 	}
+	
+	private int getOsmSourceIndex(String key) {
+		String prefix = F_SOURCE + "." + F_OSM + "[";
+		if (key.startsWith(prefix) && key.endsWith("]")) {
+			String intInd = key.substring(prefix.length(), key.length() - 1);
+			try {
+				return Integer.parseInt(intInd);
+			} catch (NumberFormatException ne) {
+			}
+		}
+		return -1;
+	}
 
 	@SuppressWarnings("unchecked")
 	private void generateEditedEntityFromOpObject(OpObject opObject, FeatureCollection featureCollection, OpBlock opBlock, String opHash) {
 		Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 		Map<String, Object> current = opObject.getStringObjMap(F_CURRENT);
 
-		Set<String> removedPlaces = new HashSet<>();
-		// TODO handle "source.osm[<ind>]": "delete"
-		// TODO display changed fields 
-		for (String key : current.keySet()) {
-			if (key.equals(F_SOURCE + "." + F_OSM + "[" + getOsmIndexFromStringKey(key) + "]")) {
-				removedPlaces.add(key);
-			}
-		}
-		if (removedPlaces.size() > 0) {
-			for (String key : removedPlaces) {
+		for (String key : change.keySet()) {
+			int ind = getOsmSourceIndex(key);
+			if (ind != -1 && change.get(key).equals("delete")) {
 				Map<String, Object> osm = (Map<String, Object>) current.get(key);
 				ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 
-				bld.put(OSM_INDEX, new JsonPrimitive(getOsmIndexFromStringKey(key)));
+				bld.put(OSM_INDEX, new JsonPrimitive(ind));
 				bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED + " " + getTitle(osm)));
 				bld.put(COLOR, new JsonPrimitive(COLOR_RED));
 				bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
@@ -180,105 +194,17 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 				Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
 				featureCollection.features().add(f);
 			}
-		} else {
-			Set<Integer> osmIds = new HashSet<>();
-			for (String key : current.keySet()) {
-				osmIds.add(getOsmIndexFromStringKey(key));
-			}
-			TreeMap<String, Object> objectTreeMap = new TreeMap<>();
-			objectTreeMap.put(OpObject.F_CHANGE, change);
-			objectTreeMap.put(OpObject.F_CURRENT, current);
-			OpObject originObject = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-			OpObject reverseEditObject = historyManager.generateReverseEditObject(originObject, objectTreeMap);
-			List<Map<String, Object>> objects = reverseEditObject.getField(null, F_SOURCE, F_OSM);
-			for (Integer id : osmIds) {
-				if (objects.size() > id ) {
-					Map<String, Object> osm = objects.get(id);
-					if (osm.get(ATTR_LATITUDE) != null && osm.get(ATTR_LONGITUDE) != null) {
-						ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
-
-						bld.put(OSM_INDEX, new JsonPrimitive(id));
-						bld.put(TITLE, new JsonPrimitive(OBJ_EDITED + " " + getTitle(osm)));
-						bld.put(OSM_ID, new JsonPrimitive((long) osm.get(ATTR_ID)));
-						bld.put(OSM_TYPE, new JsonPrimitive((String) osm.get(ATTR_TYPE)));
-						generateObjectBlockInfo(opObject, opBlock, opHash, bld);
-						bld.put(OBJ_PREV, generatePrevEditObjectEntity(osm));
-						bld.put(OBJ_NEXT, generateNextEditObjectEntity(change, id));
-
-						Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
-						featureCollection.features().add(f);
-					}
-				}
-			}
 		}
 	}
 
+
 	private Point generatePoint(Map<String, Object> osm) {
-		double lat = (double) osm.get(ATTR_LATITUDE);
-		double lon = (double) osm.get(ATTR_LONGITUDE);
+		double lat = ((Number)osm.get(ATTR_LATITUDE)).doubleValue();
+		double lon = ((Number)osm.get(ATTR_LONGITUDE)).doubleValue();
 		return Point.from(lon, lat);
 	}
 
-	@SuppressWarnings("unchecked")
-	private JsonObject generateNextEditObjectEntity(Map<String, Object> change, Integer id) {
-		JsonObject next = new JsonObject();
-		JsonObject nextTags = new JsonObject();
-		for (String key : change.keySet()) {
-			if (id.equals(getOsmIndexFromStringKey(key))) {
-				Object editedField = change.get(key);
-				if (editedField instanceof Map) {
-					if (key.contains(F_TAGS)) {
-						nextTags.add(key.substring(getTagsIndexOf(key)), new JsonPrimitive(String.valueOf(((Map<String, Object>)editedField).get(ATTR_SET))));
-					} else {
-						next.addProperty(key.substring(getIndexEndSourceOsm(key)), String.valueOf(((Map<String, Object>)editedField).get(ATTR_SET)));
-					}
-				} else {
-					if (key.contains(F_TAGS)) {
-						nextTags.add(key.substring(getTagsIndexOf(key)), new JsonPrimitive(String.valueOf(editedField)));
-					} else {
-						next.addProperty(key.substring(getIndexEndSourceOsm(key)), String.valueOf(editedField));
-					}
-				}
-			}
-		}
-		next.add(F_TAGS, nextTags);
-		return next;
-	}
-
-	private int getTagsIndexOf(String key) {
-		return key.indexOf(F_TAGS) + 5;
-	}
-
-	private int getIndexEndSourceOsm(String key) {
-		return key.indexOf("].") + 2;
-	}
-
-	@SuppressWarnings("unchecked")
-	private JsonObject generatePrevEditObjectEntity(Map<String, Object> osm) {
-		JsonObject prev = new JsonObject();
-		for (String k : osm.keySet()) {
-			if (k.equals(F_TAGS)) {
-				continue;
-			}
-			prev.addProperty(k, osm.get(k).toString());
-		}
-		Map<String, Object> tagsValue = (Map<String, Object>) osm.get(F_TAGS);
-		if (tagsValue != null) {
-			JsonObject obj = new JsonObject();
-			for (Map.Entry<String, Object> e : tagsValue.entrySet()) {
-				obj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
-			}
-			prev.add(F_TAGS, obj);
-		}
-		return prev;
-	}
-
-	private Integer getOsmIndexFromStringKey(String key) {
-		int indexStartBrace = key.indexOf("[");
-		int indexEndBrace = key.indexOf("]");
-		return Integer.parseInt(key.substring(indexStartBrace + 1, indexEndBrace));
-	}
-
+	
 	private void generateObjectBlockInfo(OpObject opObject, OpBlock opBlock, String opHash, ImmutableMap.Builder<String, JsonElement> bld) {
 		bld.put(OPR_ID, new JsonPrimitive(generateStringId(opObject)));
 		bld.put(BLOCK_TIMESTAMP, new JsonPrimitive(opBlock.getDateString()));
