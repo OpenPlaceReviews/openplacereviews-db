@@ -498,7 +498,7 @@ public class OprUserMgmtController {
 		} else {
 			String emailToken = generateEmailToken();
 			String href = getServerUrl() + authUrl +"?op=signup_confirm&name=" + name + "&token=" + emailToken;
-			sendEmail(name, email, href, "Signup to OpenPlaceReviews", getSignupEmailContent(name, href).toString());
+			sendEmail(name, email, href, "Signup to OpenPlaceReviews", getSignupEmailContent(name, href, emailToken).toString());
 			userManager.createNewUser(name, email, emailToken, oauthUserDetails, sKeyPair, signupOp);
 			return ResponseEntity.ok(formatter.fullObjectToJson(signupOp));
 		}
@@ -625,13 +625,13 @@ public class OprUserMgmtController {
 		}
 	}
 
-	private StringBuilder getSignupEmailContent(String nickname, String href) {
+	private StringBuilder getSignupEmailContent(String nickname, String href, String emailToken) {
 		StringBuilder sb = new StringBuilder();
 		sb.append(String.format("Hello <b>%s</b> and welcome to OpenPlaceReviews!", nickname));
 		sb.append("<br><br>");
 		
 		sb.append(String.format("To finish registration please confirm your email by following the link "
-				+ "<a href=\"%s\">%s</a>.", href, href));
+				+ "<a href=\"%s\">%s</a> or enter the activation code <b>%s</b>", href, href, emailToken));
 		sb.append("<br><br>Best Regards, <br> OpenPlaceReviews");
 		return sb;
 	}
@@ -654,7 +654,7 @@ public class OprUserMgmtController {
 		sb.append("<br><br>");
 		
 		sb.append(String.format("You '%s' have requested to reset the password, please follow the link "
-				+ "<a href=\"%s\">%s</a> (reset token '%s').", nickname, href, href, emailToken));
+				+ "<a href=\"%s\">%s</a> (reset code <b>%s</b> ).", nickname, href, href, emailToken));
 		sb.append("<br><br>Best Regards, <br> OpenPlaceReviews");
 		return sb;
 	}
