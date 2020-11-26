@@ -77,12 +77,11 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	
 	public OprPlaceDataProvider() {
 		geoJson = new GsonBuilder().registerTypeAdapterFactory(new GeometryAdapterFactory()).create();
-		initPlaceTypes();
 	}
 	
 	@SuppressWarnings("unchecked")
 	private void initPlaceTypes() {
-		if (placeTypes.isEmpty() && blocksManager.getBlockchain() != null) {
+		if (placeTypes.isEmpty() && blocksManager != null && blocksManager.getBlockchain() != null) {
 			ObjectsSearchRequest r = new ObjectsSearchRequest();
 			Map<String, String> res = new LinkedHashMap<>();
 			blocksManager.getBlockchain().fetchAllObjects("sys.bot", r);
@@ -100,7 +99,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 					}
 				}
 			}
-			final Comparator<String> c = Comparator.naturalOrder();	
+			final Comparator<String> c = Comparator.naturalOrder();
 			List<String> sortedList = new ArrayList<>(res.keySet());
 			sortedList.sort(new Comparator<String>() {
 
@@ -110,11 +109,11 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 				}
 			});
 			Map<String, String> finalRes = new LinkedHashMap<>();
-			for(String sortedKey : sortedList) {
+			for (String sortedKey : sortedList) {
 				finalRes.put(sortedKey, res.get(sortedKey));
 			}
 			placeTypes = finalRes;
-			
+
 		}
 		
 	}
