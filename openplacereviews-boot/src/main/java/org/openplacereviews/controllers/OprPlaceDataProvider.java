@@ -6,13 +6,15 @@ import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeMap;
 
 import org.openplacereviews.opendb.ops.OpBlockChain;
+import org.openplacereviews.opendb.ops.OpBlockChain.ObjectsSearchRequest;
 import org.openplacereviews.opendb.ops.OpIndexColumn;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
@@ -20,6 +22,7 @@ import org.openplacereviews.opendb.service.DBSchemaManager;
 import org.openplacereviews.opendb.service.IPublicDataProvider;
 import org.openplacereviews.opendb.service.PublicDataManager.CacheHolder;
 import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
+import org.openplacereviews.opendb.util.OUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.InputStreamResource;
@@ -31,7 +34,6 @@ import com.github.filosganga.geogson.model.FeatureCollection;
 import com.github.filosganga.geogson.model.Point;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMap.Builder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -71,28 +73,50 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	@Autowired
 	protected BlocksManager blocksManager;
 	
-	// TODO store in blockchain mapping + translations
-	public Map<String, String> placeTypes = new TreeMap<String, String>();
+	private Map<String, String> placeTypes = new LinkedHashMap<String, String>();
 	
 	public OprPlaceDataProvider() {
 		geoJson = new GsonBuilder().registerTypeAdapterFactory(new GeometryAdapterFactory()).create();
 		initPlaceTypes();
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void initPlaceTypes() {
-		placeTypes.put("ice_cream", "Ice cream");
-		placeTypes.put("cafe", "Cafe");
-		placeTypes.put("bar", "Bar");
-		placeTypes.put("restaurant", "Restaurant");
-		placeTypes.put("biergarten", "Biergarten");
-		placeTypes.put("fast_food", "Fast food");
-		placeTypes.put("food_court", "Food court");
-		placeTypes.put("pub", "Pub");
-		placeTypes.put("hotel", "Hotel");
-		placeTypes.put("motel", "Motel");
-		placeTypes.put("hostel", "Hostel");
-		placeTypes.put("apartment", "Apartment");
-		placeTypes.put("guest_house", "Guest house");
+		if (placeTypes.isEmpty() && blocksManager.getBlockchain() != null) {
+			ObjectsSearchRequest r = new ObjectsSearchRequest();
+			Map<String, String> res = new LinkedHashMap<>();
+			blocksManager.getBlockchain().fetchAllObjects("sys.bot", r);
+			for (OpObject o : r.result) {
+				Map<String, Object> obj = (Map<String, Object>) o.getFieldByExpr("config.osm-tags");
+				for (String typeKey : obj.keySet()) {
+					Map<String, Object> values = (Map<String, Object>) obj.get(typeKey);
+					List<String> types = (List<String>) values.get("values");
+					if (types != null) {
+						for (String pt : types) {
+							String name = OUtils.capitalizeFirstLetter(pt).replace('_', ' ');
+							name = OUtils.capitalizeFirstLetter(typeKey) + " - " + name;
+							res.put(pt, name);
+						}
+					}
+				}
+			}
+			final Comparator<String> c = Comparator.naturalOrder();	
+			List<String> sortedList = new ArrayList<>(res.keySet());
+			sortedList.sort(new Comparator<String>() {
+
+				@Override
+				public int compare(String o1, String o2) {
+					return c.compare(res.get(o1), res.get(o2));
+				}
+			});
+			Map<String, String> finalRes = new LinkedHashMap<>();
+			for(String sortedKey : sortedList) {
+				finalRes.put(sortedKey, res.get(sortedKey));
+			}
+			placeTypes = finalRes;
+			
+		}
+		
 	}
 
 	public void fetchObjectsByTileId(String tileId, FeatureCollection fc) {
@@ -172,6 +196,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private void put(JsonObject obj, String key, Map<String, Object> sourceObj) {
 		Object o = sourceObj.get(key);
 		if(o instanceof Number) {
@@ -203,9 +228,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 		return getSubTitle(osm);
 	}
 	
-	@SuppressWarnings("unchecked")
 	protected String getSubTitle(Map<String, Object> osm) {
-		Map<String, Object> tagsValue = (Map<String, Object>) osm.get("tags");
 		String osmValue = (String) osm.get(OSM_VALUE);
 		if(placeTypes.containsKey(osmValue)) {
 			osmValue = placeTypes.get(osmValue);
