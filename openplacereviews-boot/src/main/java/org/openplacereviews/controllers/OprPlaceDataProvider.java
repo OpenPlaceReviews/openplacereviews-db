@@ -80,7 +80,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	}
 	
 	@SuppressWarnings("unchecked")
-	private void initPlaceTypes() {
+	private Map<String, String> placeTypes() {
 		if (placeTypes.isEmpty() && blocksManager != null && blocksManager.getBlockchain() != null) {
 			ObjectsSearchRequest r = new ObjectsSearchRequest();
 			Map<String, String> res = new LinkedHashMap<>();
@@ -115,6 +115,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			placeTypes = finalRes;
 
 		}
+		return placeTypes;
 		
 	}
 
@@ -229,8 +230,8 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	
 	protected String getSubTitle(Map<String, Object> osm) {
 		String osmValue = (String) osm.get(OSM_VALUE);
-		if(placeTypes.containsKey(osmValue)) {
-			osmValue = placeTypes.get(osmValue);
+		if (placeTypes().containsKey(osmValue)) {
+			osmValue = placeTypes().get(osmValue);
 		}
 		return osmValue;
 	}
@@ -272,7 +273,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	public MapCollection getContent(String tile) {
 		MapCollection m = new MapCollection();
 		m.tileBased = true;
-		m.placeTypes = placeTypes;
+		m.placeTypes = placeTypes();
 		if(!tile.equals("")) {
 			fetchObjectsByTileId(formatTile(tile), m.geo);
 		}
