@@ -87,14 +87,16 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			blocksManager.getBlockchain().fetchAllObjects("sys.bot", r);
 			for (OpObject o : r.result) {
 				Map<String, Object> obj = (Map<String, Object>) o.getFieldByExpr("config.osm-tags");
-				for (String typeKey : obj.keySet()) {
-					Map<String, Object> values = (Map<String, Object>) obj.get(typeKey);
-					List<String> types = (List<String>) values.get("values");
-					if (types != null) {
-						for (String pt : types) {
-							String name = OUtils.capitalizeFirstLetter(pt).replace('_', ' ');
-							name = OUtils.capitalizeFirstLetter(typeKey) + " - " + name;
-							res.put(pt, name);
+				if (obj != null) {
+					for (String typeKey : obj.keySet()) {
+						Map<String, Object> values = (Map<String, Object>) obj.get(typeKey);
+						List<String> types = (List<String>) values.get("values");
+						if (types != null) {
+							for (String pt : types) {
+								String name = OUtils.capitalizeFirstLetter(pt).replace('_', ' ');
+								name = OUtils.capitalizeFirstLetter(typeKey) + " - " + name;
+								res.put(pt, name);
+							}
 						}
 					}
 				}
