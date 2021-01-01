@@ -629,12 +629,13 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			List<OpOperation> opsToAdd = new ArrayList<OpOperation>();
 			while (osmParser.hasNext()) {
 				OpOperation addOp = initOpOperation(opType);
-				JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
-				int sz = formatter.opToJson(addOp).length();
-				if (sz > OpBlockchainRules.MAX_OP_SIZE_MB / 2) {
-					opsToAdd.add(addOp);
-					addOp = initOpOperation(opType);
-				}
+				// here we could check limit for places
+//				JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
+//				int sz = formatter.opToJson(addOp).length();
+//				if (sz > OpBlockchainRules.MAX_OP_SIZE_MB / 2) {
+//					opsToAdd.add(addOp);
+//					addOp = initOpOperation(opType);
+//				}
 				OpOperation editOp = addOp;
 				if (!diff) {
 					
