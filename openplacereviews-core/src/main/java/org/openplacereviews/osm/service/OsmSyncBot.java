@@ -38,6 +38,7 @@ import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.io.IOUtils;
 import org.openplacereviews.opendb.ops.OpBlockChain;
+import org.openplacereviews.opendb.ops.OpBlockchainRules;
 import org.openplacereviews.opendb.ops.OpIndexColumn;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -106,6 +107,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	
 	@Autowired
 	private BlocksManager blocksManager;
+	
 	
 	@Autowired
 	private BotManager botManager;
@@ -627,8 +629,15 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			List<OpOperation> opsToAdd = new ArrayList<OpOperation>();
 			while (osmParser.hasNext()) {
 				OpOperation addOp = initOpOperation(opType);
+				JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
+				int sz = formatter.opToJson(addOp).length();
+				if (sz > OpBlockchainRules.MAX_OP_SIZE_MB / 2) {
+					opsToAdd.add(addOp);
+					addOp = initOpOperation(opType);
+				}
 				OpOperation editOp = addOp;
 				if (!diff) {
+					
 					List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
 					for (Entity e : newEntities) {
 						Metric m = mProcEntity.start();
