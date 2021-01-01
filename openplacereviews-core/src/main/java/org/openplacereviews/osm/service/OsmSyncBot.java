@@ -45,8 +45,10 @@ import org.openplacereviews.opendb.ops.PerformanceMetrics;
 import org.openplacereviews.opendb.ops.PerformanceMetrics.Metric;
 import org.openplacereviews.opendb.ops.PerformanceMetrics.PerformanceMetric;
 import org.openplacereviews.opendb.service.BlocksManager;
+import org.openplacereviews.opendb.service.BotManager;
 import org.openplacereviews.opendb.service.DBConsensusManager.DBStaleException;
 import org.openplacereviews.opendb.service.GenericMultiThreadBot;
+import org.openplacereviews.opendb.service.SettingsManager.MapStringObjectPreference;
 import org.openplacereviews.opendb.util.JsonFormatter;
 import org.openplacereviews.opendb.util.OUtils;
 import org.openplacereviews.opendb.util.OpExprEvaluator;
@@ -66,6 +68,8 @@ import org.xmlpull.v1.XmlPullParserException;
 
 public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 
+	private static final String BOT_CONFIG_MAX_OVERPASS_DIFF_KEY = "max_overpass_diff_minutes";
+	private static final String BOT_CONFIG_ALIGN_TIMESTAMP_KEY = "align_timestamp_minutes";
 	private static final PerformanceMetric mOverpassQuery = PerformanceMetrics.i().getMetric("opr.osm-sync.overpass");
 	private static final PerformanceMetric mPublish = PerformanceMetrics.i().getMetric("opr.osm-sync.publish");
 	private static final PerformanceMetric mProcDiff = PerformanceMetrics.i().getMetric("opr.osm-sync.proc-diff");
@@ -87,8 +91,10 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	static {
 		TIMESTAMP_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}
+	private static final int ALIGN_TIMESTAMP_MINUTES = 15;
+	private static final long MAX_OVERPASS_DIFF_MINUTES = 60;
 	
-	private static final long OVERPASS_MAX_ADIFF_MS = 1 * 60 * 60 * 1000l;
+	
 	private static final int OVERPASS_MIN_DELAY_MIN = 3;
 	private static final long DB_STALE_TIMEOUT_MS = 5000;
 
@@ -100,6 +106,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 	
 	@Autowired
 	private BlocksManager blocksManager;
+	
+	@Autowired
+	private BotManager botManager;
 	
 
 	public OsmSyncBot(OpObject botObject) {
@@ -201,14 +210,14 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		return request;
 	}
 	
-	private String alignTimestamp(String timestamp) {
+	private String alignTimestamp(String timestamp, int minAlign) {
 		try {
 			Date dt = TIMESTAMP_FORMAT.parse(timestamp);
 			Calendar i = Calendar.getInstance();
 			i.setTime(dt);
 			i.set(Calendar.SECOND, 0);
 			i.add(Calendar.MINUTE, -OVERPASS_MIN_DELAY_MIN);
-			i.set(Calendar.MINUTE, (i.get(Calendar.MINUTE) / 15) * 15);
+			i.set(Calendar.MINUTE, (i.get(Calendar.MINUTE) / minAlign) * minAlign);
 			if(dt.getTime() - i.getTimeInMillis() < OVERPASS_MIN_DELAY_MIN) {
 				return null;
 			}
@@ -290,11 +299,12 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			String matchId = botObject.getStringMap(F_CONFIG).get(F_MATCH_ID);
 			matchIdExpr = OprExprEvaluatorExt.parseExpression(matchId);
 			
+			MapStringObjectPreference bt = botManager.getBotConfiguration(getId());
 
 			String overpassURL = urls.get(F_OVERPASS).toString();
 			String ctimestamp = OprUtil.downloadString(urls.get(F_TIMESTAMP).toString(),
 					"Download current OSM timestamp");
-			String atimestamp = alignTimestamp(ctimestamp);
+			String atimestamp = alignTimestamp(ctimestamp, (int) bt.getLong(BOT_CONFIG_ALIGN_TIMESTAMP_KEY, ALIGN_TIMESTAMP_MINUTES));
 			if(atimestamp == null) {
 				info(String.format("Nothing to synchronize yet: %s", ctimestamp));
 				return this;
@@ -333,8 +343,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				if (!OUtils.equals(ctimestamp, r.state.date)) {
 					r.date = ctimestamp;
 					try {
-						if(TIMESTAMP_FORMAT.parse(r.date).getTime() - TIMESTAMP_FORMAT.parse(r.state.date).getTime() > OVERPASS_MAX_ADIFF_MS) {
-							Date nd = new Date(TIMESTAMP_FORMAT.parse(r.state.date).getTime() + OVERPASS_MAX_ADIFF_MS);
+						long maxDiffTimeMs = 60 * 1000l * bt.getLong(BOT_CONFIG_MAX_OVERPASS_DIFF_KEY, MAX_OVERPASS_DIFF_MINUTES);
+						if (TIMESTAMP_FORMAT.parse(r.date).getTime() - TIMESTAMP_FORMAT.parse(r.state.date).getTime() > maxDiffTimeMs) {
+							Date nd = new Date(TIMESTAMP_FORMAT.parse(r.state.date).getTime() + maxDiffTimeMs);
 							r.date = TIMESTAMP_FORMAT.format(nd);
 						}
 					} catch (ParseException e1) {
