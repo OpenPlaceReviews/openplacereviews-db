@@ -637,13 +637,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			List<OpOperation> opsToAdd = new ArrayList<OpOperation>();
 			while (osmParser.hasNext()) {
 				OpOperation op = wrapOpIfNeeded(opsToAdd, null);
-				TreeSet<Long> ids = new TreeSet<>();
 				if (!diff) {
 					List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
 					for (Entity e : newEntities) {
-						if (!ids.add(e.getId())) {
-							op = wrapOpIfNeeded(opsToAdd, op);
-						}
 						Metric m = mProcEntity.start();
 						processEntity(key, op, op, e);
 						placeCounter++;
@@ -652,9 +648,6 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				} else {
 					List<DiffEntity> places = osmParser.parseNextCoordinatePlaces(placesPerOperation, DiffEntity.class);
 					for (DiffEntity e : places) {
-						if (!ids.add(e.getOldEntity() != null ? e.getOldEntity().getId() : e.getNewEntity().getId())) {
-							op = wrapOpIfNeeded(opsToAdd, op);
-						}
 						Metric m = mProcDiff.start();
 						processDiffEntity(key, op, op, e);
 						placeCounter++;
@@ -668,9 +661,17 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 
 		
 		private OpOperation wrapOpIfNeeded(List<OpOperation> opsToAdd, OpOperation op) {
-			if(op == null) {
+			if (op == null) {
 				return initOpOperation(opType);
-			} else if(op.hasCreated() || op.hasDeleted() || op.hasEdited()) {
+			} else if (op.hasCreated() || op.hasDeleted() || op.hasEdited()) {
+				// filter edited objects
+				TreeMap<String, OpObject> objs = new TreeMap<String, OpObject>();
+				for (OpObject o : new ArrayList<>(op.getEdited())) {
+					OpObject replaced = objs.put(o.getId().toString(), o);
+					if (replaced != null) {
+						op.removeEdited(replaced);
+					}
+				}
 				opsToAdd.add(op);
 				return initOpOperation(opType);
 			}
