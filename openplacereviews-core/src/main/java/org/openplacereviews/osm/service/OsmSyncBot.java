@@ -1,7 +1,16 @@
 package org.openplacereviews.osm.service;
 
 import static org.openplacereviews.opendb.ops.OpBlockchainRules.OP_BOT;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM_TAG;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_VERSION;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.createOsmObject;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateEditDeleteOsmIdsForPlace;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateEditOpForBotObject;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateEditValuesForPlace;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.generateNewOprObject;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.parseSyncRequest;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -38,7 +47,6 @@ import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.io.IOUtils;
 import org.openplacereviews.opendb.ops.OpBlockChain;
-import org.openplacereviews.opendb.ops.OpBlockchainRules;
 import org.openplacereviews.opendb.ops.OpIndexColumn;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -628,41 +636,45 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 		private List<OpOperation> publish(String key, OsmParser osmParser) throws FailedVerificationException, IOException, XmlPullParserException, InterruptedException {
 			List<OpOperation> opsToAdd = new ArrayList<OpOperation>();
 			while (osmParser.hasNext()) {
-				OpOperation addOp = initOpOperation(opType);
-				// here we could check limit for places
-//				JsonFormatter formatter = blocksManager.getBlockchain().getRules().getFormatter();
-//				int sz = formatter.opToJson(addOp).length();
-//				if (sz > OpBlockchainRules.MAX_OP_SIZE_MB / 2) {
-//					opsToAdd.add(addOp);
-//					addOp = initOpOperation(opType);
-//				}
-				OpOperation editOp = addOp;
+				OpOperation op = wrapOpIfNeeded(opsToAdd, null);
+				TreeSet<Long> ids = new TreeSet<>();
 				if (!diff) {
-					
 					List<Entity> newEntities = osmParser.parseNextCoordinatePlaces(placesPerOperation, Entity.class);
 					for (Entity e : newEntities) {
+						if (!ids.add(e.getId())) {
+							op = wrapOpIfNeeded(opsToAdd, op);
+						}
 						Metric m = mProcEntity.start();
-						processEntity(key, addOp, editOp, e);
+						processEntity(key, op, op, e);
 						placeCounter++;
 						m.capture();
 					}
 				} else {
 					List<DiffEntity> places = osmParser.parseNextCoordinatePlaces(placesPerOperation, DiffEntity.class);
 					for (DiffEntity e : places) {
+						if (!ids.add(e.getOldEntity() != null ? e.getOldEntity().getId() : e.getNewEntity().getId())) {
+							op = wrapOpIfNeeded(opsToAdd, op);
+						}
 						Metric m = mProcDiff.start();
-						processDiffEntity(key, addOp, editOp, e);
+						processDiffEntity(key, op, op, e);
 						placeCounter++;
 						m.capture();
 					}
 				}
-				if (addOp.hasCreated() || addOp.hasEdited()) {
-					opsToAdd.add(addOp);
-				}
-//				if(editOp.hasCreated() || editOp.hasEdited()) {
-//					opsToAdd.add(editOp);
-//				}
+				wrapOpIfNeeded(opsToAdd, op);
 			}
 			return opsToAdd;
+		}
+
+		
+		private OpOperation wrapOpIfNeeded(List<OpOperation> opsToAdd, OpOperation op) {
+			if(op == null) {
+				return initOpOperation(opType);
+			} else if(op.hasCreated() || op.hasDeleted() || op.hasEdited()) {
+				opsToAdd.add(op);
+				return initOpOperation(opType);
+			}
+			return op;
 		}
 
 		private void processEntity(String key, OpOperation addOp, OpOperation editOp, Entity obj) throws FailedVerificationException, InterruptedException {
@@ -688,7 +700,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				}
 			} catch (RuntimeException e) {
 				// extra logging to catch exception with objects
-				if(obj != null) {
+				if (obj != null) {
 					LOGGER.error(e.getMessage() + ": " + obj.getId() + " " + obj.getTags());
 				}
 				throw e;
