@@ -329,6 +329,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			Deque<Future<TaskResult>> futures = new ConcurrentLinkedDeque<Future<TaskResult>>();
 			List<SyncRequest> requests = calculateRequests(schema, state);
 			for (SyncRequest r : requests) {
+				// process new type and values with given timestamp
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
 					if (r.date == null) {
 						r.date = ctimestamp;
@@ -352,8 +353,8 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				}
 				long timeDiff = 0;
 				try {
-					timeDiff = TIMESTAMP_FORMAT.parse(r.date).getTime() - TIMESTAMP_FORMAT.parse(r.state.date).getTime();
 					r.date = ctimestamp;
+					timeDiff = TIMESTAMP_FORMAT.parse(r.date).getTime() - TIMESTAMP_FORMAT.parse(r.state.date).getTime();
 				} catch (ParseException e1) {
 					throw new IllegalArgumentException(e1);
 				}
