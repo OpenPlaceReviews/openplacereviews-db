@@ -315,7 +315,7 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			String ctimestamp = OprUtil.downloadString(urls.get(F_TIMESTAMP).toString(),
 					"Download current OSM timestamp");
 			String atimestamp = alignTimestamp(ctimestamp, (int) bt.getLong(BOT_CONFIG_ALIGN_TIMESTAMP_KEY, ALIGN_TIMESTAMP_MINUTES));
-			if(atimestamp == null) {
+			if (atimestamp == null) {
 				info(String.format("Nothing to synchronize yet: %s", ctimestamp));
 				return this;
 			}
@@ -330,10 +330,10 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			List<SyncRequest> requests = calculateRequests(schema, state);
 			for (SyncRequest r : requests) {
 				if (!r.ntype.isEmpty() && !r.nvalues.isEmpty()) {
-					if(r.date == null) {
+					if (r.date == null) {
 						r.date = ctimestamp;
 					}
-					if(r.state.empty) {
+					if (r.state.empty) {
 						OpOperation op = initOpOperation(OP_BOT);
 						r.state.date = r.date;
 						PlaceOpObjectHelper.generateEditBeginObject(op, r, botObject);
@@ -350,21 +350,24 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					generateEditOpForBotObject(op, r, botObject);
 					generateHashAndSignAndAdd(op);
 				}
-				if (!OUtils.equals(ctimestamp, r.state.date)) {
+				long timeDiff = 0;
+				try {
+					timeDiff = TIMESTAMP_FORMAT.parse(r.date).getTime() - TIMESTAMP_FORMAT.parse(r.state.date).getTime();
 					r.date = ctimestamp;
-					try {
-						long maxDiffTimeMs = 60 * 1000l * bt.getLong(BOT_CONFIG_MAX_OVERPASS_DIFF_KEY, MAX_OVERPASS_DIFF_MINUTES);
-						if (TIMESTAMP_FORMAT.parse(r.date).getTime() - TIMESTAMP_FORMAT.parse(r.state.date).getTime() > maxDiffTimeMs) {
-							Date nd = new Date(TIMESTAMP_FORMAT.parse(r.state.date).getTime() + maxDiffTimeMs);
-							r.date = TIMESTAMP_FORMAT.format(nd);
-						}
-					} catch (ParseException e1) {
-						throw new IllegalArgumentException(e1);
+				} catch (ParseException e1) {
+					throw new IllegalArgumentException(e1);
+				}
+				if (timeDiff > 0) {
+					long maxDiffTimeMs = 60 * 1000l * bt.getLong(BOT_CONFIG_MAX_OVERPASS_DIFF_KEY, MAX_OVERPASS_DIFF_MINUTES);
+					if (timeDiff > maxDiffTimeMs) {
+						Date nd = new Date(TIMESTAMP_FORMAT.parse(r.state.date).getTime() + maxDiffTimeMs);
+						r.date = TIMESTAMP_FORMAT.format(nd);
 					}
+
 					Publisher task = new Publisher(futures, overpassURL, r, r.coordinates(), true);
 					String msg = String.format(" diff %s [%s]->[%s]", r.name, r.state.date, r.date);
 					submitTaskAndWait("Synchronization started: " + msg, task, futures);
-					if(isInterrupted()) {
+					if (isInterrupted()) {
 						info("Synchronization interrupted: " + msg);
 						return this;
 					}
