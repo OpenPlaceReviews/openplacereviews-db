@@ -21,7 +21,7 @@ subprojects {
 
     group 'org.openplacereviews.db'
     version '1.0'
-    sourceCompatibility = 1.8
+    // sourceCompatibility = 1.8
 
     task allDeps(type: DependencyReportTask) {
 
