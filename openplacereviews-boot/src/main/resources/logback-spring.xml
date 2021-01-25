@@ -9,7 +9,7 @@
 	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
 		<withJansi>true</withJansi>
 		<encoder>
-			<pattern>%X{rid} %d{yyy-MM-dd HH:mm:ss.SSS} %green([%thread]) %highlight(%-5level) %cyan(%c{1.}) - %msg%n</pattern>
+			<pattern>%X{rid} %d{yyy-MM-dd HH:mm:ss.SSS} %green([%thread]) %highlight(%-5level) %cyan(%c{1.}) - %msg%n%ex{10}</pattern>
 		</encoder>
 	</appender>
 	<springProfile name="default">
