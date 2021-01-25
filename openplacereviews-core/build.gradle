@@ -9,7 +9,9 @@ version '1.0'
 dependencies {
    implementation "org.openplacereviews:opendb-core:1.0"
    implementation "com.github.filosganga:geogson-core:1.2.21"
-	
+   implementation "commons-io:commons-io:2.6"
+   implementation "commons-logging:commons-logging:1.2"
+
     compile group: 'javax.activation', name: 'activation', version: '1.1.1'
     compile group: 'commons-codec', name: 'commons-codec', version: '1.12'
     // https://mvnrepository.com/artifact/com.google.openlocationcode/openlocationcode
