@@ -99,7 +99,6 @@ public class OprUserMgmtController {
 	
 	protected static final Log LOGGER = LogFactory.getLog(OprUserMgmtController.class);
 	
-	// TODO make url customizable
 	public static final String DEFAULT_PURPOSE_LOGIN = "opr-web";
 	
 	@Value("${opendb.email.sendgrid-api}")
