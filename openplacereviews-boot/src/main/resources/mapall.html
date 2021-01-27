@@ -23,6 +23,11 @@
 		<div class="col-1 group-inline margin-top-style-5 d-none">
 			<input class="form-control" type="date" id="date2-filter">
 		</div>
+		<div class="col-1 group-inline margin-top-style-5 d-none">
+			<select id="request-filter" class="form-control">
+				<option selected value="all">Filter...</option>
+			</select>
+		</div>
 		<div class="col-2 group-inline margin-top-style-5 d-none">
 			<select id="options-filter" class="form-control">
 				<option selected value="all">Filter...</option>
@@ -187,16 +192,38 @@
 			let data = mp.geo;
 			placesCache[""] = { data: data };
 			if ("date" in mp.parameters) {
-				$("#date-filter").parent().removeClass("d-none");
 				if (!("date" in mapParams)) {
+					$("#date-filter").parent().removeClass("d-none");
 					mapParams["date"] = "#date-filter";
+					$("#date-filter").change(function () {
+						refreshData();
+					});
 				}
 			}
 			if ("date2" in mp.parameters) {
-				$("#date2-filter").parent().removeClass("d-none");
 				if (!("date2" in mapParams)) {
+					$("#date2-filter").parent().removeClass("d-none");
 					mapParams["date2"] = "#date2-filter";
+					$("#date2-filter").change(function () {
+						refreshData();
+					});
 				}
+			}
+			if ("requestFilter" in mp.parameters) {
+				var filter = $("#request-filter");
+				if (!("requestFilter" in mapParams)) {
+					filter.parent().removeClass("d-none");
+					mapParams["requestFilter"] = "#request-filter";
+					filter.change(function () {
+						refreshData();
+					});
+					filter.empty();
+					filter.append(new Option("Request...", "all"));
+					for(var requestFilterKey in mp.parameters.requestFilter) {
+						filter.append(new Option(mp.parameters.requestFilter[requestFilterKey], requestFilterKey));
+					}
+				}
+				
 			}
 			if ("tileid" in mp.parameters) {
 				tileBased = true;
@@ -211,7 +238,7 @@
 					filter.append(new Option(mp.parameters.placeTypes[type], type));
 				}
 				filter.parent().removeClass("d-none");
-				$("#options-filter").change(function(){
+				filter.change(function(){
 					refreshMapDelay();
 				});
 			}
@@ -374,12 +401,6 @@
 		}
 	});
 	refreshData();
-	$("#date-filter").change(function () {
-		refreshData();
-	});
-	$("#date2-filter").change(function(){
-		refreshData();
-	});
 
 
 </script>

@@ -13,6 +13,7 @@ public class OprMapCollectionApiResult {
 	public static final String PARAM_DATE2_KEY = "date2";
 	public static final String PARAM_TILE_BASED_KEY = "tileid";
 	public static final String PARAM_PLACE_FILTER = "placeTypes";
+	public static final String PARAM_REQUEST_FILTER = "requestFilter";
 	
 	public FeatureCollection geo = new FeatureCollection(new ArrayList<Feature>());
 	
@@ -23,6 +24,7 @@ public class OprMapCollectionApiResult {
 		Date date;
 		Date date2;
 		String tileId;
+		String requestFilter;
 		
 		@Override
 		public int hashCode() {
@@ -31,6 +33,7 @@ public class OprMapCollectionApiResult {
 			result = prime * result + ((date == null) ? 0 : date.hashCode());
 			result = prime * result + ((date2 == null) ? 0 : date2.hashCode());
 			result = prime * result + ((tileId == null) ? 0 : tileId.hashCode());
+			result = prime * result + ((requestFilter == null) ? 0 : requestFilter.hashCode());
 			return result;
 		}
 		@Override
@@ -56,6 +59,11 @@ public class OprMapCollectionApiResult {
 				if (other.tileId != null)
 					return false;
 			} else if (!tileId.equals(other.tileId))
+				return false;
+			if (requestFilter == null) {
+				if (other.requestFilter != null)
+					return false;
+			} else if (!requestFilter.equals(other.requestFilter))
 				return false;
 			return true;
 		}

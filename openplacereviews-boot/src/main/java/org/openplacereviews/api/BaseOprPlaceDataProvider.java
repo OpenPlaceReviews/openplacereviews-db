@@ -9,6 +9,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -116,28 +117,31 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 	@Override
 	public MapCollectionParameters formatParams(Map<String, String[]> params) {
 		MapCollectionParameters res = new MapCollectionParameters();
-		String[] tls = params.get(OprMapCollectionApiResult.PARAM_TILE_BASED_KEY);
-		if (tls != null && tls.length == 1 && tls[0] != null) {
-			res.tileId = tls[0];
-		}
-
-		tls = params.get(OprMapCollectionApiResult.PARAM_DATE_KEY);
-		if (tls != null && tls.length == 1 && tls[0] != null) {
-			try {
-				res.date = DATE_FORMAT.parse(tls[0]);
-			} catch (ParseException e) {
-				LOGGER.warn(e.getMessage(), e);
-			}
-		}
-		tls = params.get(OprMapCollectionApiResult.PARAM_DATE2_KEY);
-		if (tls != null && tls.length == 1 && tls[0] != null) {
-			try {
-				res.date2 = DATE_FORMAT.parse(tls[0]);
-			} catch (ParseException e) {
-				LOGGER.warn(e.getMessage(), e);
-			}
-		}
+		res.tileId = getParam(params, OprMapCollectionApiResult.PARAM_TILE_BASED_KEY);
+		res.requestFilter = getParam(params, OprMapCollectionApiResult.PARAM_REQUEST_FILTER);
+		res.date = parseDate(getParam(params, OprMapCollectionApiResult.PARAM_DATE_KEY));
+		res.date2 = parseDate(getParam(params, OprMapCollectionApiResult.PARAM_DATE2_KEY));
 		return res;
+	}
+
+	protected Date parseDate(String param) {
+		try {
+			if (param != null) {
+				return DATE_FORMAT.parse(param);
+			}
+		} catch (ParseException e) {
+			LOGGER.warn(e.getMessage(), e);
+		}
+		return null;
+	}
+
+	private String getParam(Map<String, String[]> params, String key) {
+		String v = null;
+		String[] tls = params.get(key);
+		if (tls != null && tls.length == 1 && tls[0] != null) {
+			 v= tls[0];
+		}
+		return v;
 	}
 
 
