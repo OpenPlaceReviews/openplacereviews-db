@@ -117,14 +117,22 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 	public MapCollectionParameters formatParams(Map<String, String[]> params) {
 		MapCollectionParameters res = new MapCollectionParameters();
 		String[] tls = params.get(OprMapCollectionApiResult.PARAM_TILE_BASED_KEY);
-		if(tls != null && tls.length == 1 && tls[0] != null) {
+		if (tls != null && tls.length == 1 && tls[0] != null) {
 			res.tileId = tls[0];
 		}
-		
+
 		tls = params.get(OprMapCollectionApiResult.PARAM_DATE_KEY);
-		if(tls != null && tls.length == 1 && tls[0] != null) {
+		if (tls != null && tls.length == 1 && tls[0] != null) {
 			try {
 				res.date = DATE_FORMAT.parse(tls[0]);
+			} catch (ParseException e) {
+				LOGGER.warn(e.getMessage(), e);
+			}
+		}
+		tls = params.get(OprMapCollectionApiResult.PARAM_DATE2_KEY);
+		if (tls != null && tls.length == 1 && tls[0] != null) {
+			try {
+				res.date2 = DATE_FORMAT.parse(tls[0]);
 			} catch (ParseException e) {
 				LOGGER.warn(e.getMessage(), e);
 			}

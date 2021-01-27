@@ -10,6 +10,7 @@ import com.github.filosganga.geogson.model.FeatureCollection;
 
 public class OprMapCollectionApiResult {
 	public static final String PARAM_DATE_KEY = "date";
+	public static final String PARAM_DATE2_KEY = "date2";
 	public static final String PARAM_TILE_BASED_KEY = "tileid";
 	public static final String PARAM_PLACE_FILTER = "placeTypes";
 	
@@ -20,6 +21,7 @@ public class OprMapCollectionApiResult {
 	public static class MapCollectionParameters {
 		
 		Date date;
+		Date date2;
 		String tileId;
 		
 		@Override
@@ -27,6 +29,7 @@ public class OprMapCollectionApiResult {
 			final int prime = 31;
 			int result = 1;
 			result = prime * result + ((date == null) ? 0 : date.hashCode());
+			result = prime * result + ((date2 == null) ? 0 : date2.hashCode());
 			result = prime * result + ((tileId == null) ? 0 : tileId.hashCode());
 			return result;
 		}
@@ -43,6 +46,11 @@ public class OprMapCollectionApiResult {
 				if (other.date != null)
 					return false;
 			} else if (!date.equals(other.date))
+				return false;
+			if (date2 == null) {
+				if (other.date2 != null)
+					return false;
+			} else if (!date2.equals(other.date2))
 				return false;
 			if (tileId == null) {
 				if (other.tileId != null)

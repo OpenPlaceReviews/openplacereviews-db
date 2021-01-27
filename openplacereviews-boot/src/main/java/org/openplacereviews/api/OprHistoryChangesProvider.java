@@ -79,9 +79,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		// fc.parameters.put(OprMapCollectionApiResult.PARAM_TILE_BASED_KEY, true);
 		fc.parameters.put(OprMapCollectionApiResult.PARAM_PLACE_FILTER, placeTypes());
 		fc.parameters.put(OprMapCollectionApiResult.PARAM_DATE_KEY, true);
+		fc.parameters.put(OprMapCollectionApiResult.PARAM_DATE2_KEY, true);
 		if (params.date != null) {
 			try {
-				retrievePlacesByDate(params.date, fc.geo);
+				retrievePlacesByDate(params.date, params.date2, fc.geo);
 			} catch (ParseException e) {
 				LOGGER.error("Incorrect 'date' format", e);
 			}
@@ -91,12 +92,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 	
-	public void retrievePlacesByDate(Date date, FeatureCollection fc) throws ParseException {
+	public void retrievePlacesByDate(Date date, Date date2, FeatureCollection fc) throws ParseException {
 		List<OpBlock> listBlocks = blocksManager.getBlockchain().getBlockHeaders(-1);
 		List<OpBlock> blocksByDate = new LinkedList<>();
+		Date nextDate = date2 != null ? DateUtils.addDays(date2, 1) : DateUtils.addDays(date, 1) ; 
 		for (OpBlock opBlock : listBlocks) {
 			Date blockDate = OpBlock.dateFormat.parse(opBlock.getDateString());
-			if (DateUtils.isSameDay(date, blockDate)) {
+			if (date.getTime() <= blockDate.getTime() && blockDate.getTime() <= nextDate.getTime()) {
 				blocksByDate.add(opBlock);
 			}
 		}
