@@ -5,12 +5,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.openplacereviews.api.OprMapCollectionApiResult.MapCollectionParameters;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.de.CompoundKey;
 import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
 import org.openplacereviews.osm.parser.OsmLocationTool;
-import org.springframework.core.io.AbstractResource;
-import org.springframework.core.io.InputStreamResource;
 
 import com.github.filosganga.geogson.model.Feature;
 import com.github.filosganga.geogson.model.Point;
@@ -20,20 +19,19 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import com.google.openlocationcode.OpenLocationCode;
 
-public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
+public class OprSummaryPlaceDataProvider extends BaseOprPlaceDataProvider {
 	
 	private static final int TILE_INFO_SUBSET = 4;
 	
 	@Override
-	public MapCollection getContent(String params) {
-		
+	public OprMapCollectionApiResult getContent(MapCollectionParameters params) {
 		OpBlockChain blc = blocksManager.getBlockchain();
 		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
 		r.requestOnlyKeys = true;
 		blc.fetchAllObjects("opr.place", r);
 		List<CompoundKey> ks = r.keys;
 		Map<String, Integer> counts = new HashMap<>();
-		MapCollection m = new MapCollection();
+		OprMapCollectionApiResult m = new OprMapCollectionApiResult();
 		for(CompoundKey c : ks) {
 			String areaCode = c.first.substring(0, TILE_INFO_SUBSET);
 			Integer l = counts.get(areaCode);
@@ -61,14 +59,9 @@ public class OprSummaryPlaceDataProvider extends OprPlaceDataProvider {
 	}
 	
 	@Override
-	public List<String> getKeysToCache(PublicAPIEndpoint<String, MapCollection> api) {
-		return Collections.singletonList("");
+	public List<MapCollectionParameters> getKeysToCache(PublicAPIEndpoint<MapCollectionParameters, OprMapCollectionApiResult> api) {
+		return Collections.singletonList(new MapCollectionParameters());
 	}
 	
-	
-	@Override
-	public AbstractResource getMetaPage(Map<String, String[]> params) {
-		return new InputStreamResource(OprSummaryPlaceDataProvider.class.getResourceAsStream("/mapall.html"));
-	}
 
 }

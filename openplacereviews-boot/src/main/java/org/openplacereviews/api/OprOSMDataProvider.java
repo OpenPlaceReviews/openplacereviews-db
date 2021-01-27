@@ -35,10 +35,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 
 public class OprOSMDataProvider implements IPublicDataProvider<String, Object> {
+	// DRAFT: implementation not finished
 	
 	@Autowired
 	private BlocksManager blocksManager;
-	
 	
 	public Collection<Entity> getOsmObjects() {
 		OpBlockChain blc = blocksManager.getBlockchain();

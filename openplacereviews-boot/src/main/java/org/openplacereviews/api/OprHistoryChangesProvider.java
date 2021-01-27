@@ -1,6 +1,5 @@
 package org.openplacereviews.api;
 
-import static org.openplacereviews.api.MapCollection.TYPE_DATE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.service.HistoryManager.DESC_SORT;
@@ -13,7 +12,6 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
 
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedList;
@@ -23,15 +21,13 @@ import java.util.Map;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.openplacereviews.opendb.api.ApiController;
+import org.openplacereviews.api.OprMapCollectionApiResult.MapCollectionParameters;
 import org.openplacereviews.opendb.ops.OpBlock;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.HistoryManager;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.AbstractResource;
-import org.springframework.core.io.InputStreamResource;
 
 import com.github.filosganga.geogson.model.Feature;
 import com.github.filosganga.geogson.model.FeatureCollection;
@@ -42,9 +38,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
-public class OprHistoryChangesProvider extends OprPlaceDataProvider {
+public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
-	private static final Log LOGGER = LogFactory.getLog(ApiController.class);
+	private static final Log LOGGER = LogFactory.getLog(OprHistoryChangesProvider.class);
 
 	// TODO delete
 	public static final String OSM_ID = "osm_id";
@@ -63,8 +59,6 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 	public static final String ATTR_TYPE = "type";
 	public static final String ATTR_SET = "set";
 
-	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
-
 	// constants ? or human strings?
 	public static final String OBJ_CREATED = "Created";
 	public static final String OBJ_EDITED = "Edited";
@@ -76,9 +70,28 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	@Autowired
 	private HistoryManager historyManager;
+	
 
-	public void retrievePlacesByDate(String stringDate, FeatureCollection fc) throws ParseException {
-		Date date = DATE_FORMAT.parse(stringDate);
+
+	@Override
+	public OprMapCollectionApiResult getContent(MapCollectionParameters params) {
+		OprMapCollectionApiResult fc = new OprMapCollectionApiResult();
+		// fc.parameters.put(OprMapCollectionApiResult.PARAM_TILE_BASED_KEY, true);
+		fc.parameters.put(OprMapCollectionApiResult.PARAM_PLACE_FILTER, placeTypes());
+		fc.parameters.put(OprMapCollectionApiResult.PARAM_DATE_KEY, true);
+		if (params.date != null) {
+			try {
+				retrievePlacesByDate(params.date, fc.geo);
+			} catch (ParseException e) {
+				LOGGER.error("Incorrect 'date' format", e);
+			}
+		}
+
+		return fc;
+	}
+
+	
+	public void retrievePlacesByDate(Date date, FeatureCollection fc) throws ParseException {
 		List<OpBlock> listBlocks = blocksManager.getBlockchain().getBlockHeaders(-1);
 		List<OpBlock> blocksByDate = new LinkedList<>();
 		for (OpBlock opBlock : listBlocks) {
@@ -240,33 +253,4 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 		return searchKey;
 	}
 
-	@Override
-	public MapCollection getContent(String date) {
-		MapCollection fc = new MapCollection();
-		fc.parameters.put(TYPE_DATE, TYPE_DATE);
-		if(!date.equals("")) {
-			try {
-				retrievePlacesByDate(date, fc.geo);
-			} catch (ParseException e) {
-				LOGGER.error("Incorrect 'date' format", e);
-			}
-		}
-
-		return fc;
-	}
-
-	@Override
-	public String formatParams(Map<String, String[]> params) {
-		String[] tls = params.get(TYPE_DATE);
-		if(tls != null && tls.length == 1 && tls[0] != null) {
-			return tls[0];
-		}
-		return "";
-	}
-
-	
-	@Override
-	public AbstractResource getMetaPage(Map<String, String[]> params) {
-		return new InputStreamResource(OprSummaryPlaceDataProvider.class.getResourceAsStream("/mapall.html"));
-	}
 }

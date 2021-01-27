@@ -104,86 +104,6 @@
 						</div>
 					</div>
 				</div>
-				<!--<div class="panel panel-default">-->
-					<!--<div class="panel-heading" role="tab" id="headingThree">-->
-						<!--<h4 class="panel-title">-->
-							<!--<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseThree" aria-expanded="false" aria-controls="collapseThree">-->
-								<!--<span>Photos</span>-->
-							<!--</a>-->
-						<!--</h4>-->
-					<!--</div>-->
-					<!--<div id="collapseThree" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingThree">-->
-						<!--<div class="panel-body">-->
-							<!--&lt;!&ndash;TODO update photos viewer&ndash;&gt;-->
-							<!--<div class="margin-left-style form-inline">-->
-								<!--<div class="column">-->
-									<!--<img src="/api/images/trip-advisor.png" alt="Snow" class="style-with-20">-->
-								<!--</div>-->
-								<!--<div class="column">-->
-									<!--<img src="/api/images/trip-advisor.png" alt="Forest" class="style-with-20">-->
-								<!--</div>-->
-								<!--<div class="column">-->
-									<!--<img src="/api/images/trip-advisor.png" alt="Mountains" class="style-with-20">-->
-								<!--</div>-->
-							<!--</div>-->
-							<!--<div class="form-group margin-top-style">-->
-								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/plus-icon.jpg"> Add Photos</button>-->
-								<!--<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">-->
-								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/mapillary.png"> Connect to Mapillary</button>-->
-							<!--</div>-->
-						<!--</div>-->
-					<!--</div>-->
-				<!--</div>-->
-				<!--<div class="panel panel-default">-->
-					<!--<div class="panel-heading" role="tab" id="headingFour">-->
-						<!--<h4 class="panel-title">-->
-							<!--<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFour" aria-expanded="false" aria-controls="collapseFour">-->
-								<!--<span>Available imports</span>-->
-							<!--</a>-->
-						<!--</h4>-->
-					<!--</div>-->
-					<!--<div id="collapseFour" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFour">-->
-						<!--<div class="panel-body">-->
-							<!--<div class="form-group margin-top-style" >-->
-								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/trip-advisor.png"> TripAdvisor</button>-->
-								<!--<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">-->
-								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/openStreetMap.png"> OpenStreetMap</button>-->
-								<!--<hr class="margin-left-style margin-right-style remove-element-top-bot-spaces">-->
-								<!--<button class="btn btn-default margin-left-style remove-border"><img height="20" width="20" src="/api/images/wikipedia.png"> Wikipedia</button>-->
-							<!--</div>-->
-						<!--</div>-->
-					<!--</div>-->
-				<!--</div>-->
-				<!--<div class="panel panel-default">-->
-					<!--<div class="panel-heading" role="tab" id="headingFive">-->
-						<!--<h4 class="panel-title">-->
-							<!--<a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion" href="#collapseFive" aria-expanded="false" aria-controls="collapseFive">-->
-								<!--<span>Similar object</span>-->
-							<!--</a>-->
-						<!--</h4>-->
-					<!--</div>-->
-					<!--<div id="collapseFive" class="panel-collapse collapse" role="tabpanel" aria-labelledby="headingFive">-->
-						<!--<div class="panel-body">-->
-							<!--<div class="form-group margin-left-style margin-right-style margin-bottom-style">-->
-								<!--<div class="card">-->
-									<!--<div class="card-body">-->
-										<!--<div class="col-md-8 padding-left-0px">-->
-											<!--<h2 did="placeName" class="remove-element-top-bot-spaces">Pyzata hata</h2>-->
-											<!--<p did="placeType">Restoran</p>-->
-											<!--<p><b>id:</b> <a did="placeId" href="">23dfd</a></p>-->
-											<!--<p did="placeLocation">12.2323,12.43445</p>-->
-											<!--<br>-->
-											<!--<button class="btn btn-default">Merge</button>-->
-										<!--</div>-->
-										<!--<div class="col-md-4">-->
-											<!--<img height="100" width="100" src="/api/images/trip-advisor.png">-->
-										<!--</div>-->
-									<!--</div>-->
-								<!--</div>-->
-							<!--</div>-->
-						<!--</div>-->
-					<!--</div>-->
-				<!--</div>-->
 			</div>
 		</div>
 
@@ -215,9 +135,11 @@
 	</div>
 
 	<div id='map-header' class="form-row align-items-center">
-		<div class="col-2 group-inline margin-top-style-5">
-			<input class="form-control d-none" type="date" id="date-filter">
-			<select id="filter" class="form-control d-none">
+		<div class="col-2 group-inline margin-top-style-5 d-none">
+			<input class="form-control" type="date" id="date-filter">
+		</div>
+		<div class="col-2 group-inline margin-top-style-5 d-none">
+			<select id="options-filter" class="form-control">
 				<option selected value="all">Filter...</option>
 			</select>
 		</div>
@@ -282,6 +204,7 @@
 </script>
 
 <script>
+	var newsidebar = false;
     var map = L.map('map');
 	var currentLayer = null;
 	var currentBounds = {};
@@ -357,29 +280,30 @@
 		return popupContent;
 	}
 
-	var addClickListener = false;
+	
 	function refreshData(params="") {
 		$("#map-header-text").text("Loading data...");
 		$.getJSON("data?"+params, function (mp) {
 			let data = mp.geo;
 			placesCache[""] = { data: data };
-			if("date" in mp.parameters) {
-				$("#date-filter").removeClass("d-none");
+			if ("date" in mp.parameters) {
+				$("#date-filter").parent().removeClass("d-none");
 			}
-			if(mp.tileBased) {
+			if ("tileid" in mp.parameters) {
 				tileBased = true;
 				onMapChange();
 			}
-			if(mp.placeTypes) {
-				var filter = $("#filter");
+			newsidebar = "newsidebar" in mp.parameters;
+			if ("placeTypes" in mp.parameters) {
+				var filter = $("#options-filter");
 				filter.empty();
-                addClickListener = true;
+                
 				filter.append(new Option("Filter...", "all"));
-				for (var type in mp.placeTypes) {
-					filter.append(new Option(mp.placeTypes[type], type));
+				for (var type in mp.parameters.placeTypes) {
+					filter.append(new Option(mp.parameters.placeTypes[type], type));
 				}
-				filter.removeClass("d-none");
-				$("#filter").change(function(){
+				filter.parent().removeClass("d-none");
+				$("#options-filter").change(function(){
 					refreshMapDelay();
 				});
 			}
@@ -400,7 +324,7 @@
 		if (tileBased) {
 			var tiles = 0;
 			var missing = 0;
-			var filterVal = $("#filter").val();
+			var filterVal = $("#options-filter").val();
 			for (var k in currentBounds) {
 				var cTileId = placesCache[k];
 				if (cTileId.data && "features" in cTileId.data) {
@@ -424,7 +348,19 @@
 				msg += " (" + missing + " tiles loading...) ";
 			}
 		} else {
-			geoJson = placesCache[""].data;
+			var filterVal = $("#options-filter").val();
+			if (filterVal == "all") {
+				geoJson = placesCache[""].data;
+			} else {
+				let dt =  placesCache[""].data;
+				for (var i = 0; i < dt.features.length; i++) {
+					let f = dt.features[i];
+					if (f.properties && f.properties.place_type == filterVal) {
+						geoJson.features.push(f);
+					}
+				}
+			}
+			
 			msg = "Loaded " + geoJson.features.length + " places";
 		}
 		$("#map-header-text").text(msg);
@@ -440,83 +376,11 @@
 					iconVal = { icon: coloredMarkers[feature.properties.color] };
 				}
 				var marker = L.marker(latlng, iconVal);
-				if (addClickListener) {
+				if (newsidebar) {
                     return marker.on('click', function () {addClickMenuInfo(feature)} );
 				} else {
                     return marker.bindPopup(getMarkerContent(feature));
 				}
-				function addClickMenuInfo(feature) {
-                    openNav();
-                    var prop = feature.properties;
-                    $("#placeName").html(prop.title);
-                    $("#placeType").html(prop.subtitle);
-                    $("#placeId").html(prop.opr_id).attr("href", "/api/admin?view=objects&browse=type&limit=50&type=opr.place&subtype=id&key=" + prop.opr_id);
-                    $("#placeLocation").html(showLocationCoordinates(feature.geometry.coordinates));
-
-                    var table = $("#osm-tag-table");
-                    table.empty();
-                    var template = $("#tag-template");
-                    var tripadvisorExist = false;
-                    if (prop.sources) {
-                        for (var i = 0; i < prop.sources.length; i++) {
-                            var placeObj = prop.sources[i];
-                            if (placeObj.source_type === "osm") {
-                                $("#osmTagsAmount").html(Object.keys(placeObj.tags).length);
-                                $("#osmId").html(placeObj.id).attr("href", "https://www.openstreetmap.org/" + placeObj.type + "/" + placeObj.id);
-                                $("#osmVersion").html(placeObj.version);
-                                $("#placeChangeset").html("#" + placeObj.changeset).attr("href", "https://www.openstreetmap.org/changeset/" + placeObj.changeset);
-
-                                var objTag = placeObj.tags;
-                                for (var tag in objTag) {
-                                    let newTemplate = template.clone()
-                                        .appendTo(table)
-                                        .removeClass("hidden")
-                                        .show();
-
-                                    fillTemplateFields(newTemplate, tag, objTag[tag]);
-                                }
-                            } else if (placeObj.source_type === "tripadvisor" || placeObj.source_type === "tripAdvisor") {
-                                tripadvisorExist = true;
-                                var tripadvisorObj = placeObj.id;
-                                $("#tripadvisorId").html(generateTripAdvisorId(tripadvisorObj)).attr("href", "https://www.tripadvisor.com/" + generateTripAdvisorId(tripadvisorObj))
-							}
-						}
-
-                    }
-                    if (!tripadvisorExist) {
-                        $("#tripadvisorId").html("").attr("href", "");
-                        $("#missing-tripadvisor").removeClass("hidden");
-                        $("#trip-advisor-add-block").removeClass("hidden");
-                        $("#tripadvisor-exist-div").addClass("hidden");
-                        $("#tripadvisor-link").html("https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title).attr("href", "https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title);
-					} else {
-                        $("#missing-tripadvisor").addClass("hidden");
-                        $("#trip-advisor-add-block").addClass("hidden");
-					}
-                    $("#osmLocation").html(showLocationCoordinates(feature.geometry.coordinates));
-
-                    var opendbTable = $("#opendb-tag-table");
-                    opendbTable.empty();
-                    var imgTemplate = $("#img-tag-template");
-
-                    if (prop.tags) {
-                        for (var t in prop.tags) {
-                            var obj = prop.tags[t];
-                            let newTemplate = imgTemplate.clone()
-                                .appendTo(opendbTable)
-                                .removeClass("hidden")
-                                .show();
-
-                            newTemplate.find("[did='tag-k']").html(t).attr("href", "https://wiki.openstreetmap.org/wiki/Uk:Key:" + t + "?uselang=uk");
-                            newTemplate.find("[did='tag-v']").html(obj.value);
-                            switch (obj.source) {
-								case "osm": {
-                                    newTemplate.find("[did='image-tag-k']").attr("src", "/api/images/openStreetMap.png");
-                                }
-                            }
-						}
-					}
-                }
 				// return L.circleMarker(latlng, {
 				// 	radius: 8,
 				// 	fillColor: "#ff7800",
@@ -533,6 +397,80 @@
 		gcPlaceTiles();
 	}
 
+
+	function addClickMenuInfo(feature) {
+		openNav();
+		var prop = feature.properties;
+		$("#placeName").html(prop.title);
+		$("#placeType").html(prop.subtitle);
+		$("#placeId").html(prop.opr_id).attr("href", "/api/admin?view=objects&browse=type&limit=50&type=opr.place&subtype=id&key=" + prop.opr_id);
+		$("#placeLocation").html(showLocationCoordinates(feature.geometry.coordinates));
+
+		var table = $("#osm-tag-table");
+		table.empty();
+		var template = $("#tag-template");
+		var tripadvisorExist = false;
+		if (prop.sources) {
+			for (var i = 0; i < prop.sources.length; i++) {
+				var placeObj = prop.sources[i];
+				if (placeObj.source_type === "osm") {
+					$("#osmTagsAmount").html(Object.keys(placeObj.tags).length);
+					$("#osmId").html(placeObj.id).attr("href", "https://www.openstreetmap.org/" + placeObj.type + "/" + placeObj.id);
+					$("#osmVersion").html(placeObj.version);
+					$("#placeChangeset").html("#" + placeObj.changeset).attr("href", "https://www.openstreetmap.org/changeset/" + placeObj.changeset);
+
+					var objTag = placeObj.tags;
+					for (var tag in objTag) {
+						let newTemplate = template.clone()
+							.appendTo(table)
+							.removeClass("hidden")
+							.show();
+
+						fillTemplateFields(newTemplate, tag, objTag[tag]);
+					}
+				} else if (placeObj.source_type === "tripadvisor" || placeObj.source_type === "tripAdvisor") {
+					tripadvisorExist = true;
+					var tripadvisorObj = placeObj.id;
+					$("#tripadvisorId").html(generateTripAdvisorId(tripadvisorObj)).attr("href", "https://www.tripadvisor.com/" + generateTripAdvisorId(tripadvisorObj))
+				}
+			}
+
+		}
+		if (!tripadvisorExist) {
+			$("#tripadvisorId").html("").attr("href", "");
+			$("#missing-tripadvisor").removeClass("hidden");
+			$("#trip-advisor-add-block").removeClass("hidden");
+			$("#tripadvisor-exist-div").addClass("hidden");
+			$("#tripadvisor-link").html("https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title).attr("href", "https://www.google.com/search?q=site:tripadvisor.com%20" + prop.title);
+		} else {
+			$("#missing-tripadvisor").addClass("hidden");
+			$("#trip-advisor-add-block").addClass("hidden");
+		}
+		$("#osmLocation").html(showLocationCoordinates(feature.geometry.coordinates));
+
+		var opendbTable = $("#opendb-tag-table");
+		opendbTable.empty();
+		var imgTemplate = $("#img-tag-template");
+
+		if (prop.tags) {
+			for (var t in prop.tags) {
+				var obj = prop.tags[t];
+				let newTemplate = imgTemplate.clone()
+					.appendTo(opendbTable)
+					.removeClass("hidden")
+					.show();
+
+				newTemplate.find("[did='tag-k']").html(t).attr("href", "https://wiki.openstreetmap.org/wiki/Uk:Key:" + t + "?uselang=uk");
+				newTemplate.find("[did='tag-v']").html(obj.value);
+				switch (obj.source) {
+					case "osm": {
+						newTemplate.find("[did='image-tag-k']").attr("src", "/api/images/openStreetMap.png");
+					}
+				}
+			}
+		}
+	}
+
 	function generateTripAdvisorId(id) {
 		return id[0] + "-" + id[1];
     }
@@ -540,7 +478,7 @@
 	function onMapChange() {
 		var bounds = map.getBounds();
 		var lcodes = calculateLocationCodes(bounds);
-		if(map.getZoom() <= 10) {
+		if(map.getZoom() <= 12) {
 			$("#map-header-text").text("zooming to get data ");
 		} else if(JSON.stringify(lcodes) != JSON.stringify(currentBounds) ) {
 			currentBounds = lcodes;
