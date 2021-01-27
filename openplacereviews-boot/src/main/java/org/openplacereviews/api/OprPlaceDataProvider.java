@@ -1,4 +1,4 @@
-package org.openplacereviews.controllers;
+package org.openplacereviews.api;
 
 
 
@@ -12,6 +12,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpBlockChain.ObjectsSearchRequest;
@@ -46,10 +48,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	protected static final String PARAM_TILE_ID = "tileid";
 	protected static final int INDEXED_TILEID = 6;
 	
-	// TODO delete
-	public static final String OSM_ID = "osm_id";
-	// TODO delete
-	public static final String OSM_TYPE = "osm_type";
+
 	
 	public static final String TITLE = "title";
 	public static final String SUBTITLE = "subtitle";
@@ -154,6 +153,7 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 			
 			JsonArray sources = new JsonArray();
 			Map<String, List<Map<String, Object>>> sourcesObj = o.getField(null, "source");
+			Set<String> mainTagKeys = new TreeSet<String>();
 			for(String tp : sourcesObj.keySet()) {
 				List<Map<String, Object>> listValues = sourcesObj.get(tp);
 				for(int ind = 0; ind < listValues.size(); ind++) {
@@ -174,8 +174,8 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 						while (it.hasNext()) {
 							Entry<String, Object> e = it.next();
 							tagsObj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
-							// TODO refactor to be more specific
-							if(ind == 0 && tp.equals("osm")) {
+							// for now specify main tags from 1st source
+							if (mainTagKeys.add(e.getKey())) {
 								JsonObject val = new JsonObject();
 								val.add("value", new JsonPrimitive(e.getValue().toString()));
 								val.add("source", new JsonPrimitive(tp));
@@ -255,14 +255,14 @@ public class OprPlaceDataProvider implements IPublicDataProvider<String, MapColl
 	public List<String> getKeysToCache(PublicAPIEndpoint<String, MapCollection> api) {
 		List<String> cacheKeys = new ArrayList<String>(api.getCacheKeys());
 		Iterator<String> it = cacheKeys.iterator();
-//		long now = api.getNow();
-		while(it.hasNext()) {
+		// long now = api.getNow();
+		while (it.hasNext()) {
 			String key = it.next();
 			CacheHolder<MapCollection> cacheHolder = api.getCacheHolder(key);
 			// 1 hour
-//			if(now - cacheHolder.access < 3600l) {
-//			}
-			if(cacheHolder != null && cacheHolder.access == 0 ) {
+			// if(now - cacheHolder.access < 3600l) {
+			// }
+			if (cacheHolder != null && cacheHolder.access == 0) {
 				it.remove();
 				api.removeCacheHolder(key);
 			}

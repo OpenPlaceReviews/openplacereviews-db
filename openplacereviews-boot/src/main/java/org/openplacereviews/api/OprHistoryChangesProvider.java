@@ -1,6 +1,6 @@
-package org.openplacereviews.controllers;
+package org.openplacereviews.api;
 
-import static org.openplacereviews.controllers.MapCollection.TYPE_DATE;
+import static org.openplacereviews.api.MapCollection.TYPE_DATE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.service.HistoryManager.DESC_SORT;
@@ -46,6 +46,11 @@ public class OprHistoryChangesProvider extends OprPlaceDataProvider {
 
 	private static final Log LOGGER = LogFactory.getLog(ApiController.class);
 
+	// TODO delete
+	public static final String OSM_ID = "osm_id";
+	// TODO delete
+	public static final String OSM_TYPE = "osm_type";
+	
 	public static final String OSM_INDEX = "osm_index";
 	public static final String BLOCK_TIMESTAMP = "block_timestamp";
 	public static final String BLOCK_HASH = "block_hash";

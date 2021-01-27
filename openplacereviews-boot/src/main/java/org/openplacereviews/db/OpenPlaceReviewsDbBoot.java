@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.openplacereviews.controllers.OprHistoryChangesProvider;
-import org.openplacereviews.controllers.OprPlaceDataProvider;
-import org.openplacereviews.controllers.OprSummaryPlaceDataProvider;
+import org.openplacereviews.api.OprHistoryChangesProvider;
+import org.openplacereviews.api.OprPlaceDataProvider;
+import org.openplacereviews.api.OprSummaryPlaceDataProvider;
 import org.openplacereviews.opendb.OpenDBServer;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.BotManager;

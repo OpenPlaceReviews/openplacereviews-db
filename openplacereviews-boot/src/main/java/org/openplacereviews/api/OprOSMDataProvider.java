@@ -1,4 +1,4 @@
-package org.openplacereviews.controllers;
+package org.openplacereviews.api;
 
 import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;

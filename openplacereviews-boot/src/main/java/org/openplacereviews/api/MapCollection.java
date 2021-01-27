@@ -1,4 +1,4 @@
-package org.openplacereviews.controllers;
+package org.openplacereviews.api;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
