@@ -77,7 +77,7 @@ public class UserSchemaManager {
 		dbschema.registerColumn(USERS_TABLE, "tokendate", "timestamp", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "sprivkey", "text", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "lprivkey", "text", NOT_INDEXED);
-		dbschema.registerColumn(USERS_TABLE, "externalUser", "int", NOT_INDEXED);
+		dbschema.registerColumn(USERS_TABLE, "externaluser", "int", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "signup", "jsonb", NOT_INDEXED);
 		
 		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "nickname", "text", INDEXED);
@@ -160,7 +160,7 @@ public class UserSchemaManager {
 	public void createNewInternalUser(String name, String email, String emailToken) {
 		getJdbcTemplate().update("DELETE FROM " + USERS_TABLE + " WHERE nickname = ? ", name);
 		getJdbcTemplate().update(
-				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,externalUser) VALUES(?,?,?,?,0)", name,
+				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,externaluser) VALUES(?,?,?,?,0)", name,
 				email, emailToken, new Date());
 
 	}
@@ -183,7 +183,7 @@ public class UserSchemaManager {
 	public void createExternalUser(String name, String sprivkey) {
 		// if it crashes by duplicate nickname we won't let external user to be registered here
 		getJdbcTemplate().update(
-				"INSERT INTO " + USERS_TABLE + "(nickname,sprivkey,externalUser) VALUES(?,?,1)", name,sprivkey);
+				"INSERT INTO " + USERS_TABLE + "(nickname,sprivkey,externaluser) VALUES(?,?,1)", name,sprivkey);
 
 	}
 
@@ -201,7 +201,7 @@ public class UserSchemaManager {
 		} 
 		getJdbcTemplate().update("DELETE FROM " + USERS_TABLE + " WHERE nickname = ?", name);
 		getJdbcTemplate().update(
-				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,sprivkey,signup,externalUser) VALUES(?,?,?,?,?,?,0)", name,
+				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,sprivkey,signup,externaluser) VALUES(?,?,?,?,?,?,0)", name,
 				email, emailToken, new Date(), sprivkey, userObj);
 
 	}
@@ -275,7 +275,7 @@ public class UserSchemaManager {
 	}
 	
 	public String getNameByPrivateNickname(String name) {
-		return getJdbcTemplate().query("SELECT uid FROM " + USERS_TABLE + " WHERE nickname = ? and externalUser == 0",
+		return getJdbcTemplate().query("SELECT uid FROM " + USERS_TABLE + " WHERE nickname = ? and externaluser == 0",
 				new Object[] { name }, new ResultSetExtractor<String>() {
 					@Override
 					public String extractData(ResultSet arg0) throws SQLException, DataAccessException {
