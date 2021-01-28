@@ -10,6 +10,7 @@ import org.openplacereviews.api.OprHistoryChangesProvider;
 import org.openplacereviews.api.OprPlaceDataProvider;
 import org.openplacereviews.api.OprSummaryPlaceDataProvider;
 import org.openplacereviews.opendb.OpenDBServer;
+import org.openplacereviews.opendb.api.OpApiController;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.BotManager;
 import org.openplacereviews.opendb.service.PublicDataManager;
@@ -42,6 +43,9 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	
 	@Autowired
 	public UserSchemaManager userSchemaManager;
+	
+	@Autowired
+	public OpApiController apiController;
 
 	@Autowired
 	public BotManager botManager;
@@ -74,7 +78,7 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	public void preStartApplication() {
 		MetadataDb metadataDB = loadMetadata(userSchemaManager.getJdbcTemplate());
 		userSchemaManager.initializeDatabaseSchema(metadataDB);
-		
+		apiController.setUserNameProcessor(userSchemaManager);
 		
 		String usr = opendbMgmtUser.substring(opendbMgmtUser.indexOf(':') + 1);
  		List<String> bootstrapList =

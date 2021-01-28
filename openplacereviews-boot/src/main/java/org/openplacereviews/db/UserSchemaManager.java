@@ -18,6 +18,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.controllers.OprUserMgmtController;
 import org.openplacereviews.opendb.OpenDBServer.MetadataDb;
+import org.openplacereviews.opendb.api.OpApiController.UserNameProcessor;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.DBSchemaHelper;
 import org.openplacereviews.opendb.util.JsonFormatter;
@@ -33,7 +34,7 @@ import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Service;
 
 @Service
-public class UserSchemaManager {
+public class UserSchemaManager implements UserNameProcessor {
 
 	protected static final Log LOGGER = LogFactory.getLog(UserSchemaManager.class);
 	private static final int USER_SCHEMA_VERSION = 0;
