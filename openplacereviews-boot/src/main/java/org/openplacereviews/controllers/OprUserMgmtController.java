@@ -241,7 +241,12 @@ public class OprUserMgmtController {
 	}
 
 	private String getOprName(String name) {
-		return userManager.getOprName(name);
+		int i = name == null ? -1 : name.indexOf(':');
+		if (i != -1) {
+			return userManager.getOprName(name.substring(0, i)) + ":" + name.substring(i + 1);
+		} else {
+			return userManager.getOprName(name);
+		}
 	}
 
 
