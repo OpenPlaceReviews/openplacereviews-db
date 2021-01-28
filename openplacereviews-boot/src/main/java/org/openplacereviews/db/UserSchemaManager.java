@@ -187,25 +187,6 @@ public class UserSchemaManager {
 
 	}
 
-	public void createNewUser(String name, String email, String emailToken, String sprivkey, OpOperation obj) {
-		// TODO delete old method
-		PGobject userObj = null;
-		if (obj != null) {
-			userObj = new PGobject();
-			userObj.setType("jsonb");
-			try {
-				userObj.setValue(formatter.fullObjectToJson(obj));
-			} catch (SQLException e) {
-				throw new IllegalArgumentException(e);
-			}
-		} 
-		getJdbcTemplate().update("DELETE FROM " + USERS_TABLE + " WHERE nickname = ?", name);
-		getJdbcTemplate().update(
-				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,sprivkey,signup,externaluser) VALUES(?,?,?,?,?,?,0)", name,
-				email, emailToken, new Date(), sprivkey, userObj);
-
-	}
-
 
 	public void insertOAuthUserDetails(String name, OAuthUserDetails oauthUserDetails) {
 		if (oauthUserDetails != null) {
@@ -275,7 +256,7 @@ public class UserSchemaManager {
 	}
 	
 	public String getNameByPrivateNickname(String name) {
-		return getJdbcTemplate().query("SELECT uid FROM " + USERS_TABLE + " WHERE nickname = ? and externaluser == 0",
+		return getJdbcTemplate().query("SELECT uid FROM " + USERS_TABLE + " WHERE nickname = ? and externaluser = 0",
 				new Object[] { name }, new ResultSetExtractor<String>() {
 					@Override
 					public String extractData(ResultSet arg0) throws SQLException, DataAccessException {
