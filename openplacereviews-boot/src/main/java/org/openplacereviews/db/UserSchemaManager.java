@@ -275,7 +275,7 @@ public class UserSchemaManager {
 	}
 	
 	public String getNameByPrivateNickname(String name) {
-		return getJdbcTemplate().query("SELECT uid FROM " + USERS_TABLE + " WHERE nickname = ? and externalUser > 0",
+		return getJdbcTemplate().query("SELECT uid FROM " + USERS_TABLE + " WHERE nickname = ? and externalUser == 0",
 				new Object[] { name }, new ResultSetExtractor<String>() {
 					@Override
 					public String extractData(ResultSet arg0) throws SQLException, DataAccessException {
