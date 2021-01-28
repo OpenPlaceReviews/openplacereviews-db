@@ -239,11 +239,7 @@ public class OprUserMgmtController {
 	}
 
 	private String getOprName(String name) {
-		String oprName = userManager.getNameByPrivateNickname(name);
-		if (oprName != null) {
-			return oprName;
-		}
-		return name;
+		return userManager.getOprName(name);
 	}
 
 
@@ -494,7 +490,7 @@ public class OprUserMgmtController {
 	private String registerNewUserInternal(String name, String email, String emailToken) {
 		// check that user is not already registered in blockchain (checks external and internal user correctly)
 		// don't allow internal users to have nickname same that already exists in blockchain
-		String regOprName = userManager.getNameByPrivateNickname(name);
+		String regOprName = userManager.getOprName(name);
 		if (manager.getLoginObj(regOprName) != null) {
 			throw new UnsupportedOperationException("User is already registered, please use login method");
 		}
@@ -504,7 +500,7 @@ public class OprUserMgmtController {
 		while (iteration++ < ITERATION_GEN_NEW_NAME) {
 			// create will delete user with same nickname
 			userManager.createNewInternalUser(name, email, emailToken);
-			suggestedOprName = userManager.getNameByPrivateNickname(name);
+			suggestedOprName = userManager.getRegisteredNameByPrivateNickname(name);
 			if (suggestedOprName != null && manager.getLoginObj(suggestedOprName) == null) {
 				// found opr name
 				break;

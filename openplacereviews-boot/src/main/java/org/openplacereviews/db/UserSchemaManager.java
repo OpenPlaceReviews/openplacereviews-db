@@ -18,7 +18,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.controllers.OprUserMgmtController;
 import org.openplacereviews.opendb.OpenDBServer.MetadataDb;
-import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.DBSchemaHelper;
 import org.openplacereviews.opendb.util.JsonFormatter;
@@ -255,7 +254,15 @@ public class UserSchemaManager {
 				});
 	}
 	
-	public String getNameByPrivateNickname(String name) {
+	public String getOprName(String name) {
+		String oprName = getRegisteredNameByPrivateNickname(name);
+		if (oprName != null) {
+			return oprName;
+		}
+		return name;
+	}
+	
+	public String getRegisteredNameByPrivateNickname(String name) {
 		return getJdbcTemplate().query("SELECT uid FROM " + USERS_TABLE + " WHERE nickname = ? and externaluser = 0",
 				new Object[] { name }, new ResultSetExtractor<String>() {
 					@Override
