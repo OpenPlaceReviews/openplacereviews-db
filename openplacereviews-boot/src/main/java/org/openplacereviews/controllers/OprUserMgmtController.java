@@ -254,6 +254,7 @@ public class OprUserMgmtController {
 		mp.put("blockchain", signupObj == null ? "none" : "ok");
 		UserStatus status = userManager.userGetStatus(name);
 		mp.put("db-name", status == null ? "none" : "ok");
+		mp.put("blockchain-name", oprName);
 		if (status != null) {
 			String signupPrivateKey = userManager.getSignupPrivateKey(name);
 			mp.put("db-key", signupPrivateKey == null ? "none" : "ok");
