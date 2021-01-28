@@ -1,5 +1,7 @@
 package org.openplacereviews.controllers;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.util.Arrays;
 import java.util.Collections;
@@ -101,6 +103,8 @@ public class OprUserMgmtController {
 	
 	public static final String DEFAULT_PURPOSE_LOGIN = "opr-web";
 	
+	public static final int ITERATION_GEN_NEW_NAME = 3;
+	
 	@Value("${opendb.email.sendgrid-api}")
 	private String sendGridApiKey;
 	
@@ -131,8 +135,9 @@ public class OprUserMgmtController {
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose,
 			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
 		name = stdNickName(name);
+		String oprName = getOprName(name);
 		OpOperation signupOp = userManager.validateEmail(name, token);
-		OpObject signupObj = manager.getLoginObj(name);
+		OpObject signupObj = manager.getLoginObj(oprName);
 		boolean userAlreadySignedUp = false;
 		if(signupObj != null) {
 			 userAlreadySignedUp = true;
@@ -165,7 +170,7 @@ public class OprUserMgmtController {
 			}
 			// if it's operation to consolidate signup we don't need to add operation to blockchain
 			if (!userAlreadySignedUp) {
-				signupOp.setSignedBy(name);
+				signupOp.setSignedBy(oprName);
 				signupOp.addOtherSignedBy(manager.getServerUser());
 				manager.generateHashAndSign(signupOp, ownKeyPair, manager.getServerLoginKeyPair());
 				// 1. Add operation, so the user signup is confirmed and everything is ok
@@ -176,7 +181,7 @@ public class OprUserMgmtController {
 			throw new IllegalArgumentException("Unknown signup method was used: " + signupMethod);
 		}
 		// 2. Signup was added, so login will be generated 
-		return generateNewLogin(name, ownKeyPair, userDetails, purpose);
+		return generateNewLogin(name, oprName, ownKeyPair, userDetails, purpose);
 	}
 
 
@@ -187,11 +192,12 @@ public class OprUserMgmtController {
 	@ResponseBody
 	public ResponseEntity<String> checkLogin(HttpSession session, @RequestParam(required = true) String name) throws FailedVerificationException {
 		name = stdNickName(name);
-		OpObject loginObj = manager.getLoginObj(name );
+		String oprName = getOprName(name);
+		OpObject loginObj = manager.getLoginObj(oprName);
 		if (loginObj == null) {
 			throw new IllegalStateException("User is not logged in into blockchain");
 		}
-		String signupPrivateKey = userManager.getSignupPrivateKey(name);
+		String signupPrivateKey = userManager.getSignupPrivateKey(oprName);
 		if (signupPrivateKey == null) {
 			throw new IllegalStateException("User is not logged in to the website");
 		}
@@ -209,12 +215,13 @@ public class OprUserMgmtController {
 			@RequestParam(required = true) String privateKey,
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
 		name = stdNickName(name);
-		OpObject loginObj = manager.getLoginObj(name + ":" + purpose);
+		String oprName = getOprName(name);
+		OpObject loginObj = manager.getLoginObj(oprName + ":" + purpose);
 		if (loginObj == null) {
 			throw new IllegalStateException("User is not logged in into blockchain");
 		}
 		if (OprUserMgmtController.DEFAULT_PURPOSE_LOGIN.equals(purpose)) {
-			String loginPrivateKey = userManager.getLoginPrivateKey(name, purpose);
+			String loginPrivateKey = userManager.getLoginPrivateKey(oprName, purpose);
 			if (loginPrivateKey == null) {
 				throw new IllegalStateException("User is not logged in to the website");
 			}
@@ -231,12 +238,22 @@ public class OprUserMgmtController {
 		return ResponseEntity.ok(formatter.fullObjectToJson(Collections.singletonMap("result", "OK")));
 	}
 
+	private String getOprName(String name) {
+		String oprName = userManager.getNameByPrivateNickname(name);
+		if (oprName != null) {
+			return oprName;
+		}
+		return name;
+	}
+
+
 	@GetMapping(path = "/user-status")
 	@ResponseBody
 	public ResponseEntity<String> userExists(@RequestParam(required = true) String name)
 			throws FailedVerificationException {
 		name = stdNickName(name);
-		OpObject signupObj = manager.getLoginObj(name);
+		String oprName = getOprName(name);
+		OpObject signupObj = manager.getLoginObj(oprName);
 		Map<String, String> mp = new TreeMap<String, String>();
 		mp.put("blockchain", signupObj == null ? "none" : "ok");
 		UserStatus status = userManager.userGetStatus(name);
@@ -258,6 +275,7 @@ public class OprUserMgmtController {
 			@RequestParam(required = true) String email,
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
 		name = stdNickName(name);
+		String oprName = getOprName(name);
 		checkUserSignupPrivateKeyIsPresent(name);
 		UserStatus status = userManager.userGetStatus(name);
 		String userEmail =  status == null ? null : status.email;
@@ -267,9 +285,10 @@ public class OprUserMgmtController {
 		if (!OUtils.equals(userEmail, email)) {
 			throw new IllegalStateException("Provided email doesn't match email in the database");
 		}
-		deleteLoginIfPresent(name, purpose);
+		deleteLoginIfPresent(name, oprName, purpose);
 		String emailToken = generateEmailToken();
-		String href = getServerUrl() + authUrl + "?op=reset_pwd&name=" + name + "&token=" + emailToken;
+		
+		String href = getServerUrl() + authUrl + "?op=reset_pwd&name=" + URLEncoder.encode(name, StandardCharsets.UTF_8) + "&token=" + emailToken;
 		sendEmail(name, email, href, "OpenPlaceReviews - Reset password", getResetEmailContent(name, href, emailToken).toString());
 		userManager.resetEmailToken(name, emailToken);
 		return ResponseEntity.ok(formatter.fullObjectToJson(Collections.singletonMap("result", "OK")));
@@ -287,9 +306,10 @@ public class OprUserMgmtController {
 			@RequestParam(required = false) String userDetails, 
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
 		name = stdNickName(name);
+		String oprName = getOprName(name);
 		checkUserSignupPrivateKeyIsPresent(name);
 		userManager.validateEmail(name, token);
-		OpObject signupObj = manager.getLoginObj(name);
+		OpObject signupObj = manager.getLoginObj(oprName);
 		if (signupObj == null) {
 			throw new IllegalStateException("User was not signed up");
 		}
@@ -301,7 +321,7 @@ public class OprUserMgmtController {
 				userManager.getSignupPrivateKey(name), signupObj.getStringValue(OpBlockchainRules.F_PUBKEY));
 		
 		String algo = SecUtils.ALGO_EC;
-		String salt = name;
+		String salt = oprName;
 		String keyGen = SecUtils.KEYGEN_PWD_METHOD_1;
 		KeyPair newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, newPwd, true);
 		
@@ -312,22 +332,22 @@ public class OprUserMgmtController {
 		bld.setNewTag(OpBlockchainRules.F_ALGO, algo);
 
 		OpOperation editSigninOp = bld.build();
-		editSigninOp.setSignedBy(name);
+		editSigninOp.setSignedBy(oprName);
 		editSigninOp.addOtherSignedBy(manager.getServerUser());
 		manager.generateHashAndSign(editSigninOp, oldSignKeyPair, manager.getServerLoginKeyPair());
 		manager.addOperation(editSigninOp);
 
 		String privateKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPrivate());
 		if (userManager.userGetStatus(name) == null) {
-			userManager.createNewUser(name, null, null, null, privateKey, null);
+			userManager.createExternalUser(name, privateKey);
 		} else if (!OUtils.equalsStringValue(userManager.getSignupPrivateKey(name), privateKey)) {
 			userManager.updateSignupKey(name, privateKey);
 		}
-		return generateNewLogin(name, newKeyPair, userDetails, purpose);
+		return generateNewLogin(name, oprName, newKeyPair, userDetails, purpose);
 	}
 
-	private void checkUserSignupPrivateKeyIsPresent(String name) {
-		String spk = userManager.getSignupPrivateKey(name);
+	private void checkUserSignupPrivateKeyIsPresent(String username) {
+		String spk = userManager.getSignupPrivateKey(username);
 		if (spk == null || spk.length() == 0) {
 			throw new IllegalStateException("User was not registered using any password");
 		}
@@ -341,7 +361,8 @@ public class OprUserMgmtController {
 			@RequestParam(required = false) String email, @RequestParam(required = false) String userDetails, 
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
 		name = stdNickName(name);
-		OpObject signupObj = manager.getLoginObj(name);
+		String oprName = getOprName(name);
+		OpObject signupObj = manager.getLoginObj(oprName);
 		if (signupObj == null) {
 			throw new IllegalStateException("User was not signed up in blockchain");
 		}
@@ -358,7 +379,7 @@ public class OprUserMgmtController {
 			ownKeyPair = validateLoginPwd(pwd, signupObj);
 			String privateKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, ownKeyPair.getPrivate());
 			if (userManager.userGetStatus(name) == null) {
-				userManager.createNewUser(name, null, null, null, privateKey, null);
+				userManager.createExternalUser(name, privateKey);
 			} else if (!OUtils.equalsStringValue(userManager.getSignupPrivateKey(name), privateKey)) {
 				userManager.updateSignupKey(name, privateKey);
 			}	
@@ -366,9 +387,9 @@ public class OprUserMgmtController {
 			throw new IllegalArgumentException("Unknown signup method was used: " + signupMethod); 
 		}
 		
-		deleteLoginIfPresent(name, purpose);
+		deleteLoginIfPresent(name, oprName, purpose);
 		// here all logins are deleted
-		return generateNewLogin(name, ownKeyPair, userDetails, purpose);
+		return generateNewLogin(name, oprName, ownKeyPair, userDetails, purpose);
 	}
 
 
@@ -406,12 +427,13 @@ public class OprUserMgmtController {
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose)
 			throws FailedVerificationException {
 		name = stdNickName(name);
+		String oprName = getOprName(name);
 		String spk = userManager.getSignupPrivateKey(name);
 		OAuthUserDetails oauth = userManager.getOAuthLatestLogin(name);
 		if (spk == null && oauth == null) {
 			throw new IllegalStateException("User is not registered on the website.");
 		}
-		OpOperation op = deleteLoginIfPresent(name, purpose);
+		OpOperation op = deleteLoginIfPresent(name, oprName, purpose);
 		if (op == null) {
 			throw new IllegalArgumentException("There is nothing to edit cause login obj doesn't exist");
 		}
@@ -426,6 +448,8 @@ public class OprUserMgmtController {
 			@RequestParam(required = false) String oauthAccessToken,
 			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
 		name = stdNickName(name);
+		boolean oauthEmailVerified = false;
+		OAuthUserDetails oauthUserDetails = null;
 		if (!OpBlockchainRules.validateNickname(name)) {
 			throw new IllegalArgumentException(String.format("The nickname '%s' couldn't be validated", name));
 		}
@@ -435,33 +459,7 @@ public class OprUserMgmtController {
 		if (OUtils.isEmpty(pwd) && OUtils.isEmpty(oauthAccessToken)) {
 			throw new IllegalArgumentException("Signup method is not specified");
 		}
-		OpObject loginObj = manager.getLoginObj(name);
-		if (loginObj != null) {
-			throw new UnsupportedOperationException("User is already registered, please use login method");
-		}
-		OpOperation signupOp = new OpOperation();
-		signupOp.setType(OpBlockchainRules.OP_SIGNUP);
-		OpObject obj = new OpObject();
-		signupOp.addCreated(obj);
-		obj.setId(name);
-		if (!OUtils.isEmpty(userDetails)) {
-			obj.putObjectValue(OpBlockchainRules.F_DETAILS, formatter.fromJsonToTreeMap(userDetails));
-		}
-		String algo = SecUtils.ALGO_EC;
-		KeyPair newKeyPair = null;
-		String sKeyPair = null;
-		boolean oauthEmailVerified = false;
-		OAuthUserDetails oauthUserDetails = null;
-		if (!OUtils.isEmpty(pwd)) {
-			obj.putStringValue(OpBlockchainRules.F_AUTH_METHOD, OpBlockchainRules.METHOD_PWD);
-			algo = SecUtils.ALGO_EC;
-			String salt = name;
-			String keyGen = SecUtils.KEYGEN_PWD_METHOD_1;
-			newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, pwd, true);
-			obj.putStringValue(OpBlockchainRules.F_SALT, salt);
-			obj.putStringValue(OpBlockchainRules.F_KEYGEN_METHOD, keyGen);
-			sKeyPair = SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPrivate());
-		} else if (!OUtils.isEmpty(oauthAccessToken)) {
+		if (!OUtils.isEmpty(oauthAccessToken)) {
 			oauthUserDetails = userOAuthController.getUserDetails(session);
 			if(oauthUserDetails == null || !oauthUserDetails.accessToken.equals(oauthAccessToken)) {
 				throw new IllegalArgumentException("User wasn't registered in OAuth.");
@@ -474,10 +472,78 @@ public class OprUserMgmtController {
 					oauthEmailVerified = true;
 				}
 			}
+		}
+		String emailToken = oauthEmailVerified  ? null : generateEmailToken();
+		String suggestedOprName = registerNewUserInternal(name, email, emailToken);
+		OpOperation signupOp = new OpOperation();
+		String sKeyPair = createSignupObject(pwd, userDetails, oauthUserDetails, suggestedOprName, signupOp);
+		if (oauthEmailVerified) {
+			signupOp.setSignedBy(manager.getServerUser());
+			manager.generateHashAndSign(signupOp, manager.getServerLoginKeyPair());
+			manager.addOperation(signupOp);
+		}
+		userManager.updateNewUserSignup(name, sKeyPair, signupOp);
+		sendSignupEmail(name, email, emailToken, oauthEmailVerified);
+		if (oauthUserDetails != null) {
+			userManager.insertOAuthUserDetails(name, oauthUserDetails);
+		}
+		return ResponseEntity.ok(formatter.fullObjectToJson(signupOp));
+	}
+
+
+	private String registerNewUserInternal(String name, String email, String emailToken) {
+		// check that user is not already registered in blockchain (checks external and internal user correctly)
+		// don't allow internal users to have nickname same that already exists in blockchain
+		String regOprName = userManager.getNameByPrivateNickname(name);
+		if (manager.getLoginObj(regOprName) != null) {
+			throw new UnsupportedOperationException("User is already registered, please use login method");
+		}
+		
+		int iteration = 0;
+		String suggestedOprName = null;
+		while (iteration++ < ITERATION_GEN_NEW_NAME) {
+			// create will delete user with same nickname
+			userManager.createNewInternalUser(name, email, emailToken);
+			suggestedOprName = userManager.getNameByPrivateNickname(name);
+			if (suggestedOprName != null && manager.getLoginObj(suggestedOprName) == null) {
+				// found opr name
+				break;
+			}
+			suggestedOprName = null;
+		}
+		if (suggestedOprName == null) {
+			throw new UnsupportedOperationException("Internal error - couldn't register new user");
+		}
+		return suggestedOprName;
+	}
+
+
+	private String createSignupObject(String pwd, String userDetails, OAuthUserDetails oauthUserDetails,
+			String suggestedOprName, OpOperation signupOp) throws FailedVerificationException {
+		signupOp.setType(OpBlockchainRules.OP_SIGNUP);
+		OpObject obj = new OpObject();
+		obj.setId(suggestedOprName);
+		signupOp.addCreated(obj);
+		if (!OUtils.isEmpty(userDetails)) {
+			obj.putObjectValue(OpBlockchainRules.F_DETAILS, formatter.fromJsonToTreeMap(userDetails));
+		}
+		String algo = SecUtils.ALGO_EC;
+		KeyPair newKeyPair = null;
+		String sKeyPair = null;
+		if (!OUtils.isEmpty(pwd)) {
+			obj.putStringValue(OpBlockchainRules.F_AUTH_METHOD, OpBlockchainRules.METHOD_PWD);
+			algo = SecUtils.ALGO_EC;
+			String salt = suggestedOprName;
+			String keyGen = SecUtils.KEYGEN_PWD_METHOD_1;
+			newKeyPair = SecUtils.generateKeyPairFromPassword(algo, keyGen, salt, pwd, true);
+			obj.putStringValue(OpBlockchainRules.F_SALT, salt);
+			obj.putStringValue(OpBlockchainRules.F_KEYGEN_METHOD, keyGen);
+			sKeyPair = SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPrivate());
+		} else if (oauthUserDetails != null) {
 			obj.putStringValue(OpBlockchainRules.F_AUTH_METHOD, OpBlockchainRules.METHOD_OAUTH);
-			obj.putStringValue(OpBlockchainRules.F_SALT, name);
+			obj.putStringValue(OpBlockchainRules.F_SALT, suggestedOprName);
 			obj.putStringValue(OpBlockchainRules.F_OAUTHID_HASH,
-					SecUtils.calculateHashWithAlgo(SecUtils.HASH_SHA256, name, oauthUserDetails.oauthUid));
+					SecUtils.calculateHashWithAlgo(SecUtils.HASH_SHA256, suggestedOprName, oauthUserDetails.oauthUid));
 			obj.putStringValue(OpBlockchainRules.F_OAUTH_PROVIDER, oauthUserDetails.oauthProvider);
 		}
 		if (newKeyPair != null) {
@@ -485,22 +551,21 @@ public class OprUserMgmtController {
 			obj.putStringValue(OpBlockchainRules.F_PUBKEY,
 					SecUtils.encodeKey(SecUtils.KEY_BASE64, newKeyPair.getPublic()));
 		}
-		if (oauthEmailVerified) {
-			signupOp.setSignedBy(manager.getServerUser());
-			manager.generateHashAndSign(signupOp, manager.getServerLoginKeyPair());
-			manager.addOperation(signupOp);
-			String href = getServerUrl();
-			sendEmail(name, email, href, "Signup to OpenPlaceReviews", getSignupWelcomeEmailContent(name, href).toString());
-			userManager.createNewUser(name, email, null, oauthUserDetails, sKeyPair, signupOp);
-			return ResponseEntity.ok(formatter.fullObjectToJson(signupOp));
-			// return generateNewLogin(name, ownKeyPair, userDetails, purpose);
-		} else {
-			String emailToken = generateEmailToken();
-			String href = getServerUrl() + authUrl +"?op=signup_confirm&name=" + name + "&token=" + emailToken;
-			sendEmail(name, email, href, "Signup to OpenPlaceReviews", getSignupEmailContent(name, href, emailToken).toString());
-			userManager.createNewUser(name, email, emailToken, oauthUserDetails, sKeyPair, signupOp);
-			return ResponseEntity.ok(formatter.fullObjectToJson(signupOp));
+		return sKeyPair;
+	}
+
+
+
+
+
+	private void sendSignupEmail(String name, String email, String emailToken, boolean oauthEmailVerified) {
+		String emailHref = getServerUrl();
+		String emailContent = getSignupWelcomeEmailContent(name, emailHref).toString();
+		if (!oauthEmailVerified) {
+			emailHref = getServerUrl() + authUrl +"?op=signup_confirm&name=" + URLEncoder.encode(name, StandardCharsets.UTF_8) + "&token=" + emailToken;
+			emailContent = getSignupEmailContent(name, emailHref, emailToken).toString();
 		}
+		sendEmail(name, email, emailHref, "Signup to OpenPlaceReviews", emailContent);
 	}
 	
 	private String stdNickName(String name) {
@@ -508,13 +573,10 @@ public class OprUserMgmtController {
 	}
 
 
-
-
-
-	private OpOperation deleteLoginIfPresent(String name, String purpose) throws FailedVerificationException {
+	private OpOperation deleteLoginIfPresent(String username, String oprName, String purpose) throws FailedVerificationException {
 		OpOperation op = new OpOperation();
 		op.setType(OpBlockchainRules.OP_LOGIN);
-		OpObject loginObj = manager.getLoginObj(name + ":" + purpose);
+		OpObject loginObj = manager.getLoginObj(oprName + ":" + purpose);
 		if (loginObj == null) {
 			return null;
 		} else {
@@ -522,10 +584,10 @@ public class OprUserMgmtController {
 			op.putStringValue(OpObject.F_TIMESTAMP_ADDED, OpObject.dateFormat.format(new Date()));
 		}
 		String serverUser = manager.getServerUser();
-		String sPrivKey = userManager.getSignupPrivateKey(name);
+		String sPrivKey = userManager.getSignupPrivateKey(username);
 		if (sPrivKey != null) {
 			KeyPair ownKeyPair = SecUtils.getKeyPair(SecUtils.ALGO_EC, sPrivKey, null);
-			op.setSignedBy(name);
+			op.setSignedBy(oprName);
 			op.addOtherSignedBy(serverUser);
 			manager.generateHashAndSign(op, ownKeyPair, manager.getServerLoginKeyPair());
 		} else {
@@ -533,22 +595,22 @@ public class OprUserMgmtController {
 			manager.generateHashAndSign(op, manager.getServerLoginKeyPair());
 		}
 		manager.addOperation(op);
-		userManager.updateLoginKey(name, null, purpose);
+		userManager.updateLoginKey(username, null, purpose);
 		return op;
 	}
 	
-	private ResponseEntity<String> generateNewLogin(String name, KeyPair ownKeyPair, String userDetails, String purpose) throws FailedVerificationException {
+	private ResponseEntity<String> generateNewLogin(String username, String oprName, KeyPair ownKeyPair, String userDetails, String purpose) throws FailedVerificationException {
 		String serverUser = manager.getServerUser();
 		KeyPair serverSignedKeyPair = manager.getServerLoginKeyPair();
 		// generate & save login private key
 		KeyPair loginPair = SecUtils.generateRandomEC256K1KeyPair();
 		String privateKey = SecUtils.encodeKey(SecUtils.KEY_BASE64, loginPair.getPrivate());
-		userManager.updateLoginKey(name, privateKey, purpose);
+		userManager.updateLoginKey(username, privateKey, purpose);
 
 		// create login object & store in blockchain
 		OpOperation loginOp = new OpOperation();
 		Map<String, Object> refs = new TreeMap<String, Object>();
-		refs.put("s", Arrays.asList(OpBlockchainRules.OP_SIGNUP, name));
+		refs.put("s", Arrays.asList(OpBlockchainRules.OP_SIGNUP, oprName));
 		loginOp.putStringValue(OpObject.F_TIMESTAMP_ADDED, OpObject.dateFormat.format(new Date()));
 		loginOp.putObjectValue(OpOperation.F_REF, refs);
 		loginOp.setType(OpBlockchainRules.OP_LOGIN);
@@ -557,13 +619,13 @@ public class OprUserMgmtController {
 		if (!OUtils.isEmpty(userDetails)) {
 			loginObj.putObjectValue(OpBlockchainRules.F_DETAILS, formatter.fromJsonToTreeMap(userDetails));
 		}
-		loginObj.setId(name, purpose);
+		loginObj.setId(oprName, purpose);
 		loginObj.putStringValue(OpBlockchainRules.F_ALGO, SecUtils.ALGO_EC);
 		loginObj.putStringValue(OpBlockchainRules.F_PUBKEY,
 				SecUtils.encodeKey(SecUtils.KEY_BASE64, loginPair.getPublic()));
 		
 		if(ownKeyPair != null) {
-			loginOp.setSignedBy(name);
+			loginOp.setSignedBy(oprName);
 			loginOp.addOtherSignedBy(serverUser);
 			manager.generateHashAndSign(loginOp, ownKeyPair, serverSignedKeyPair);
 		} else {

@@ -38,6 +38,7 @@ public class UserSchemaManager {
 
 	protected static final Log LOGGER = LogFactory.getLog(UserSchemaManager.class);
 	private static final int USER_SCHEMA_VERSION = 0;
+	
 	public static final long EMAIL_TOKEN_EXPIRATION_TIME = 24 * 60 * 60 * 1000l;
 	
 	// //////////SYSTEM TABLES DDL ////////////
@@ -48,6 +49,10 @@ public class UserSchemaManager {
 
 	private static DBSchemaHelper dbschema = new DBSchemaHelper(SETTINGS_TABLE);
 	protected static final int BATCH_SIZE = 1000;
+	
+	
+	@Value("${opendb.auth-opr-prefix}")
+	private String authprefix; // "oprw-"
 	
 	@Value("${spring.userdatasource.url}")
 	private String userDataSourceUrl;
@@ -72,6 +77,7 @@ public class UserSchemaManager {
 		dbschema.registerColumn(USERS_TABLE, "tokendate", "timestamp", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "sprivkey", "text", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "lprivkey", "text", NOT_INDEXED);
+		dbschema.registerColumn(USERS_TABLE, "externalUser", "int", NOT_INDEXED);
 		dbschema.registerColumn(USERS_TABLE, "signup", "jsonb", NOT_INDEXED);
 		
 		dbschema.registerColumn(OAUTH_TOKENS_TABLE, "nickname", "text", INDEXED);
@@ -137,10 +143,11 @@ public class UserSchemaManager {
 		if(dbVersion < USER_SCHEMA_VERSION) {
 			// migration is only needed for alter operation and changing data
 			// migration is not needed for adding new columns
-			if(dbVersion <= 1) {
+			if (dbVersion <= 1) {
 				// Migrate from 0 - > 1
+
 			}
-			if(dbVersion <= 2) {
+			if (dbVersion <= 2) {
 				// Migrate from 1 - > 2
 			}
 			dbschema.setSetting(jdbcTemplate, SETTING_VERSION_KEY, USER_SCHEMA_VERSION + "");
@@ -148,8 +155,40 @@ public class UserSchemaManager {
 			throw new UnsupportedOperationException();
 		}
 	}
+	
+	
+	public void createNewInternalUser(String name, String email, String emailToken) {
+		getJdbcTemplate().update("DELETE FROM " + USERS_TABLE + " WHERE nickname = ? ", name);
+		getJdbcTemplate().update(
+				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,externalUser) VALUES(?,?,?,?,0)", name,
+				email, emailToken, new Date());
 
-	public void createNewUser(String name, String email, String emailToken, OAuthUserDetails oauthUserDetails, String sprivkey, OpObject obj) {
+	}
+	
+	public void updateNewUserSignup(String name, String sprivkey, OpOperation obj) {
+		PGobject userObj = null;
+		if (obj != null) {
+			userObj = new PGobject();
+			userObj.setType("jsonb");
+			try {
+				userObj.setValue(formatter.fullObjectToJson(obj));
+			} catch (SQLException e) {
+				throw new IllegalArgumentException(e);
+			}
+		} 
+		getJdbcTemplate().update("UPDATE " + USERS_TABLE + " SET sprivkey = ?, signup = ? WHERE nickname = ?", sprivkey, userObj, name);
+	}
+	
+	
+	public void createExternalUser(String name, String sprivkey) {
+		// if it crashes by duplicate nickname we won't let external user to be registered here
+		getJdbcTemplate().update(
+				"INSERT INTO " + USERS_TABLE + "(nickname,sprivkey,externalUser) VALUES(?,?,1)", name,sprivkey);
+
+	}
+
+	public void createNewUser(String name, String email, String emailToken, String sprivkey, OpOperation obj) {
+		// TODO delete old method
 		PGobject userObj = null;
 		if (obj != null) {
 			userObj = new PGobject();
@@ -162,8 +201,13 @@ public class UserSchemaManager {
 		} 
 		getJdbcTemplate().update("DELETE FROM " + USERS_TABLE + " WHERE nickname = ?", name);
 		getJdbcTemplate().update(
-				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,sprivkey,signup) VALUES(?,?,?,?,?,?)", name,
+				"INSERT INTO " + USERS_TABLE + "(nickname,email,emailtoken,tokendate,sprivkey,signup,externalUser) VALUES(?,?,?,?,?,?,0)", name,
 				email, emailToken, new Date(), sprivkey, userObj);
+
+	}
+
+
+	public void insertOAuthUserDetails(String name, OAuthUserDetails oauthUserDetails) {
 		if (oauthUserDetails != null) {
 			PGobject userOAuthObj = null;
 			if (oauthUserDetails.details != null) {
@@ -175,19 +219,11 @@ public class UserSchemaManager {
 					throw new IllegalArgumentException(e);
 				}
 			} 
-			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "nickname", "text", INDEXED);
-			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_provider", "text", NOT_INDEXED);
-			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_uid", "text", NOT_INDEXED);
-			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_token", "text", NOT_INDEXED);
-			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "oauth_access_secret", "text", NOT_INDEXED);
-			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "date", "timestamp", NOT_INDEXED);
-			dbschema.registerColumn(OAUTH_TOKENS_TABLE, "details", "jsonb", NOT_INDEXED);
 			getJdbcTemplate().update(
 					"INSERT INTO " + OAUTH_TOKENS_TABLE
 							+ "(nickname,oauth_provider,oauth_uid,oauth_access_token,oauth_access_secret,date,details) VALUES(?,?,?,?,?,?,?)",
 					name, oauthUserDetails.oauthProvider,  oauthUserDetails.oauthUid, oauthUserDetails.accessToken, oauthUserDetails.accessTokenSecret, new Date(), userOAuthObj);
 		}
-
 	}
 	
 	public OAuthUserDetails getOAuthLatestLogin(String name) {
@@ -234,6 +270,19 @@ public class UserSchemaManager {
 						s.tokenExpired = s.tokenDate == null ? false : 
 							(System.currentTimeMillis() - s.tokenDate.getTime()) > EMAIL_TOKEN_EXPIRATION_TIME;
 						return s;
+					}
+				});
+	}
+	
+	public String getNameByPrivateNickname(String name) {
+		return getJdbcTemplate().query("SELECT uid FROM " + USERS_TABLE + " WHERE nickname = ? and externalUser > 0",
+				new Object[] { name }, new ResultSetExtractor<String>() {
+					@Override
+					public String extractData(ResultSet arg0) throws SQLException, DataAccessException {
+						if (!arg0.next()) {
+							return null;
+						}
+						return authprefix + arg0.getLong(1);
 					}
 				});
 	}

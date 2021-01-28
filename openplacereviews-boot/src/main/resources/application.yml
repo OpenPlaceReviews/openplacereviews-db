@@ -22,6 +22,7 @@ opendb:
   authUrl: ${AUTH_URL:api/test-auth.html}
   email:
     sendgrid-api: ${SENDGRID_API:}
+  auth-opr-prefix: ${AUTH_OPR_PREFIX:oprw-}
 
 oauth:
   osm:
