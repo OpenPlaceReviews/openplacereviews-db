@@ -221,7 +221,7 @@ public class OprUserMgmtController {
 			throw new IllegalStateException("User is not logged in into blockchain");
 		}
 		if (OprUserMgmtController.DEFAULT_PURPOSE_LOGIN.equals(purpose)) {
-			String loginPrivateKey = userManager.getLoginPrivateKey(oprName, purpose);
+			String loginPrivateKey = userManager.getLoginPrivateKey(name, purpose);
 			if (loginPrivateKey == null) {
 				throw new IllegalStateException("User is not logged in to the website");
 			}
