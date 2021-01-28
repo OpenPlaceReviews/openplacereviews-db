@@ -235,7 +235,9 @@ public class OprUserMgmtController {
 		if(!SecUtils.validateKeyPair(algo, signKeyPair.getPrivate(), signKeyPair.getPublic())) {
 			throw new IllegalStateException("User db private key doesn't have public key in blockchain");
 		}
-		return ResponseEntity.ok(formatter.fullObjectToJson(Collections.singletonMap("result", "OK")));
+		Map<String, String> res = status(name);
+		res.put("result", "OK");
+		return ResponseEntity.ok(formatter.fullObjectToJson(res));
 	}
 
 	private String getOprName(String name) {
@@ -247,6 +249,11 @@ public class OprUserMgmtController {
 	@ResponseBody
 	public ResponseEntity<String> userExists(@RequestParam(required = true) String name)
 			throws FailedVerificationException {
+		Map<String, String> mp = status(name);
+		return ResponseEntity.ok(formatter.fullObjectToJson(mp));
+	}
+
+	private Map<String, String> status(String name) {
 		name = stdNickName(name);
 		String oprName = getOprName(name);
 		OpObject signupObj = manager.getLoginObj(oprName);
@@ -261,7 +268,7 @@ public class OprUserMgmtController {
 			mp.put("email", OUtils.isEmpty(status.email) ? "none" : "ok");
 			mp.put("email-expired", Boolean.toString(status.tokenExpired));
 		}
-		return ResponseEntity.ok(formatter.fullObjectToJson(mp));
+		return mp;
 	}
 
 	
