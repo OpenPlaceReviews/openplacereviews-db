@@ -163,8 +163,8 @@
 		}
 		if (p.opr_id) {
 			if(feature.geometry.coordinates) {
-				let lat = feature.geometry.coordinates[0].toFixed(5);
-				let lon = feature.geometry.coordinates[1].toFixed(5);
+				let lat = feature.geometry.coordinates[1].toFixed(5);
+				let lon = feature.geometry.coordinates[0].toFixed(5);
 				popupContent += "<br><a href=\'/map/opr.place/" + p.opr_id + "?q=16/" + lat + "/" + lon +
 					"\'>OpenPlaceReviews Map</a>";
 			}
