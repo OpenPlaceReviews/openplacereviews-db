@@ -422,6 +422,10 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			List<Map<String, Object>> osmObjs = o.getField(null, F_SOURCE, F_OSM);
 			for (int i = 0; i < osmObjs.size(); i++) {
 				Map<String, Object> osm  = osmObjs.get(i);
+				if (osm.get(PlaceOpObjectHelper.F_DELETED) != null) {
+					// object was deleted
+					continue;
+				}
 				if (osmId.equals(osm.get(OpOperation.F_ID)) && type.equals(osm.get(OpOperation.F_TYPE))
 						&& key.equals(osm.get(F_OSM_TAG))) {
 					if(po == null) {
