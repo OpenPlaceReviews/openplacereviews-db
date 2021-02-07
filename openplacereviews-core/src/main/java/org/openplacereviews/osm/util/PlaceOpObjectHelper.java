@@ -4,24 +4,24 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.ops.OpObject.F_ID;
 import static org.openplacereviews.opendb.ops.OpOperation.F_TYPE;
+import static org.openplacereviews.opendb.service.bots.GenericMultiThreadBot.F_BOT_STATE;
+import static org.openplacereviews.opendb.service.bots.GenericMultiThreadBot.F_DATE;
+import static org.openplacereviews.opendb.service.bots.GenericMultiThreadBot.F_OSM_TAGS;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.model.EntityInfo.ATTR_CHANGESET;
 import static org.openplacereviews.osm.model.EntityInfo.ATTR_TIMESTAMP;
 import static org.openplacereviews.osm.model.EntityInfo.ATTR_VERSION;
-import static org.openplacereviews.osm.service.OsmSyncBot.F_BOT_STATE;
-import static org.openplacereviews.osm.service.OsmSyncBot.F_DATE;
-import static org.openplacereviews.osm.service.OsmSyncBot.F_OSM_TAGS;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.openplacereviews.opendb.ops.OpBlock;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -45,11 +45,8 @@ public class PlaceOpObjectHelper {
 	public static final String F_VERSION = "version";
 	public static final String F_CHANGESET = "changeset";
 	public static final String F_TIMESTAMP = "timestamp";
-	private static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
-	static {
-		TIMESTAMP_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-	}
-
+	public static final String F_DELETED = "deleted";
+	public static final SimpleDateFormat TIMESTAMP_FORMAT = OpBlock.dateFormat;
 	public static OpObject generateNewOprObject(Entity entity, TreeMap<String, Object> osmObject ) {
 		OpObject create = new OpObject();
 		create.putObjectValue(F_ID, OsmLocationTool.generatePlaceLocationId(entity.getLatLon()));
@@ -106,7 +103,7 @@ public class PlaceOpObjectHelper {
 		TreeMap<String, Object> change = new TreeMap<>();
 		TreeMap<String, Object> current = new TreeMap<>();
 		String f = F_SOURCE + "." + F_OSM + "[" + po.ind + "]";
-		change.put(f + ".deleted", set(TIMESTAMP_FORMAT.format(new Date())));
+		change.put(f + "." + F_DELETED, set(TIMESTAMP_FORMAT.format(new Date())));
 //		current.put(f, po.osm);
 		
 		editObject.putObjectValue(F_CHANGE, change);
@@ -248,19 +245,25 @@ public class PlaceOpObjectHelper {
 		editObject.putObjectValue(F_CHANGE, changeDate);
 		previousDate.put(F_BOT_STATE + "." + F_OSM_TAGS + "." + field + "." + F_DATE, ptimestamp);
 		editObject.putObjectValue(F_CURRENT, previousDate);
-
 		opOperation.addEdited(editObject);
-
 		return opOperation;
 	}
 
 
 
-	private static Object set(Object vl) {
+	public static Object set(Object vl) {
 		Map<String, Object> set = new TreeMap<String, Object>();
 		set.put(OpBlockChain.OP_CHANGE_SET, vl);
 		return set;
 	}
+	
+	public static Object append(Object vl) {
+		Map<String, Object> append = new TreeMap<String, Object>();
+		append.put(OpBlockChain.OP_CHANGE_APPEND, vl);
+		return append;
+	}
+	
+	
 
 	public static void generateEntityInfo(TreeMap<String, Object> osmObject, EntityInfo entityInfo) {
 		osmObject.put(ATTR_TIMESTAMP, entityInfo.getTimestamp() == null ? new Date() : entityInfo.getTimestamp());

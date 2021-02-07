@@ -4,6 +4,7 @@ package org.openplacereviews.osm.service;
 import java.util.List;
 import java.util.Map;
 
+import org.openplacereviews.opendb.ops.OpBlock;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.bots.GenericBlockchainReviewBot;
@@ -40,11 +41,7 @@ public class PlaceTypeBot extends GenericBlockchainReviewBot<PlaceTypeBot> {
 		return "place-type";
 	}
 	
-	protected String botTypeName() {
-		return getTaskName();
-	}
-	
-	public boolean processSingleObject(OpObject o, OpOperation op) {
+	public boolean processSingleObject(OpObject o, OpOperation op, OpBlock lastBlockHeader) {
 		String tp = o.getField(null, "placetype");
 		String ntp = evalPlaceType(o);
 		if (!OUtils.equals(wrapNull(ntp), wrapNull(tp))) {
