@@ -14,7 +14,6 @@ import static org.openplacereviews.osm.service.OsmSyncBot.F_DATE;
 import static org.openplacereviews.osm.service.OsmSyncBot.F_OSM_TAGS;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -56,7 +55,6 @@ public class PlaceOpObjectHelper {
 		create.putObjectValue(F_ID, OsmLocationTool.generatePlaceLocationId(entity.getLatLon()));
 		TreeMap<String, Object> source = new TreeMap<>();
 		source.put(F_OSM, Arrays.asList(osmObject));
-		source.put(F_OLD_OSM_IDS, new ArrayList<>());
 		create.putObjectValue(F_SOURCE, source);
 		return create;
 	}
@@ -105,27 +103,11 @@ public class PlaceOpObjectHelper {
 	public static OpOperation generateEditDeleteOsmIdsForPlace(OpOperation opOperation, PlaceObject po) throws FailedVerificationException {
 		OpObject editObject = new OpObject();
 		editObject.putObjectValue(F_ID, po.obj.getId());
-
 		TreeMap<String, Object> change = new TreeMap<>();
 		TreeMap<String, Object> current = new TreeMap<>();
-		
-		TreeMap<String, Object> appendOp = new TreeMap<>();
-		TreeMap<String, Object> idMap = new TreeMap<>();
-		idMap.put(F_ID, po.osmId);
-		idMap.put(F_TYPE, po.type);
-		idMap.put(F_VERSION, po.version);
-		idMap.put(F_TIMESTAMP, TIMESTAMP_FORMAT.format(new Date()));
-		if (po.osm != null) {
-			idMap.put(F_OSM, po.osm);
-		}
-		
-		appendOp.put(OpBlockChain.OP_CHANGE_APPEND, idMap);
-		change.put(F_SOURCE + "." + F_OLD_OSM_IDS, appendOp);
-
-		
 		String f = F_SOURCE + "." + F_OSM + "[" + po.ind + "]";
-		change.put(f, OpBlockChain.OP_CHANGE_DELETE);
-		current.put(f, po.osm);
+		change.put(f + ".deleted", set(TIMESTAMP_FORMAT.format(new Date())));
+//		current.put(f, po.osm);
 		
 		editObject.putObjectValue(F_CHANGE, change);
 		editObject.putObjectValue(F_CURRENT, current);

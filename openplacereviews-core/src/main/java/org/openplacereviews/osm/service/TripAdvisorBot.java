@@ -4,7 +4,7 @@ import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.BlocksManager;
-import org.openplacereviews.opendb.service.GenericMultiThreadBot;
+import org.openplacereviews.opendb.service.bots.GenericMultiThreadBot;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;

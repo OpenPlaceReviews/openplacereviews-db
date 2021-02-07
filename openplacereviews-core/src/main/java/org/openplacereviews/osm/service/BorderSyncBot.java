@@ -6,7 +6,7 @@ import java.util.Map;
 
 import org.apache.commons.io.FilenameUtils;
 import org.openplacereviews.opendb.ops.OpObject;
-import org.openplacereviews.opendb.service.GenericMultiThreadBot;
+import org.openplacereviews.opendb.service.bots.GenericMultiThreadBot;
 import org.springframework.util.ResourceUtils;
 
 // FIXME
