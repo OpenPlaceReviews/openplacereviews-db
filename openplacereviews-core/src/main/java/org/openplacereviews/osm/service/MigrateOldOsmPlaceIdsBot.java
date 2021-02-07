@@ -14,6 +14,7 @@ import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.bots.GenericBlockchainReviewBot;
+import org.openplacereviews.opendb.util.OUtils;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 
 public class MigrateOldOsmPlaceIdsBot extends GenericBlockchainReviewBot<MigrateOldOsmPlaceIdsBot> {
@@ -40,6 +41,14 @@ public class MigrateOldOsmPlaceIdsBot extends GenericBlockchainReviewBot<Migrate
 	public boolean processSingleObject(OpObject o, OpOperation op, OpBlock lastBlockHeader) {
 		List<Map<String, Object>> vls = o.getField(null, PlaceOpObjectHelper.F_SOURCE, PlaceOpObjectHelper.F_OLD_OSM_IDS);
 		if (vls != null) {
+			OpObject newVersion = blocksManager.getBlockchain().getObjectByName(objectType(), o.getId());
+			if (newVersion != null) {
+				List<Map<String, Object>> nvls = newVersion.getField(null, PlaceOpObjectHelper.F_SOURCE, PlaceOpObjectHelper.F_OLD_OSM_IDS);
+				// skip cause it was changed in a newer version 
+				if (!vls.equals(nvls)) {
+					return false;
+				}
+			}
 			OpObject editObject = new OpObject();
 			editObject.putObjectValue(F_ID, o.getId());
 			Map<String, Object> changeTagMap = new TreeMap<>();
