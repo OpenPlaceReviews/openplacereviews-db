@@ -153,19 +153,25 @@
 	function getMarkerContent(feature) {
 		var p = feature.properties;
 		var popupContent = p.title;
-		if(p.opr_id) {
-			popupContent += " (" + p.opr_id+") ";
+		if (p.opr_id) {
+			popupContent += " (" + p.opr_id + ") ";
 		}
-		if(p.tags) {
+		if (p.tags) {
 			for (var t in p.tags) {
 				popupContent += "<br>" + t + " " + p.tags[t];
 			}
 		}
-		if(p.opr_id) {
+		if (p.opr_id) {
+			if(feature.geometry.coordinates) {
+				let lat = feature.geometry.coordinates[0].toFixed(5);
+				let lon = feature.geometry.coordinates[1].toFixed(5);
+				popupContent += "<br><a href=\'/map/opr.place/" + p.opr_id + "?q=16/" + lat + "/" + lon +
+					"\'>OpenPlaceReviews Map</a>";
+			}
 			popupContent += "<br><a href=\'/api/admin?view=objects&browse=type&type=opr.place&subtype=id&key=" +
-				p.opr_id + "\'>OpenPlaceReviews</a>";
+				p.opr_id + "\'>OpenPlaceReviews Object</a>";
 		}
-		if(p.osm_id) {
+		if (p.osm_id) {
 			popupContent += "<br><a href=\'https://www.openstreetmap.org/" +
 				p.osm_type + "/" + p.osm_id + "\'>OpenStreetMap</a>";
 		}
