@@ -38,7 +38,7 @@ public class MigrateOldOsmPlaceIdsBot extends GenericBlockchainReviewBot<Migrate
 	}
 	
 	public boolean processSingleObject(OpObject o, OpOperation op, OpBlock lastBlockHeader) {
-		List<Map<String, Object>> vls = o.getField(null, PlaceOpObjectHelper.F_SOURCE + "." + PlaceOpObjectHelper.F_OLD_OSM_IDS);
+		List<Map<String, Object>> vls = o.getField(null, PlaceOpObjectHelper.F_SOURCE, PlaceOpObjectHelper.F_OLD_OSM_IDS);
 		if (vls != null) {
 			OpObject editObject = new OpObject();
 			editObject.putObjectValue(F_ID, id);
