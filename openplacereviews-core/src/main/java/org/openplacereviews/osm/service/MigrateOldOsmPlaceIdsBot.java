@@ -44,10 +44,11 @@ public class MigrateOldOsmPlaceIdsBot extends GenericBlockchainReviewBot<Migrate
 			editObject.putObjectValue(F_ID, o.getId());
 			Map<String, Object> changeTagMap = new TreeMap<>();
 			Map<String, Object> currentTagMap = new TreeMap<>();
-			for(Map<String, Object> od : vls) {
-				od.put(PlaceOpObjectHelper.F_DELETED, lastBlockHeader.getDateString() );
-				changeTagMap.put(PlaceOpObjectHelper.F_SOURCE + "." + PlaceOpObjectHelper.F_OSM, 
-						PlaceOpObjectHelper.append(od));
+			for (Map<String, Object> od : vls) {
+				Map<String, Object> lod = new TreeMap<String, Object>(od);
+				lod.put(PlaceOpObjectHelper.F_DELETED, lastBlockHeader.getDateString());
+				changeTagMap.put(PlaceOpObjectHelper.F_SOURCE + "." + PlaceOpObjectHelper.F_OSM,
+						PlaceOpObjectHelper.append(lod));
 			}
 			changeTagMap.put(PlaceOpObjectHelper.F_SOURCE + "." + PlaceOpObjectHelper.F_OLD_OSM_IDS,
 					OpBlockChain.OP_CHANGE_DELETE);
