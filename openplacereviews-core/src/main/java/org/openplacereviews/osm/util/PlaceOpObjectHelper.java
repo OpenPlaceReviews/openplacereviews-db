@@ -13,11 +13,13 @@ import static org.openplacereviews.osm.service.OsmSyncBot.F_BOT_STATE;
 import static org.openplacereviews.osm.service.OsmSyncBot.F_DATE;
 import static org.openplacereviews.osm.service.OsmSyncBot.F_OSM_TAGS;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -44,7 +46,10 @@ public class PlaceOpObjectHelper {
 	public static final String F_VERSION = "version";
 	public static final String F_CHANGESET = "changeset";
 	public static final String F_TIMESTAMP = "timestamp";
-
+	private static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
+	static {
+		TIMESTAMP_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+	}
 
 	public static OpObject generateNewOprObject(Entity entity, TreeMap<String, Object> osmObject ) {
 		OpObject create = new OpObject();
@@ -108,6 +113,12 @@ public class PlaceOpObjectHelper {
 		TreeMap<String, Object> idMap = new TreeMap<>();
 		idMap.put(F_ID, po.osmId);
 		idMap.put(F_TYPE, po.type);
+		idMap.put(F_VERSION, po.version);
+		idMap.put(F_TIMESTAMP, TIMESTAMP_FORMAT.format(new Date()));
+		if (po.osm != null) {
+			idMap.put(F_OSM, po.osm);
+		}
+		
 		appendOp.put(OpBlockChain.OP_CHANGE_APPEND, idMap);
 		change.put(F_SOURCE + "." + F_OLD_OSM_IDS, appendOp);
 
