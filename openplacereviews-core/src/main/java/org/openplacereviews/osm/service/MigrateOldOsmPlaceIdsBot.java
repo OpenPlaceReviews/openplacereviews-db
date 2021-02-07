@@ -41,7 +41,7 @@ public class MigrateOldOsmPlaceIdsBot extends GenericBlockchainReviewBot<Migrate
 		List<Map<String, Object>> vls = o.getField(null, PlaceOpObjectHelper.F_SOURCE, PlaceOpObjectHelper.F_OLD_OSM_IDS);
 		if (vls != null) {
 			OpObject editObject = new OpObject();
-			editObject.putObjectValue(F_ID, id);
+			editObject.putObjectValue(F_ID, o.getId());
 			Map<String, Object> changeTagMap = new TreeMap<>();
 			Map<String, Object> currentTagMap = new TreeMap<>();
 			for(Map<String, Object> od : vls) {
