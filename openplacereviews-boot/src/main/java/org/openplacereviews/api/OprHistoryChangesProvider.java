@@ -1,7 +1,6 @@
 package org.openplacereviews.api;
 
 import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
-import static org.openplacereviews.opendb.ops.OpObject.F_CURRENT;
 import static org.openplacereviews.opendb.service.HistoryManager.DESC_SORT;
 import static org.openplacereviews.opendb.service.HistoryManager.HISTORY_BY_OBJECT;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
@@ -13,6 +12,7 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
 
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -31,6 +31,7 @@ import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.HistoryManager;
 import org.openplacereviews.osm.model.OsmMapUtils;
+import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.github.filosganga.geogson.model.Feature;
@@ -60,7 +61,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
-	// TODO delete OSM index & refactor
 	public static final String OSM_ID = "osm_id";
 	public static final String OSM_TYPE = "osm_type";
 	
@@ -156,7 +156,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
-			Map<String, Object> current = opObject.getStringObjMap(F_CURRENT);
+			//Map<String, Object> current = opObject.getStringObjMap(F_CURRENT);
 			changeKeys: for (String changeKey : change.keySet()) {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith("images.review")) {
@@ -168,12 +168,30 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					}	
 				} else if (filter == RequestFilter.POSSIBLE_MERGE) {
 					// "source.osm[0]": "delete"
+	                // "source.osm[0].deleted": {
+		            // 		"set": "2021-02-08T17:18:40.393+0000"
+		            // }
+
 					int ind = getOsmSourceIndex(changeKey);
-					if (ind != -1 && change.get(changeKey).equals("delete")) {
-						@SuppressWarnings("unchecked")
-						Map<String, Object> osm = (Map<String, Object>) current.get(changeKey);
-						addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject);
-						break changeKeys;
+					if (ind != -1) {
+						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+						List<Map<String, Object>> osmSources = nObj == null ? Collections.emptyList()
+								: nObj.getField(null, F_SOURCE, F_OSM);
+						Map<String, Object> osm = null;
+						boolean deleted = true;
+						for (int i = 0; i < osmSources.size(); i++) {
+							Map<String, Object> lmp = osmSources.get(i);
+							if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED)) {
+								deleted = false;
+							}
+							if (i == ind) {
+								osm = lmp;
+							}
+						}
+						if (deleted && osm != null) {
+							addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject);
+							break changeKeys;
+						}
 					}
 
 				}
@@ -293,9 +311,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 	
 	private int getOsmSourceIndex(String key) {
-		String prefix = F_SOURCE + "." + F_OSM + "[";
-		if (key.startsWith(prefix) && key.endsWith("]")) {
-			String intInd = key.substring(prefix.length(), key.length() - 1);
+		String prefix = F_SOURCE + "." + F_OSM + "["; 
+		String suffix = "]." + PlaceOpObjectHelper.F_DELETED;
+		if (key.startsWith(prefix) && key.endsWith(suffix)) {
+			String intInd = key.substring(prefix.length(), key.length() - suffix.length());
 			try {
 				return Integer.parseInt(intInd);
 			} catch (NumberFormatException ne) {

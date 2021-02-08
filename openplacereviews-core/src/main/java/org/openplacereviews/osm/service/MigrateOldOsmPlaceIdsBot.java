@@ -14,7 +14,6 @@ import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.bots.GenericBlockchainReviewBot;
-import org.openplacereviews.opendb.util.OUtils;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 
 public class MigrateOldOsmPlaceIdsBot extends GenericBlockchainReviewBot<MigrateOldOsmPlaceIdsBot> {
