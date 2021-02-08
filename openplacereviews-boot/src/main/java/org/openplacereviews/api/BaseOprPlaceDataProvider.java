@@ -217,16 +217,19 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 			if (o.isDeleted()) {
 				continue;
 			}
-			List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
-			if (osmList.size() == 0) {
+			
+			Map<String, Object> mainOSM = getOsmList(o);
+			if (mainOSM == null) {
 				continue;
 			}
-			Map<String, Object> mainOSM = osmList.get(0);
+			
+			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
+			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
+			
+			
 			double lat = (double) mainOSM.get(ATTR_LATITUDE);
 			double lon = (double) mainOSM.get(ATTR_LONGITUDE);
 			Point p = Point.from(lon, lat);
-			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
-			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
 			bld.put(PLACE_TYPE, new JsonPrimitive((String) mainOSM.get(OSM_VALUE)));
 			bld.put(TITLE, new JsonPrimitive(getTitle(mainOSM)));
 			bld.put(SUBTITLE, new JsonPrimitive(getSubTitle(mainOSM)));
@@ -279,6 +282,16 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 			Feature f = new Feature(p, bld.build(), Optional.absent());
 			fc.features().add(f);
 		}
+	}
+
+	private Map<String, Object> getOsmList(OpObject o) {
+		List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
+		for (Map<String, Object> m : osmList) {
+			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(OSM_VALUE)) {
+				return m;
+			}
+		}
+		return null;
 	}
 
 	@SuppressWarnings("unchecked")
