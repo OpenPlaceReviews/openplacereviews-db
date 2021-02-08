@@ -197,9 +197,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				}
 			}				
 		}
-		for (List<String> objId : opOperation.getDeleted()) {
-			addRemovedEntityFromOpObject(objId, deletedObjects, opBlock, opHash);
-		}
+		
+		// ignore deleted cause they are typical merge action 
+//		for (List<String> objId : opOperation.getDeleted()) {
+//			addRemovedEntityFromOpObject(objId, deletedObjects, opBlock, opHash);
+//		}
 		
 		if (filter == RequestFilter.POSSIBLE_MERGE) {
 			Set<String> tiles = createdObjects.keySet();
