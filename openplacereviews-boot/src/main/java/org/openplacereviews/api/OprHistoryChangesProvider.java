@@ -276,7 +276,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			bld.put(OSM_INDEX, new JsonPrimitive(i));
 			bld.put(TITLE, new JsonPrimitive(status + " " + getTitle(osm)));
 			bld.put(COLOR, new JsonPrimitive(color));
-			bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
+			String placeType = (String) osm.get(OSM_VALUE);
+			if (placeType == null) {
+				continue;
+			}
+			bld.put(PLACE_TYPE, new JsonPrimitive(placeType));
 			generateFieldsFromOsmSource(osm, bld);
 			generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 			Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
