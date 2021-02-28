@@ -286,6 +286,9 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 
 	private Map<String, Object> getOsmList(OpObject o) {
 		List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
+		if (osmList == null) {
+			return null;
+		}
 		for (Map<String, Object> m : osmList) {
 			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(OSM_VALUE)) {
 				return m;
@@ -319,7 +322,7 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 	@SuppressWarnings("unchecked")
 	protected String getTitle(Map<String, Object> osm) {
 		Map<String, Object> tagsValue = (Map<String, Object>) osm.get("tags");
-		if(tagsValue.containsKey("name")) {
+		if (tagsValue != null && tagsValue.containsKey("name")) {
 			String name = (String) tagsValue.get("name");
 			return name;
 		}
