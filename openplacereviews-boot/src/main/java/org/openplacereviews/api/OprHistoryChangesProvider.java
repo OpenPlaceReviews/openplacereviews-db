@@ -6,9 +6,7 @@ import static org.openplacereviews.opendb.service.HistoryManager.HISTORY_BY_OBJE
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -175,25 +173,28 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					int ind = getOsmSourceIndex(changeKey);
 					if (ind != -1) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-						List<Map<String, Object>> osmSources = nObj == null ? Collections.emptyList()
-								: nObj.getField(null, F_SOURCE, F_OSM);
-						Map<String, Object> osm = null;
-						boolean deleted = true;
-						for (int i = 0; i < osmSources.size(); i++) {
-							Map<String, Object> lmp = osmSources.get(i);
-							if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED)) {
-								deleted = false;
+						String deletedField = nObj == null ? null
+								: nObj.getField(null, F_DELETED);
+						if (deletedField == null) {
+							List<Map<String, Object>> osmSources = nObj == null ? Collections.emptyList()
+									: nObj.getField(null, F_SOURCE, F_OSM);
+							Map<String, Object> osm = null;
+							boolean deleted = true;
+							for (int i = 0; i < osmSources.size(); i++) {
+								Map<String, Object> lmp = osmSources.get(i);
+								if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED)) {
+									deleted = false;
+								}
+								if (i == ind) {
+									osm = lmp;
+								}
 							}
-							if (i == ind) {
-								osm = lmp;
+							if (deleted && osm != null) {
+								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject);
+								break changeKeys;
 							}
-						}
-						if (deleted && osm != null) {
-							addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject);
-							break changeKeys;
 						}
 					}
-
 				}
 			}				
 		}
@@ -318,7 +319,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	
 	private int getOsmSourceIndex(String key) {
 		String prefix = F_SOURCE + "." + F_OSM + "["; 
-		String suffix = "]." + PlaceOpObjectHelper.F_DELETED;
+		String suffix = "]." + F_DELETED;
 		if (key.startsWith(prefix) && key.endsWith(suffix)) {
 			String intInd = key.substring(prefix.length(), key.length() - suffix.length());
 			try {
