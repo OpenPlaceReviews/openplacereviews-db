@@ -173,26 +173,22 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					int ind = getOsmSourceIndex(changeKey);
 					if (ind != -1) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-						String deletedField = nObj == null ? null
-								: nObj.getField(null, F_DELETED);
-						if (deletedField == null) {
-							List<Map<String, Object>> osmSources = nObj == null ? Collections.emptyList()
-									: nObj.getField(null, F_SOURCE, F_OSM);
-							Map<String, Object> osm = null;
-							boolean deleted = true;
-							for (int i = 0; i < osmSources.size(); i++) {
-								Map<String, Object> lmp = osmSources.get(i);
-								if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED)) {
-									deleted = false;
-								}
-								if (i == ind) {
-									osm = lmp;
-								}
+						List<Map<String, Object>> osmSources = (nObj == null || nObj.getField(null, F_DELETED) != null)
+								? Collections.emptyList() : nObj.getField(null, F_SOURCE, F_OSM);
+						Map<String, Object> osm = null;
+						boolean deleted = true;
+						for (int i = 0; i < osmSources.size(); i++) {
+							Map<String, Object> lmp = osmSources.get(i);
+							if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED)) {
+								deleted = false;
 							}
-							if (deleted && osm != null) {
-								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject);
-								break changeKeys;
+							if (i == ind) {
+								osm = lmp;
 							}
+						}
+						if (deleted && osm != null) {
+							addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject);
+							break changeKeys;
 						}
 					}
 				}
