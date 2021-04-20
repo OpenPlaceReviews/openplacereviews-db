@@ -283,7 +283,9 @@ public class OprUserMgmtController {
 	public ResponseEntity<String> resetPwdSendEmail(HttpSession session, @RequestParam(required = true) String name, 
 			@RequestParam(required = true) String email,
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
-		email = email.trim();
+		if (email != null) {
+			email = email.trim();
+		}
 		name = stdNickName(name);
 		String oprName = getOprName(name);
 		checkUserSignupPrivateKeyIsPresent(name);
@@ -370,7 +372,9 @@ public class OprUserMgmtController {
 			@RequestParam(required = false) String oauthAccessToken,
 			@RequestParam(required = false) String email, @RequestParam(required = false) String userDetails, 
 			@RequestParam(required = false, defaultValue = DEFAULT_PURPOSE_LOGIN) String purpose) throws FailedVerificationException {
-		email = email.trim();
+		if (email != null) {
+			email = email.trim();
+		}
 		name = stdNickName(name);
 		String oprName = getOprName(name);
 		OpObject signupObj = manager.getLoginObj(oprName);
@@ -458,7 +462,9 @@ public class OprUserMgmtController {
 			// @RequestParam(required = false) String privateKey, @RequestParam(required = false) String publicKey,
 			@RequestParam(required = false) String oauthAccessToken,
 			@RequestParam(required = false) String userDetails) throws FailedVerificationException {
-		email = email.trim();
+		if (email != null) {
+			email = email.trim();
+		}
 		name = stdNickName(name);
 		boolean oauthEmailVerified = false;
 		OAuthUserDetails oauthUserDetails = null;
