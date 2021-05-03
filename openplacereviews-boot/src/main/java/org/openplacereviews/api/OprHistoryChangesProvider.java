@@ -1,12 +1,13 @@
 package org.openplacereviews.api;
 
 import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
-import static org.openplacereviews.opendb.service.HistoryManager.DESC_SORT;
-import static org.openplacereviews.opendb.service.HistoryManager.HISTORY_BY_OBJECT;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -27,10 +28,10 @@ import org.openplacereviews.opendb.ops.OpBlock;
 import org.openplacereviews.opendb.ops.OpBlockChain;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
-import org.openplacereviews.opendb.service.HistoryManager;
+import org.openplacereviews.opendb.service.PublicDataManager.CacheHolder;
+import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
 import org.openplacereviews.osm.model.OsmMapUtils;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import com.github.filosganga.geogson.model.Feature;
 import com.github.filosganga.geogson.model.FeatureCollection;
@@ -82,10 +83,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	protected static final String COLOR_GREEN = "green";
 	protected static final String COLOR_BLUE = "blue";
 	protected static final String COLOR_RED = "red";
-
-	@Autowired
-	private HistoryManager historyManager;
-	
 
 
 	@Override
@@ -246,23 +243,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		add(deletedObjects, opObject.getId().get(0), f);
 	}
 
-	private void addRemovedEntityFromOpObject(List<String> objId, Map<String, List<Feature>> deletedObjects, OpBlock opBlock, String opHash) {
-		if (historyManager.isRunning()) {
-			HistoryManager.HistoryObjectRequest historyObjectRequest = new HistoryManager.HistoryObjectRequest(
-					HISTORY_BY_OBJECT,
-					generateSearchStringKey(objId),
-					1,
-					DESC_SORT
-			);
-			historyManager.retrieveHistory(historyObjectRequest);
-			List<HistoryManager.HistoryEdit> historyEdits = historyObjectRequest.historySearchResult;
-			HistoryManager.HistoryEdit lastVersion = historyEdits.get(0);
-			OpObject opObject = lastVersion.getObjEdit();
-			generateEntity(deletedObjects, opBlock, opHash, opObject, OBJ_REMOVED, COLOR_RED);
-		} else {
-			// not supported cause we don't have lat/lon of deleted object
-		}
-	}
 
 	private void generateEntity(Map<String, List<Feature>> objects, OpBlock opBlock, String opHash, OpObject opObject, 
 			String status, String color) {
@@ -290,6 +270,36 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			objects.put(tileId, new ArrayList<>());
 		}
 		objects.get(tileId).add(f);
+	}
+	
+	@Override
+	public boolean operationAdded(PublicAPIEndpoint<MapCollectionParameters, OprMapCollectionApiResult> api,
+			OpOperation op, OpBlock block) {
+		boolean changed = false;
+		if (op.getType().equals(OPR_PLACE)) {
+			Set<String> tileIds = new TreeSet<String>();
+			for (OpObject opObject : op.getEdited()) {
+				String tileId = opObject.getId().get(0);
+				tileIds.add(tileId);
+			}
+			for (OpObject opObject : op.getCreated()) {
+				String tileId = opObject.getId().get(0);
+				tileIds.add(tileId);
+			}
+			for (List<String> opObject : op.getDeleted()) {
+				String tileId = opObject.get(0);
+				tileIds.add(tileId);
+			}
+			for (MapCollectionParameters p : api.getCacheKeys()) {
+				if (tileIds.contains(p.tileId)) {
+					CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
+					if (holder != null) {
+						holder.forceUpdate = true;
+					}
+				}
+			}
+		}
+		return changed;
 	}
 
 
@@ -326,8 +336,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		return -1;
 	}
 
-	
-
 	private Point generatePoint(Map<String, Object> osm) {
 		double lat = ((Number)osm.get(ATTR_LATITUDE)).doubleValue();
 		double lon = ((Number)osm.get(ATTR_LONGITUDE)).doubleValue();
@@ -358,11 +366,5 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
-	private List<String> generateSearchStringKey(List<String> objId) {
-		List<String> searchKey = new ArrayList<>();
-		searchKey.add(OPR_PLACE);
-		searchKey.addAll(objId);
-		return searchKey;
-	}
 
 }
