@@ -277,26 +277,27 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			OpOperation op, OpBlock block) {
 		boolean changed = false;
 		if (op.getType().equals(OPR_PLACE)) {
-			Set<String> tileIds = new TreeSet<String>();
-			for (OpObject opObject : op.getEdited()) {
-				String tileId = opObject.getId().get(0);
-				tileIds.add(tileId);
-			}
-			for (OpObject opObject : op.getCreated()) {
-				String tileId = opObject.getId().get(0);
-				tileIds.add(tileId);
-			}
-			for (List<String> opObject : op.getDeleted()) {
-				String tileId = opObject.get(0);
-				tileIds.add(tileId);
-			}
+			// not tile based, so we need to update all caches
+//			Set<String> tileIds = new TreeSet<String>();
+//			for (OpObject opObject : op.getEdited()) {
+//				String tileId = opObject.getId().get(0);
+//				tileIds.add(tileId);
+//			}
+//			for (OpObject opObject : op.getCreated()) {
+//				String tileId = opObject.getId().get(0);
+//				tileIds.add(tileId);
+//			}
+//			for (List<String> opObject : op.getDeleted()) {
+//				String tileId = opObject.get(0);
+//				tileIds.add(tileId);
+//			}
 			for (MapCollectionParameters p : api.getCacheKeys()) {
-				if (tileIds.contains(p.tileId)) {
+//				if (tileIds.contains(p.tileId)) {
 					CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
 					if (holder != null) {
 						holder.forceUpdate = true;
 					}
-				}
+//				}
 			}
 		}
 		return changed;
