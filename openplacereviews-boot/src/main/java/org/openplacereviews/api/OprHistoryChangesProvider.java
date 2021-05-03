@@ -296,6 +296,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
 					if (holder != null) {
 						holder.forceUpdate = true;
+						changed = true;
 					}
 //				}
 			}
