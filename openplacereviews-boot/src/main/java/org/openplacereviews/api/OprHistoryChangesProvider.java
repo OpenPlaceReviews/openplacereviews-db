@@ -4,10 +4,7 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -45,7 +42,7 @@ import com.google.gson.JsonPrimitive;
 public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 	private static final Log LOGGER = LogFactory.getLog(OprHistoryChangesProvider.class);
-	
+
 	private enum RequestFilter {
 		REVIEW_IMAGES("Review new images"),
 		POSSIBLE_MERGE("Review duplicate places");
@@ -156,7 +153,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith("images.review")) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
+						List<Object> imgReview = nObj.getField(null,F_IMG,F_REVIEW);
+						if (nObj != null && placeIdsAdded.add(generateStringId(nObj)) && imgReview.size() > 0) {
 							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN);
 						}
 						break changeKeys;

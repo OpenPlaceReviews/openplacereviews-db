@@ -46,6 +46,8 @@ public class PlaceOpObjectHelper {
 	public static final String F_CHANGESET = "changeset";
 	public static final String F_TIMESTAMP = "timestamp";
 	public static final String F_DELETED = "deleted";
+	public static final String F_IMG = "images";
+	public static final String F_REVIEW = "review";
 	public static final SimpleDateFormat TIMESTAMP_FORMAT = OpBlock.dateFormat;
 	public static OpObject generateNewOprObject(Entity entity, TreeMap<String, Object> osmObject ) {
 		OpObject create = new OpObject();
