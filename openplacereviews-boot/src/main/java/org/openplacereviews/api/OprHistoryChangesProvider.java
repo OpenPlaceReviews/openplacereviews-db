@@ -167,25 +167,26 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		            // 		"set": "2021-02-08T17:18:40.393+0000"
 		            // }
 
-					int ind = getOsmSourceIndex(changeKey);
+					int ind = getOsmSourceIndexDeleted(changeKey);
 					if (ind != -1) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-						List<Map<String, Object>> osmSources = (nObj == null || nObj.getField(null, F_DELETED) != null)
-								? Collections.emptyList() : nObj.getField(null, F_SOURCE, F_OSM);
-						Map<String, Object> osm = null;
-						boolean deleted = true;
-						for (int i = 0; i < osmSources.size(); i++) {
-							Map<String, Object> lmp = osmSources.get(i);
-							if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED)) {
-								deleted = false;
+						if (nObj != null && nObj.getField(null, F_DELETED) == null) {
+							List<Map<String, Object>> osmSources = nObj.getField(null, F_SOURCE, F_OSM);
+							Map<String, Object> osm = null;
+							boolean allOsmRefsDeleted = true;
+							for (int i = 0; i < osmSources.size(); i++) {
+								Map<String, Object> lmp = osmSources.get(i);
+								if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED)) {
+									allOsmRefsDeleted = false;
+								}
+								if (i == ind) {
+									osm = lmp;
+								}
 							}
-							if (i == ind) {
-								osm = lmp;
+							if (allOsmRefsDeleted && osm != null) {
+								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject);
+								break changeKeys;
 							}
-						}
-						if (deleted && osm != null) {
-							addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject);
-							break changeKeys;
 						}
 					}
 				}
@@ -325,7 +326,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		generateTagsForEntity(bld, tagsValue);
 	}
 	
-	private int getOsmSourceIndex(String key) {
+	private int getOsmSourceIndexDeleted(String key) {
 		String prefix = F_SOURCE + "." + F_OSM + "["; 
 		String suffix = "]." + F_DELETED;
 		if (key.startsWith(prefix) && key.endsWith(suffix)) {
