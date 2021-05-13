@@ -134,7 +134,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		Map<String, List<Feature>> deletedObjects = new TreeMap<>();
 		for (OpObject opObject : opOperation.getCreated()) {
 			if (filter == RequestFilter.POSSIBLE_MERGE) {
-				generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN,null);
+				generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN, null);
 			}
 		}
 	
@@ -146,7 +146,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					if (changeKey.startsWith(F_IMG_REVIEW)) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
-							Map<String, String> filterMap = Map.of(IMG_REVIEW_SIZE, String.valueOf(((List<?>) nObj.getFieldByExpr(F_IMG_REVIEW)).size()));
+							Map<String, String> filterMap = getImgReviewField(nObj);
 							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, filterMap);
 						}
 						break changeKeys;
@@ -161,7 +161,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					if (ind != -1) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 						if (nObj != null) {
-							Map<String, String> filterMap = getDeletedPlaceField(nObj);
 							List<Map<String, Object>> osmSources = nObj.getField(null, F_SOURCE, F_OSM);
 							Map<String, Object> osm = null;
 							boolean allOsmRefsDeleted = true;
@@ -175,6 +174,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 								}
 							}
 							if (allOsmRefsDeleted && osm != null) {
+								Map<String, String> filterMap = getDeletedPlaceField(nObj);
 								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, filterMap);
 								break changeKeys;
 							}
@@ -223,9 +223,17 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 	private Map<String, String> getDeletedPlaceField(OpObject nObj) {
-		Object deletedPlace = nObj.getFieldByExpr(F_DELETED_PLACE);
+		Object deletedPlace = nObj.getField(null, F_DELETED_PLACE);
 		if (deletedPlace != null) {
 			return Map.of(PLACE_DELETED, deletedPlace.toString());
+		}
+		return null;
+	}
+
+	private Map<String, String> getImgReviewField(OpObject nObj) {
+		Object imgReview = nObj.getFieldByExpr(F_IMG_REVIEW);
+		if (imgReview != null) {
+			return Map.of(IMG_REVIEW_SIZE, String.valueOf(((List<?>) imgReview).size()));
 		}
 		return null;
 	}
@@ -237,7 +245,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED + " " + getTitle(osm)));
 		bld.put(COLOR, new JsonPrimitive(COLOR_RED));
 		bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
-		generateFieldsForFilters(filterMap,bld);
+		generateFieldsForFilters(filterMap, bld);
 		generateFieldsFromOsmSource(osm, bld);
 		generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 		Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
@@ -259,7 +267,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				continue;
 			}
 			bld.put(PLACE_TYPE, new JsonPrimitive(placeType));
-			generateFieldsForFilters(filterMap,bld);
+			generateFieldsForFilters(filterMap, bld);
 			generateFieldsFromOsmSource(osm, bld);
 			generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 			Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
@@ -270,8 +278,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	private void generateFieldsForFilters(Map<String, String> filterMap, ImmutableMap.Builder<String, JsonElement> bld) {
 		if (filterMap != null && filterMap.size() != 0) {
 			for (Map.Entry<String, String> entry : filterMap.entrySet()) {
-				String key = entry.getKey();
-				bld.put(key, new JsonPrimitive(filterMap.get(key)));
+				bld.put(entry.getKey(), new JsonPrimitive(entry.getValue()));
 			}
 		}
 	}

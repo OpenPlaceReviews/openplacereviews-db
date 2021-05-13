@@ -231,11 +231,13 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
 
-			if (o.getFieldByExpr(F_IMG_REVIEW) != null) {
-				bld.put(IMG_REVIEW_SIZE, new JsonPrimitive(String.valueOf(((List<?>) o.getFieldByExpr(F_IMG_REVIEW)).size())));
+			Object imgReviewField = o.getFieldByExpr(F_IMG_REVIEW);
+			if (imgReviewField != null) {
+				bld.put(IMG_REVIEW_SIZE, new JsonPrimitive(String.valueOf(((List<?>) imgReviewField).size())));
 			}
-			if (o.getFieldByExpr(F_DELETED_PLACE) != null) {
-				bld.put(PLACE_DELETED, new JsonPrimitive(String.valueOf(o.getFieldByExpr(F_DELETED_PLACE))));
+			Object deletedPlaceField = o.getField(null, F_DELETED_PLACE);
+			if (deletedPlaceField != null) {
+				bld.put(PLACE_DELETED, new JsonPrimitive(String.valueOf(deletedPlaceField)));
 			}
 			
 			double lat = (double) mainOSM.get(ATTR_LATITUDE);
