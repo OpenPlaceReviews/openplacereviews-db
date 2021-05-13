@@ -4,21 +4,10 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.logging.Log;
@@ -145,7 +134,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		Map<String, List<Feature>> deletedObjects = new TreeMap<>();
 		for (OpObject opObject : opOperation.getCreated()) {
 			if (filter == RequestFilter.POSSIBLE_MERGE) {
-				generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN);
+				generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN,null);
 			}
 		}
 	
@@ -154,10 +143,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			//Map<String, Object> current = opObject.getStringObjMap(F_CURRENT);
 			changeKeys: for (String changeKey : change.keySet()) {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
-					if (changeKey.startsWith("images.review")) {
+					if (changeKey.startsWith(F_IMG_REVIEW)) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
-							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN);
+							Map<String, String> filterMap = Map.of(IMG_REVIEW_SIZE, String.valueOf(((List<?>) nObj.getFieldByExpr(F_IMG_REVIEW)).size()));
+							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, filterMap);
 						}
 						break changeKeys;
 					}	
@@ -170,13 +160,14 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					int ind = getOsmSourceIndexDeleted(changeKey);
 					if (ind != -1) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-						if (nObj != null && nObj.getField(null, F_DELETED) == null) {
+						if (nObj != null) {
+							Map<String, String> filterMap = getDeletedPlaceField(nObj);
 							List<Map<String, Object>> osmSources = nObj.getField(null, F_SOURCE, F_OSM);
 							Map<String, Object> osm = null;
 							boolean allOsmRefsDeleted = true;
 							for (int i = 0; i < osmSources.size(); i++) {
 								Map<String, Object> lmp = osmSources.get(i);
-								if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED)) {
+								if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED_OSM)) {
 									allOsmRefsDeleted = false;
 								}
 								if (i == ind) {
@@ -184,7 +175,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 								}
 							}
 							if (allOsmRefsDeleted && osm != null) {
-								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject);
+								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, filterMap);
 								break changeKeys;
 							}
 						}
@@ -231,13 +222,22 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
+	private Map<String, String> getDeletedPlaceField(OpObject nObj) {
+		Object deletedPlace = nObj.getFieldByExpr(F_DELETED_PLACE);
+		if (deletedPlace != null) {
+			return Map.of(PLACE_DELETED, deletedPlace.toString());
+		}
+		return null;
+	}
 
-	private void addDeletedFeature(Map<String, List<Feature>> deletedObjects, int osmIndex, Map<String, Object> osm, OpBlock opBlock, String opHash, OpObject opObject) {
+	private void addDeletedFeature(Map<String, List<Feature>> deletedObjects, int osmIndex, Map<String, Object> osm,
+								   OpBlock opBlock, String opHash, OpObject opObject, Map<String, String> filterMap) {
 		ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 		bld.put(OSM_INDEX, new JsonPrimitive(osmIndex));
 		bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED + " " + getTitle(osm)));
 		bld.put(COLOR, new JsonPrimitive(COLOR_RED));
 		bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
+		generateFieldsForFilters(filterMap,bld);
 		generateFieldsFromOsmSource(osm, bld);
 		generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 		Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
@@ -246,7 +246,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 
 	private void generateEntity(Map<String, List<Feature>> objects, OpBlock opBlock, String opHash, OpObject opObject, 
-			String status, String color) {
+			String status, String color, Map<String, String> filterMap) {
 		List<Map<String, Object>> osmList = opObject.getField(null, F_SOURCE, F_OSM);
 		for (int i = 0; i < osmList.size(); i++) {
 			Map<String, Object> osm = osmList.get(i);
@@ -259,10 +259,20 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				continue;
 			}
 			bld.put(PLACE_TYPE, new JsonPrimitive(placeType));
+			generateFieldsForFilters(filterMap,bld);
 			generateFieldsFromOsmSource(osm, bld);
 			generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 			Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
 			add(objects, opObject.getId().get(0), f);
+		}
+	}
+
+	private void generateFieldsForFilters(Map<String, String> filterMap, ImmutableMap.Builder<String, JsonElement> bld) {
+		if (filterMap != null && filterMap.size() != 0) {
+			for (Map.Entry<String, String> entry : filterMap.entrySet()) {
+				String key = entry.getKey();
+				bld.put(key, new JsonPrimitive(filterMap.get(key)));
+			}
 		}
 	}
 
@@ -328,7 +338,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	
 	private int getOsmSourceIndexDeleted(String key) {
 		String prefix = F_SOURCE + "." + F_OSM + "["; 
-		String suffix = "]." + F_DELETED;
+		String suffix = "]." + F_DELETED_OSM;
 		if (key.startsWith(prefix) && key.endsWith(suffix)) {
 			String intInd = key.substring(prefix.length(), key.length() - suffix.length());
 			try {

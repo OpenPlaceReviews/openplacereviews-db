@@ -70,6 +70,9 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 	public static final String CHANGESET = "changeset";
 	public static final String SOURCE_TYPE = "source_type";
 	public static final String SOURCE_INDEX = "source_ind";
+
+	public static final String IMG_REVIEW_SIZE = "img_review_size";
+	public static final String PLACE_DELETED = "place_deleted";
 	
 	protected Gson geoJson;
 	
