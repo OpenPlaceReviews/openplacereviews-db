@@ -243,7 +243,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED + " " + getTitle(osm)));
 		bld.put(COLOR, new JsonPrimitive(COLOR_RED));
 		bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
-		getAdditionalFields(additionalFields, bld);
+		generateAdditionalFields(additionalFields, bld);
 		generateFieldsFromOsmSource(osm, bld);
 		generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 		Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
@@ -265,7 +265,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				continue;
 			}
 			bld.put(PLACE_TYPE, new JsonPrimitive(placeType));
-			getAdditionalFields(additionalFields, bld);
+			generateAdditionalFields(additionalFields, bld);
 			generateFieldsFromOsmSource(osm, bld);
 			generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 			Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
@@ -273,7 +273,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
-	private void getAdditionalFields(Map<String, String> additionalFields, ImmutableMap.Builder<String, JsonElement> bld) {
+	private void generateAdditionalFields(Map<String, String> additionalFields, ImmutableMap.Builder<String, JsonElement> bld) {
 		if (additionalFields != null && additionalFields.size() != 0) {
 			for (Map.Entry<String, String> entry : additionalFields.entrySet()) {
 				bld.put(entry.getKey(), new JsonPrimitive(entry.getValue()));
