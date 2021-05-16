@@ -45,7 +45,9 @@ public class PlaceOpObjectHelper {
 	public static final String F_VERSION = "version";
 	public static final String F_CHANGESET = "changeset";
 	public static final String F_TIMESTAMP = "timestamp";
-	public static final String F_DELETED = "deleted";
+	public static final String F_DELETED_OSM = "deleted";
+	public static final String F_DELETED_PLACE = "deleted";
+	public static final String F_IMG_REVIEW = "images.review";
 	public static final SimpleDateFormat TIMESTAMP_FORMAT = OpBlock.dateFormat;
 	public static OpObject generateNewOprObject(Entity entity, TreeMap<String, Object> osmObject ) {
 		OpObject create = new OpObject();
@@ -103,7 +105,7 @@ public class PlaceOpObjectHelper {
 		TreeMap<String, Object> change = new TreeMap<>();
 		TreeMap<String, Object> current = new TreeMap<>();
 		String f = F_SOURCE + "." + F_OSM + "[" + po.ind + "]";
-		change.put(f + "." + F_DELETED, set(TIMESTAMP_FORMAT.format(new Date())));
+		change.put(f + "." + F_DELETED_OSM, set(TIMESTAMP_FORMAT.format(new Date())));
 //		current.put(f, po.osm);
 		
 		editObject.putObjectValue(F_CHANGE, change);

@@ -4,6 +4,8 @@ package org.openplacereviews.api;
 
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_IMG_REVIEW;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -70,6 +72,9 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 	public static final String CHANGESET = "changeset";
 	public static final String SOURCE_TYPE = "source_type";
 	public static final String SOURCE_INDEX = "source_ind";
+
+	public static final String IMG_REVIEW_SIZE = "img_review_size";
+	public static final String PLACE_DELETED = "place_deleted";
 	
 	protected Gson geoJson;
 	
@@ -225,7 +230,15 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 			
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
-			
+
+			Object imgReviewField = o.getFieldByExpr(F_IMG_REVIEW);
+			if (imgReviewField != null) {
+				bld.put(IMG_REVIEW_SIZE, new JsonPrimitive(String.valueOf(((List<?>) imgReviewField).size())));
+			}
+			Object deletedPlaceField = o.getField(null, F_DELETED_PLACE);
+			if (deletedPlaceField != null) {
+				bld.put(PLACE_DELETED, new JsonPrimitive(String.valueOf(deletedPlaceField)));
+			}
 			
 			double lat = (double) mainOSM.get(ATTR_LATITUDE);
 			double lon = (double) mainOSM.get(ATTR_LONGITUDE);
@@ -276,7 +289,7 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 				}
 			}
 			bld.put(SOURCES, sources);
-			
+
 			
 			bld.put(TAGS, mainTags);
 			Feature f = new Feature(p, bld.build(), Optional.absent());
