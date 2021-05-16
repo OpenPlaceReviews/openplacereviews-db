@@ -140,14 +140,15 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
+			Map<String, String> additionalFields = new HashMap<>();
 			//Map<String, Object> current = opObject.getStringObjMap(F_CURRENT);
 			changeKeys: for (String changeKey : change.keySet()) {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith(F_IMG_REVIEW)) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
-							Map<String, String> filterMap = getImgReviewField(nObj);
-							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, filterMap);
+							additionalFields = getImgReviewField(nObj);
+							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, additionalFields);
 						}
 						break changeKeys;
 					}	
@@ -174,8 +175,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 								}
 							}
 							if (allOsmRefsDeleted && osm != null) {
-								Map<String, String> filterMap = getDeletedPlaceField(nObj);
-								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, filterMap);
+								additionalFields = getDeletedPlaceField(nObj);
+								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, additionalFields);
 								break changeKeys;
 							}
 						}
@@ -239,13 +240,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 	private void addDeletedFeature(Map<String, List<Feature>> deletedObjects, int osmIndex, Map<String, Object> osm,
-								   OpBlock opBlock, String opHash, OpObject opObject, Map<String, String> filterMap) {
+								   OpBlock opBlock, String opHash, OpObject opObject, Map<String, String> additionalFields) {
 		ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 		bld.put(OSM_INDEX, new JsonPrimitive(osmIndex));
 		bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED + " " + getTitle(osm)));
 		bld.put(COLOR, new JsonPrimitive(COLOR_RED));
 		bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
-		generateFieldsForFilters(filterMap, bld);
+		getAdditionalFields(additionalFields, bld);
 		generateFieldsFromOsmSource(osm, bld);
 		generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 		Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
@@ -254,7 +255,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 
 	private void generateEntity(Map<String, List<Feature>> objects, OpBlock opBlock, String opHash, OpObject opObject, 
-			String status, String color, Map<String, String> filterMap) {
+			String status, String color, Map<String, String> additionalFields) {
 		List<Map<String, Object>> osmList = opObject.getField(null, F_SOURCE, F_OSM);
 		for (int i = 0; i < osmList.size(); i++) {
 			Map<String, Object> osm = osmList.get(i);
@@ -267,7 +268,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				continue;
 			}
 			bld.put(PLACE_TYPE, new JsonPrimitive(placeType));
-			generateFieldsForFilters(filterMap, bld);
+			getAdditionalFields(additionalFields, bld);
 			generateFieldsFromOsmSource(osm, bld);
 			generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 			Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
@@ -275,9 +276,9 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
-	private void generateFieldsForFilters(Map<String, String> filterMap, ImmutableMap.Builder<String, JsonElement> bld) {
-		if (filterMap != null && filterMap.size() != 0) {
-			for (Map.Entry<String, String> entry : filterMap.entrySet()) {
+	private void getAdditionalFields(Map<String, String> additionalFields, ImmutableMap.Builder<String, JsonElement> bld) {
+		if (additionalFields != null && additionalFields.size() != 0) {
+			for (Map.Entry<String, String> entry : additionalFields.entrySet()) {
 				bld.put(entry.getKey(), new JsonPrimitive(entry.getValue()));
 			}
 		}
