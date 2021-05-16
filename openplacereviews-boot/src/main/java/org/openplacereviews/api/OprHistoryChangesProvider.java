@@ -140,11 +140,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
-			//Map<String, Object> current = opObject.getStringObjMap(F_CURRENT);
+			OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 			changeKeys: for (String changeKey : change.keySet()) {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith(F_IMG_REVIEW)) {
-						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
 							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, getImgReviewField(nObj));
 						}
@@ -158,7 +157,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 					int ind = getOsmSourceIndexDeleted(changeKey);
 					if (ind != -1) {
-						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 						if (nObj != null) {
 							List<Map<String, Object>> osmSources = nObj.getField(null, F_SOURCE, F_OSM);
 							Map<String, Object> osm = null;
@@ -177,6 +175,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 								break changeKeys;
 							}
 						}
+					}
+				} else {
+					if (nObj != null){
+						Map<String, String> allAdditionalFields = new HashMap<>();
+						allAdditionalFields.putAll(Objects.requireNonNull(getImgReviewField(nObj)));
+						allAdditionalFields.putAll(Objects.requireNonNull(getDeletedPlaceField(nObj)));
+						generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, allAdditionalFields);
 					}
 				}
 			}				
