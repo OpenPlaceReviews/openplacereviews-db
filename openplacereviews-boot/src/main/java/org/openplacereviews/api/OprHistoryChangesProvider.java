@@ -140,15 +140,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
-			Map<String, String> additionalFields = new HashMap<>();
 			//Map<String, Object> current = opObject.getStringObjMap(F_CURRENT);
 			changeKeys: for (String changeKey : change.keySet()) {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith(F_IMG_REVIEW)) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
-							additionalFields = getImgReviewField(nObj);
-							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, additionalFields);
+							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, getImgReviewField(nObj));
 						}
 						break changeKeys;
 					}	
@@ -175,8 +173,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 								}
 							}
 							if (allOsmRefsDeleted && osm != null) {
-								additionalFields = getDeletedPlaceField(nObj);
-								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, additionalFields);
+								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, getDeletedPlaceField(nObj));
 								break changeKeys;
 							}
 						}
