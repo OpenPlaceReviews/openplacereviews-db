@@ -146,7 +146,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith(F_IMG_REVIEW)) {
 						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
-							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, addImgReviewField(additionalFieldsMap,nObj));
+							addImgReviewField(additionalFieldsMap,nObj);
+							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
 						}
 						break changeKeys;
 					}	
@@ -172,15 +173,16 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 								}
 							}
 							if (allOsmRefsDeleted && osm != null) {
-								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, addDeletedPlaceField(additionalFieldsMap,nObj));
+								addDeletedPlaceField(additionalFieldsMap,nObj);
+								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, additionalFieldsMap);
 								break changeKeys;
 							}
 						}
 					}
 				} else {
 					if (nObj != null) {
-						addImgReviewField(additionalFieldsMap,nObj);
-						addDeletedPlaceField(additionalFieldsMap,nObj);
+						addImgReviewField(additionalFieldsMap, nObj);
+						addDeletedPlaceField(additionalFieldsMap, nObj);
 						generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
 					}
 				}
@@ -225,20 +227,18 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
-	private Map<String, String> addDeletedPlaceField(Map<String, String> fieldsMap, OpObject nObj) {
+	private void addDeletedPlaceField(Map<String, String> fieldsMap, OpObject nObj) {
 		Object deletedPlace = nObj.getField(null, F_DELETED_PLACE);
 		if (deletedPlace != null) {
 			fieldsMap.putAll(Map.of(PLACE_DELETED, deletedPlace.toString()));
 		}
-		return fieldsMap;
 	}
 
-	private Map<String, String> addImgReviewField(Map<String, String> fieldsMap, OpObject nObj) {
+	private void addImgReviewField(Map<String, String> fieldsMap, OpObject nObj) {
 		Object imgReview = nObj.getFieldByExpr(F_IMG_REVIEW);
 		if (imgReview != null) {
 			fieldsMap.putAll(Map.of(IMG_REVIEW_SIZE, String.valueOf(((List<?>) imgReview).size())));
 		}
-		return fieldsMap;
 	}
 
 	private void addDeletedFeature(Map<String, List<Feature>> deletedObjects, int osmIndex, Map<String, Object> osm,
