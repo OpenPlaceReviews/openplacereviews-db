@@ -141,11 +141,12 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 			OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+			Map<String, String> additionalFieldsMap = new HashMap<>();
 			changeKeys: for (String changeKey : change.keySet()) {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith(F_IMG_REVIEW)) {
 						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
-							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, getImgReviewField(nObj));
+							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, addImgReviewField(additionalFieldsMap,nObj));
 						}
 						break changeKeys;
 					}	
@@ -171,23 +172,16 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 								}
 							}
 							if (allOsmRefsDeleted && osm != null) {
-								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, getDeletedPlaceField(nObj));
+								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, addDeletedPlaceField(additionalFieldsMap,nObj));
 								break changeKeys;
 							}
 						}
 					}
 				} else {
 					if (nObj != null) {
-						Map<String, String> allAdditionalFields = new HashMap<>();
-						Map<String, String> imgReviewField = getImgReviewField(nObj);
-						if (imgReviewField != null) {
-							allAdditionalFields.putAll(imgReviewField);
-						}
-						Map<String, String> deletedPlaceField = getDeletedPlaceField(nObj);
-						if (deletedPlaceField != null) {
-							allAdditionalFields.putAll(deletedPlaceField);
-						}
-						generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, allAdditionalFields);
+						addImgReviewField(additionalFieldsMap,nObj);
+						addDeletedPlaceField(additionalFieldsMap,nObj);
+						generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
 					}
 				}
 			}				
@@ -231,20 +225,22 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
-	private Map<String, String> getDeletedPlaceField(OpObject nObj) {
+	private Map<String, String> addDeletedPlaceField(Map<String, String> fieldsMap, OpObject nObj) {
 		Object deletedPlace = nObj.getField(null, F_DELETED_PLACE);
 		if (deletedPlace != null) {
-			return Map.of(PLACE_DELETED, deletedPlace.toString());
+			fieldsMap.putAll(Map.of(PLACE_DELETED, deletedPlace.toString()));
+			return fieldsMap;
 		}
-		return null;
+		return fieldsMap;
 	}
 
-	private Map<String, String> getImgReviewField(OpObject nObj) {
+	private Map<String, String> addImgReviewField(Map<String, String> fieldsMap, OpObject nObj) {
 		Object imgReview = nObj.getFieldByExpr(F_IMG_REVIEW);
 		if (imgReview != null) {
-			return Map.of(IMG_REVIEW_SIZE, String.valueOf(((List<?>) imgReview).size()));
+			fieldsMap.putAll(Map.of(IMG_REVIEW_SIZE, String.valueOf(((List<?>) imgReview).size())));
+			return fieldsMap;
 		}
-		return null;
+		return fieldsMap;
 	}
 
 	private void addDeletedFeature(Map<String, List<Feature>> deletedObjects, int osmIndex, Map<String, Object> osm,
