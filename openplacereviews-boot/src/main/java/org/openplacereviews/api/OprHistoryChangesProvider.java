@@ -138,8 +138,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 				if (nObj != null) {
 					addDeletedPlaceField(additionalFieldsMap, nObj);
-					generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
 				}
+				generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
 			}
 		}
 	
