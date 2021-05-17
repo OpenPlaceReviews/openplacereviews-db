@@ -229,7 +229,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		Object deletedPlace = nObj.getField(null, F_DELETED_PLACE);
 		if (deletedPlace != null) {
 			fieldsMap.putAll(Map.of(PLACE_DELETED, deletedPlace.toString()));
-			return fieldsMap;
 		}
 		return fieldsMap;
 	}
@@ -238,7 +237,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		Object imgReview = nObj.getFieldByExpr(F_IMG_REVIEW);
 		if (imgReview != null) {
 			fieldsMap.putAll(Map.of(IMG_REVIEW_SIZE, String.valueOf(((List<?>) imgReview).size())));
-			return fieldsMap;
 		}
 		return fieldsMap;
 	}
