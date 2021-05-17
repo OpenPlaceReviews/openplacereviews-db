@@ -132,16 +132,20 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		String opHash = opOperation.getRawHash();
 		Map<String, List<Feature>> createdObjects = new TreeMap<>();
 		Map<String, List<Feature>> deletedObjects = new TreeMap<>();
+		Map<String, String> additionalFieldsMap = new HashMap<>();
 		for (OpObject opObject : opOperation.getCreated()) {
 			if (filter == RequestFilter.POSSIBLE_MERGE) {
-				generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN, null);
+				OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+				if (nObj != null) {
+					addDeletedPlaceField(additionalFieldsMap, nObj);
+				}
+				generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
 			}
 		}
 	
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 			OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-			Map<String, String> additionalFieldsMap = new HashMap<>();
 			changeKeys: for (String changeKey : change.keySet()) {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith(F_IMG_REVIEW)) {
