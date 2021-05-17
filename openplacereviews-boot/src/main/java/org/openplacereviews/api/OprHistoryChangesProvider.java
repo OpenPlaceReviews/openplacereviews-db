@@ -146,7 +146,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith(F_IMG_REVIEW)) {
 						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
-							addImgReviewField(additionalFieldsMap,nObj);
+							addImgReviewField(additionalFieldsMap, nObj);
 							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
 						}
 						break changeKeys;
@@ -173,7 +173,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 								}
 							}
 							if (allOsmRefsDeleted && osm != null) {
-								addDeletedPlaceField(additionalFieldsMap,nObj);
+								addDeletedPlaceField(additionalFieldsMap, nObj);
 								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, additionalFieldsMap);
 								break changeKeys;
 							}
