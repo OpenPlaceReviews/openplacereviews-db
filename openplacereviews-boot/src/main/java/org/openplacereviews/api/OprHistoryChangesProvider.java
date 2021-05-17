@@ -177,10 +177,16 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 						}
 					}
 				} else {
-					if (nObj != null){
+					if (nObj != null) {
 						Map<String, String> allAdditionalFields = new HashMap<>();
-						allAdditionalFields.putAll(Objects.requireNonNull(getImgReviewField(nObj)));
-						allAdditionalFields.putAll(Objects.requireNonNull(getDeletedPlaceField(nObj)));
+						Map<String, String> imgReviewField = getImgReviewField(nObj);
+						if (imgReviewField != null) {
+							allAdditionalFields.putAll(imgReviewField);
+						}
+						Map<String, String> deletedPlaceField = getDeletedPlaceField(nObj);
+						if (deletedPlaceField != null) {
+							allAdditionalFields.putAll(deletedPlaceField);
+						}
 						generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, allAdditionalFields);
 					}
 				}
