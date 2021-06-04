@@ -35,8 +35,8 @@ import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
 import org.openplacereviews.opendb.util.OUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.security.util.InMemoryResource;
 
 import com.github.filosganga.geogson.gson.GeometryAdapterFactory;
 import com.github.filosganga.geogson.model.Feature;
@@ -152,7 +152,7 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 
 	@Override
 	public AbstractResource formatContent(OprMapCollectionApiResult m) {
-		return new InMemoryResource(geoJson.toJson(m));
+		return new ByteArrayResource(geoJson.toJson(m).getBytes());
 	}
 	
 	@Override

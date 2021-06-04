@@ -106,7 +106,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
                 op = initOpOperation(objectType());
             }
             op.addDeleted(deleted.get(i));
-            op.addEdited(editedList.get(i));
+            op.addEdited(edited.get(i));
             batch++;
         }
         if (batch > 0) {
