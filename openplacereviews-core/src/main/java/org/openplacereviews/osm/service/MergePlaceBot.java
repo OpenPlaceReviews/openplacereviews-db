@@ -94,45 +94,27 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return this;
     }
 
-    private List<List<OpObject>> getEditedResultList(List<OpObject> list) {
-        int n = 10;
-        List<List<OpObject>> resultDeleted = new LinkedList<>();
-        int size = list.size();
-        for (int i = 0; i <= size; i += n) {
-            resultDeleted.add(list.subList(i, Math.min(i + n, size)));
-        }
-        return resultDeleted;
-    }
-
-    private List<List<List<String>>> getDeletedResultList(List<List<String>> list) {
-        int n = 10;
-        List<List<List<String>>> resultDeleted = new LinkedList<>();
-        int size = list.size();
-        for (int i = 0; i <= size; i += n) {
-            resultDeleted.add(list.subList(i, Math.min(i + n, size)));
-        }
-        return resultDeleted;
-    }
-
     private List<OpOperation> createOperations(List<List<String>> deleted, List<OpObject> edited) {
-        List<List<List<String>>> resultDeleted = getDeletedResultList(deleted);
-        List<List<OpObject>> resultEdited = getEditedResultList(edited);
+        int split = 100;
         List<OpOperation> opList = new ArrayList<>();
-        for (List<List<String>> deletedList : resultDeleted) {
-            for (List<String> id : deletedList) {
-                OpOperation op = initOpOperation(objectType());
-                op.addDeleted(id);
+        int batch = 0;
+        OpOperation op = null;
+        if (deleted.size() != edited.size()) {
+            throw new IllegalStateException();
+        }
+        for (int i = 0; i < deleted.size() && i < edited.size(); i++) {
+            if (batch >= split || op == null) {
+                batch = 0;
                 opList.add(op);
+                op = initOpOperation(objectType());
             }
+            op.addDeleted(deleted.get(i));
+            op.addEdited(editedList.get(i));
+            batch++;
         }
-        for (OpOperation op : opList) {
-            for (List<OpObject> editedList : resultEdited) {
-                for (OpObject obj : editedList) {
-                    op.addEdited(obj);
-                }
-            }
+        if (batch > 0) {
+            opList.add(op);
         }
-
         return opList;
     }
 
