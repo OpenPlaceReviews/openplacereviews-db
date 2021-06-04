@@ -37,7 +37,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.security.util.InMemoryResource;
 
 import com.github.filosganga.geogson.gson.GeometryAdapterFactory;
 import com.github.filosganga.geogson.model.Feature;
