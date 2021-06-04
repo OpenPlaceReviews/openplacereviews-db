@@ -67,12 +67,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
                 int i;
                 List<List<String>> deleted = new ArrayList<>();
                 List<OpObject> edited = new ArrayList<>();
-                for (i = 0; i < list.size(); i++) {
+                for (i = 0; i < list.size() - 1; i++) {
                     Feature curr = list.get(i);
-                    Feature next = null;
-                    if (i < (list.size() - 1)) {
-                        next = list.get(i + 1);
-                    }
+                    Feature next = list.get(i + 1);
                     if (areNearbyPlaces(curr, next)) {
                         similarPlacesCnt++;
                         if (mergePlaces(curr, next, deleted, edited)) {
@@ -136,7 +133,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     }
 
     private boolean areNearbyPlaces(Feature f1, Feature f2) {
-        if (f2 != null && !f2.properties().containsKey("deleted") && f1 != null && !f1.properties().containsKey("deleted")) {
+        if (!f2.properties().containsKey("deleted") && !f1.properties().containsKey("deleted")) {
             Point p1 = (Point) f1.geometry();
             Point p2 = (Point) f1.geometry();
             int similarPlaceDistance = 150;
@@ -164,6 +161,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     }
 
     private List<String> getPlaceId(Feature feature) {
+        // TODO !!!
         return new ArrayList<>(Arrays.asList(feature.properties()
                 .get("opr_id").toString()
                 .replace("\"", "")
@@ -178,11 +176,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         TreeMap<String, Object> current = new TreeMap<>();
         TreeMap<String, Object> changed = new TreeMap<>();
         TreeMap<String, Object> appendObj = new TreeMap<>();
-        if (newSources.size() > 1) {
-            appendObj.put("appendMany", newSources);
-        } else {
-            appendObj.put("append", newSources);
-        }
+        appendObj.put("appendMany", newSources);
         changed.put("source.osm", appendObj);
         current.put("source.osm", oldSources);
         editObj.putObjectValue(OpObject.F_CHANGE, changed);
