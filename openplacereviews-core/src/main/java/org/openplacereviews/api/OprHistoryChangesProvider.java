@@ -204,27 +204,43 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				if (cList == null || delList == null) {
 					continue;
 				}
-				List<Feature> merged = new ArrayList<>();
-				newObj: for (Feature fnew : cList) {
+				// make linked list for quick delete in the middle
+				LinkedList<Feature> deletedPoints = new LinkedList<Feature>(delList);
+				LinkedList<Feature> createdPoints = new LinkedList<Feature>(cList);
+				while (!createdPoints.isEmpty()) {
+					List<Feature> merged = new ArrayList<>();
+					Feature fnew = createdPoints.poll();
 					Point pnew = (Point) fnew.geometry();
-					for (Feature fdel : delList) {
-						Point pdel = (Point) fdel.geometry();
-						if (OsmMapUtils.getDistance(pnew.lat(), pnew.lon(), pdel.lat(), pdel.lon()) < 150) {
-							merged.add(fnew);
-							if (!merged.contains(fdel)) {
-								merged.add(fdel);
-							}
-							continue newObj;
-						}
+					findNearestPointAndDelete(deletedPoints, merged, pnew);
+					if (!merged.isEmpty()) {
+						merged.add(0, fnew);
+					}
+					if (merged.size() > 0) {
+						// find other created points within distance of 150m
+						findNearestPointAndDelete(createdPoints, merged, pnew);
+						// ! always make sure that groups are following [new, ..., new, deleted, deleted, ..., deleted]
+						fc.features().addAll(merged);
 					}
 				}
-				fc.features().addAll(merged);
 			}
 		} else if (filter == RequestFilter.REVIEW_IMAGES) {
 			Set<String> tiles = createdObjects.keySet();
 			for (String tileId : tiles) {
 				List<Feature> cList = createdObjects.get(tileId);
 				fc.features().addAll(cList);
+			}
+		}
+	}
+
+
+	private void findNearestPointAndDelete(LinkedList<Feature> list, List<Feature> merged, Point point) {
+		Iterator<Feature> it = list.iterator();
+		while (it.hasNext()) {
+			Feature featureToFind = it.next();
+			Point pntToFind = (Point) featureToFind.geometry();
+			if (OsmMapUtils.getDistance(point.lat(), point.lon(), pntToFind.lat(), pntToFind.lon()) < 150) {
+				merged.add(0, featureToFind);
+				it.remove();
 			}
 		}
 	}
