@@ -12,22 +12,31 @@ import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.PublicDataManager;
 import org.openplacereviews.opendb.service.bots.GenericMultiThreadBot;
 import org.openplacereviews.osm.model.OsmMapUtils;
-import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 
-
+import java.text.Collator;
 import java.time.LocalDate;
 import java.util.*;
 
+import static org.openplacereviews.api.BaseOprPlaceDataProvider.*;
+import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
-    public static final String OPR_PLACE = "opr.place";
-
-    private int similarPlacesCnt = 0;
-    private int mergedPlacesCnt = 0;
-    private int operationsCnt = 0;
+    private static final int SIMILAR_PLACE_DISTANCE = 150;
+    private static final String SOURCE_OSM = "source.osm";
+    private static final String APPEND = "append";
+    private static final String APPEND_MANY = "appendMany";
+    private static final String PLACE_NAME = "name";
+    private static final String POSSIBLE_MERGE = "POSSIBLE_MERGE";
+    private static final String START_DATA = "date";
+    private static final String END_DATA = "date2";
+    private static final String FILTER = "requestFilter";
+    private static final String HISTORY = "history";
+    private static final String ALL_PUNCTUATION = "^\\p{Punct}+|\\p{Punct}+$";
+    private static final String SPACE = " ";
+    private static final String COMMA = ",";
 
     @Autowired
     private PublicDataManager dataManager;
@@ -50,57 +59,84 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     }
 
     public String objectType() {
-        return "opr.place";
+        return OPR_PLACE;
     }
 
 
     @Override
     public MergePlaceBot call() throws Exception {
+        int similarPlacesCnt = 0;
+        addNewBotStat();
+        try {
+            info("Merge places has started");
+            PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint = dataManager.getEndpoint(HISTORY);
 
-        PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint = dataManager.getEndpoint("history");
+            if (apiEndpoint != null) {
+                Map<String, String[]> params = new ParameterMap<>();
+                addParams(params);
+                List<Feature> list = getFeatures(apiEndpoint, params);
+                if (list != null) {
+                    List<List<String>> deleted = new ArrayList<>();
+                    List<OpObject> edited = new ArrayList<>();
+                    List<List<Feature>> mergeGroups = getMergeGroups(list);
+                    mergeGroups.removeIf(mergeGroup -> mergeGroup.size() > 2);
 
-        if (apiEndpoint != null) {
-            Map<String, String[]> params = new ParameterMap<>();
-            addParams(params);
-            List<Feature> list = getFeatures(apiEndpoint, params);
-            if (list != null) {
-                int i;
-                List<List<String>> deleted = new ArrayList<>();
-                List<OpObject> edited = new ArrayList<>();
-                for (i = 0; i < list.size() - 1; i++) {
-                    Feature curr = list.get(i);
-                    Feature next = list.get(i + 1);
-                    if (areNearbyPlaces(curr, next)) {
-                        similarPlacesCnt++;
-                        if (mergePlaces(curr, next, deleted, edited)) {
-                            i++;
+                    for (List<Feature> mergeGroup : mergeGroups) {
+                        Feature newPlace = mergeGroup.get(0);
+                        Feature oldPlace = mergeGroup.get(1);
+                        if (areNearbyPlaces(newPlace, oldPlace)) {
+                            similarPlacesCnt++;
+                            mergePlaces(newPlace, oldPlace, deleted, edited);
                         }
                     }
-                }
 
-                List<OpOperation> opList = createOperations(deleted, edited);
-                mergedPlacesCnt = deleted.size();
-                operationsCnt = opList.size();
-                LOGGER.info(String.format("Bot finished! Similar places %d, merged places %d, operations %d",
-                        similarPlacesCnt, mergedPlacesCnt, operationsCnt));
-                for (OpOperation op : opList) {
-                    addOpIfNeeded(op, true);
+                    List<OpOperation> opList = createOperations(deleted, edited);
+
+                    for (OpOperation op : opList) {
+                        addOpIfNeeded(op, true);
+                    }
+
+                    info(String.format("Bot finished! Similar places %d, merged places %d, operations %d",
+                            similarPlacesCnt,deleted.size(), opList.size()));
                 }
+                setSuccessState();
             }
+        } catch (Exception e) {
+            setFailedState();
+            info("Merge has failed: " + e.getMessage(), e);
+            throw e;
+        } finally {
+            super.shutdown();
         }
         return this;
     }
 
+    private List<List<Feature>> getMergeGroups(List<Feature> list) {
+        List<List<Feature>> mergeGroups = new ArrayList<>();
+        int currentGroupBeginIndex = 0;
+        for (int i = 0; i < list.size() - 1; i++) {
+            if (i > 0 && !isDeleted(list, i) && isDeleted(list, i - 1)) {
+                mergeGroups.add(list.subList(currentGroupBeginIndex, i));
+                currentGroupBeginIndex = i;
+            }
+        }
+        mergeGroups.add(list.subList(currentGroupBeginIndex, list.size()));
+        return mergeGroups;
+    }
+
+    private boolean isDeleted(List<Feature> list, int i) {
+        return list.get(i).properties().containsKey(F_DELETED_OSM);
+    }
+
     private List<OpOperation> createOperations(List<List<String>> deleted, List<OpObject> edited) {
-        int split = 100;
         List<OpOperation> opList = new ArrayList<>();
         int batch = 0;
-        OpOperation op = null;
+        OpOperation op = initOpOperation(objectType());
         if (deleted.size() != edited.size()) {
             throw new IllegalStateException();
         }
         for (int i = 0; i < deleted.size() && i < edited.size(); i++) {
-            if (batch >= split || op == null) {
+            if (batch >= placesPerOperation) {
                 batch = 0;
                 opList.add(op);
                 op = initOpOperation(objectType());
@@ -117,14 +153,15 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
     private void addParams(Map<String, String[]> params) {
         LocalDate date = LocalDate.now();
+        String[] startDate = {"2021-06-01"};
         //String[] startDate = {date.minusDays(10).toString()};
+        String[] endDate = {"2021-06-10"};
         //String[] endDate = {date.toString()};
-        String[] startDate = {"2021-05-17"};
-        String[] endDate = {"2021-05-19"};
-        String[] filter = {"POSSIBLE_MERGE"};
-        params.put("date", startDate);
-        params.put("date2", endDate);
-        params.put("requestFilter", filter);
+        String[] filter = {POSSIBLE_MERGE};
+
+        params.put(START_DATA, startDate);
+        params.put(END_DATA, endDate);
+        params.put(FILTER, filter);
     }
 
     private List<Feature> getFeatures(PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint, Map<String, String[]> params) {
@@ -133,79 +170,140 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     }
 
     private boolean areNearbyPlaces(Feature f1, Feature f2) {
-        if (!f2.properties().containsKey("deleted") && !f1.properties().containsKey("deleted")) {
+        if (!f1.properties().containsKey(PLACE_DELETED) && !f2.properties().containsKey(PLACE_DELETED)) {
             Point p1 = (Point) f1.geometry();
             Point p2 = (Point) f1.geometry();
-            int similarPlaceDistance = 150;
-            return OsmMapUtils.getDistance(p1.lat(), p1.lon(), p2.lat(), p2.lon()) < similarPlaceDistance;
+            return OsmMapUtils.getDistance(p1.lat(), p1.lon(), p2.lat(), p2.lon()) < SIMILAR_PLACE_DISTANCE;
         }
         return false;
     }
 
-    private boolean mergePlaces(Feature f1, Feature f2, List<List<String>> deleted, List<OpObject> edited) {
-        OpObject obj1 = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(f1));
-        OpObject obj2 = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(f2));
+    private void mergePlaces(Feature f1, Feature f2, List<List<String>> deleted, List<OpObject> edited) {
+        OpObject newObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(f1));
+        OpObject oldObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(f2));
 
-        if (obj1 != null && obj2 != null) {
-            List<Map<String, Object>> osmSourcesObj1 = obj1.getField(null, F_SOURCE, F_OSM);
-            List<Map<String, Object>> osmSourcesObj2 = obj2.getField(null, F_SOURCE, F_OSM);
-            if (idDeletedPlace(osmSourcesObj1) && !idDeletedPlace(osmSourcesObj2) && hasNewName(osmSourcesObj2, osmSourcesObj1)) {
-                addOperation(obj1, obj2, osmSourcesObj1, osmSourcesObj2, deleted, edited);
-                return true;
-            } else if (!idDeletedPlace(osmSourcesObj1) && idDeletedPlace(osmSourcesObj2) && hasNewName(osmSourcesObj1, osmSourcesObj2)) {
-                addOperation(obj2, obj1, osmSourcesObj2, osmSourcesObj1, deleted, edited);
-                return true;
+        if (newObj != null && oldObj != null) {
+            List<Map<String, Object>> newOsmList = newObj.getField(null, F_SOURCE, F_OSM);
+            List<Map<String, Object>> oldOsmList = oldObj.getField(null, F_SOURCE, F_OSM);
+            if (newOsmList != null && oldOsmList != null && isMergeByName(newOsmList, oldOsmList)) {
+                addOperation(oldObj, newObj, oldOsmList, newOsmList, deleted, edited);
             }
         }
-        return false;
     }
 
     private List<String> getPlaceId(Feature feature) {
-        // TODO !!!
         return new ArrayList<>(Arrays.asList(feature.properties()
-                .get("opr_id").toString()
-                .replace("\"", "")
-                .split(",")));
+                .get(OPR_ID).getAsString()
+                .split(COMMA)));
     }
 
-    private void addOperation(OpObject oldPlace, OpObject newPlace, List<Map<String, Object>> oldSources,
-                              List<Map<String, Object>> newSources, List<List<String>> deleted, List<OpObject> edited) {
+    private void addOperation(OpObject oldObj, OpObject newObj, List<Map<String, Object>> oldOsmList,
+                              List<Map<String, Object>> newOsmList, List<List<String>> deleted, List<OpObject> edited) {
 
         OpObject editObj = new OpObject();
-        editObj.setId(oldPlace.getId().get(0), oldPlace.getId().get(1));
+        editObj.setId(oldObj.getId().get(0), oldObj.getId().get(1));
         TreeMap<String, Object> current = new TreeMap<>();
         TreeMap<String, Object> changed = new TreeMap<>();
         TreeMap<String, Object> appendObj = new TreeMap<>();
-        appendObj.put("appendMany", newSources);
-        changed.put("source.osm", appendObj);
-        current.put("source.osm", oldSources);
+        if (newOsmList.size() > 1) {
+            appendObj.put(APPEND_MANY, newOsmList);
+        } else {
+            appendObj.put(APPEND, newOsmList.get(0));
+        }
+        changed.put(SOURCE_OSM, appendObj);
+        current.put(F_SOURCE, new TreeMap<>().put(F_OSM, oldOsmList));
         editObj.putObjectValue(OpObject.F_CHANGE, changed);
         editObj.putObjectValue(OpObject.F_CURRENT, current);
 
-        deleted.add(newPlace.getId());
-        edited.add(editObj);
+        /*
+        List<Feature> contains objects with same osm_id.
+        They are in different merge groups, although their coordinates are the same
+        and such places must be in groups larger than 2, and be excluded from merge.
+        Therefore places are deleted if a place with the same id is found again.
+        */
+        if (isFoundSameId(edited, deleted, oldObj, newObj)) {
+            deleted.remove(newObj.getId());
+            edited.remove(editObj);
+        } else {
+            deleted.add(newObj.getId());
+            edited.add(editObj);
+        }
     }
 
-    private boolean idDeletedPlace(List<Map<String, Object>> osmSources) {
-        boolean allOsmRefsDeleted = true;
-        for (Map<String, Object> osm : osmSources) {
-            if (!osm.containsKey(PlaceOpObjectHelper.F_DELETED_OSM)) {
-                allOsmRefsDeleted = false;
-                break;
+    private boolean isFoundSameId(List<OpObject> edited, List<List<String>> deleted, OpObject oldObj, OpObject newObj) {
+        if (!deleted.isEmpty() && !edited.isEmpty()) {
+            for (List<String> id : deleted) {
+                if (oldObj.getId().equals(id)) {
+                    return true;
+                }
+            }
+            for (OpObject obj : edited) {
+                if (newObj.getId().equals(obj.getId())) {
+                    return true;
+                }
             }
         }
-        return allOsmRefsDeleted;
+        return false;
     }
 
-    private boolean hasNewName(List<Map<String, Object>> newSources, List<Map<String, Object>> oldSources) {
-        return hasName(newSources) && !hasName(oldSources);
+    private String getPlaceName(List<Map<String, Object>> osmList) {
+        for (Map<String, Object> osm : osmList) {
+            Map<String, Object> tagsValue = (Map<String, Object>) osm.get(TAGS);
+            if (tagsValue != null && tagsValue.containsKey(PLACE_NAME)) {
+                return tagsValue.get(PLACE_NAME).toString();
+            }
+        }
+        return null;
     }
 
-    private boolean hasName(List<Map<String, Object>> sources) {
-        for (Map<String, Object> osm : sources) {
-            Map<String, Object> tagsValue = (Map<String, Object>) osm.get("tags");
-            if (tagsValue != null && tagsValue.containsKey("name")) {
+    private boolean isMergeByName(List<Map<String, Object>> newOsmList, List<Map<String, Object>> oldOsmList) {
+        String oldName = getPlaceName(oldOsmList);
+        String newName = getPlaceName(newOsmList);
+
+        Collator collator = Collator.getInstance();
+        collator.setStrength(Collator.PRIMARY);
+
+        if (oldName == null && newName != null) {
+            return true;
+        }
+
+        if (oldName != null && newName != null) {
+            String oldNameLower = oldName.toLowerCase();
+            String newNameLower = newName.toLowerCase();
+            if (collator.compare(oldNameLower, newNameLower) > 0) {
                 return true;
+            }
+
+            List<String> oldNameList = getWords(oldNameLower);
+            List<String> newNameList = getWords(newNameLower);
+            Collections.sort(oldNameList);
+            Collections.sort(newNameList);
+
+            return oldNameList.equals(newNameList)
+                    || isSubCollection(newNameList, oldNameList, collator)
+                    || isSubCollection(oldNameList, newNameList, collator);
+        }
+        return false;
+    }
+
+    private List<String> getWords(String name) {
+        List<String> wordList = new ArrayList<>();
+        for (String word : name.split(SPACE)) {
+            wordList.add(word.trim().replaceAll(ALL_PUNCTUATION, ""));
+        }
+        return wordList;
+    }
+
+    private boolean isSubCollection(List<String> mainList, List<String> subList, Collator collator) {
+        int matchedCount = 0;
+        for (String wordMain : mainList) {
+            for (String wordSub : subList) {
+                if (collator.compare(wordMain, wordSub) > 0) {
+                    matchedCount++;
+                    if (matchedCount == subList.size()) {
+                        return true;
+                    }
+                }
             }
         }
         return false;
