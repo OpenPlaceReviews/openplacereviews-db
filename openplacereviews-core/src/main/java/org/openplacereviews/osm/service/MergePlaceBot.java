@@ -114,8 +114,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private List<List<Feature>> getMergeGroups(List<Feature> list) {
         List<List<Feature>> mergeGroups = new ArrayList<>();
         int currentGroupBeginIndex = 0;
-        for (int i = 0; i < list.size() - 1; i++) {
-            if (i > 0 && !isDeleted(list, i) && isDeleted(list, i - 1)) {
+        for (int i = 1; i < list.size() - 1; i++) {
+            if (!isDeleted(list, i) && isDeleted(list, i - 1)) {
                 mergeGroups.add(list.subList(currentGroupBeginIndex, i));
                 currentGroupBeginIndex = i;
             }
@@ -215,35 +215,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         editObj.putObjectValue(OpObject.F_CHANGE, changed);
         editObj.putObjectValue(OpObject.F_CURRENT, current);
 
-        /*
-        List<Feature> contains objects with same osm_id.
-        They are in different merge groups, although their coordinates are the same
-        and such places must be in groups larger than 2, and be excluded from merge.
-        Therefore places are deleted if a place with the same id is found again.
-        */
-        if (isFoundSameId(edited, deleted, oldObj, newObj)) {
-            deleted.remove(newObj.getId());
-            edited.remove(editObj);
-        } else {
-            deleted.add(newObj.getId());
-            edited.add(editObj);
-        }
-    }
-
-    private boolean isFoundSameId(List<OpObject> edited, List<List<String>> deleted, OpObject oldObj, OpObject newObj) {
-        if (!deleted.isEmpty() && !edited.isEmpty()) {
-            for (List<String> id : deleted) {
-                if (oldObj.getId().equals(id)) {
-                    return true;
-                }
-            }
-            for (OpObject obj : edited) {
-                if (newObj.getId().equals(obj.getId())) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        deleted.add(newObj.getId());
+        edited.add(editObj);
     }
 
     private String getPlaceName(List<Map<String, Object>> osmList) {
