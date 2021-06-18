@@ -98,7 +98,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				List<OpObject> edited = new ArrayList<>();
 				List<List<Feature>> mergeGroups = getMergeGroups(list);
 				int mergedGroupSize = mergeGroups.size();
-				mergeGroups.removeIf(mergeGroup -> mergeGroup.size() > 2);
+				mergeGroups.removeIf(mergeGroup -> mergeGroup.size() != 2);
 				int similarPlacesCnt = 0;
 				for (List<Feature> mergeGroup : mergeGroups) {
 					Feature newPlace = mergeGroup.get(0);
