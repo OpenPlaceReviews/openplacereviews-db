@@ -39,7 +39,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String SPACE = " ";
     private static final String COMMA = ",";
     
-    public static final int MONTHS_TO_CHECK = 6;
+    public static final int MONTHS_TO_CHECK = 2;
     public static final boolean TRACE = true;
 
     @Autowired
@@ -224,14 +224,17 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         editObj.setId(oldObj.getId().get(0), oldObj.getId().get(1));
         TreeMap<String, Object> current = new TreeMap<>();
         TreeMap<String, Object> changed = new TreeMap<>();
+        TreeMap<String, Object> currentObj = new TreeMap<>();
         TreeMap<String, Object> appendObj = new TreeMap<>();
+
+        currentObj.put(F_OSM, oldOsmList);
         if (newOsmList.size() > 1) {
             appendObj.put(APPEND_MANY, newOsmList);
         } else {
             appendObj.put(APPEND, newOsmList.get(0));
         }
         changed.put(SOURCE_OSM, appendObj);
-        current.put(F_SOURCE, new TreeMap<>().put(F_OSM, oldOsmList));
+        current.put(F_SOURCE, currentObj);
         editObj.putObjectValue(OpObject.F_CHANGE, changed);
         editObj.putObjectValue(OpObject.F_CURRENT, current);
 
@@ -254,7 +257,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         String newName = getPlaceName(newOsmList);
 
         Collator collator = Collator.getInstance();
-        collator.setStrength(Collator.PRIMARY);
+        collator.setStrength(Collator.SECONDARY);
 
         if (oldName == null && newName != null) {
             return true;
