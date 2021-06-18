@@ -39,7 +39,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String SPACE = " ";
     private static final String COMMA = ",";
     
-    public static final int MONTHS_TO_CHECK = 2;
+    public static final int MONTHS_TO_CHECK = 6;
     public static final boolean TRACE = true;
 
     @Autowired
