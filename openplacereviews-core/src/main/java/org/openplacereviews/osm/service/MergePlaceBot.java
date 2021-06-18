@@ -71,10 +71,10 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
     @Override
     public MergePlaceBot call() throws Exception {
-        int similarPlacesCnt = 0;
         addNewBotStat();
         try {
-            info("Merge places has started");
+        	initVars();
+            info("Merge places has started: " + new Date());
             PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint = dataManager.getEndpoint(HISTORY);
             if (apiEndpoint == null) {
             	setFailedState();
@@ -99,7 +99,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				List<List<Feature>> mergeGroups = getMergeGroups(list);
 				int mergedGroupSize = mergeGroups.size();
 				mergeGroups.removeIf(mergeGroup -> mergeGroup.size() > 2);
-
+				int similarPlacesCnt = 0;
 				for (List<Feature> mergeGroup : mergeGroups) {
 					Feature newPlace = mergeGroup.get(0);
 					Feature oldPlace = mergeGroup.get(1);
@@ -110,10 +110,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				}
 				
 				int cnt = addOperations(deleted, edited);
-				info(String.format("Merge places finished for %s - %s: place groups %d, similar places %d, merged places %d, operations %d",
+				info(String.format("Merge places finished for %s - %s: place groups %d, size=2 and close by %d, merged %d, operations %d",
 						start.toString(), end.toString(), mergedGroupSize, similarPlacesCnt, deleted.size(), cnt));
 				progress++;
-			} 
+			}
+			info("Merge places completed: " + new Date());
             setSuccessState();
         } catch (Exception e) {
             setFailedState();
@@ -205,7 +206,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				if (TRACE) {
 					info(String.format("Merge - %s with %s", newOsmList, oldOsmList));
 				}
-            	
                 addObjToOperation(oldObj, newObj, oldOsmList, newOsmList, deleted, edited);
             }
         }
@@ -219,7 +219,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
     private void addObjToOperation(OpObject oldObj, OpObject newObj, List<Map<String, Object>> oldOsmList,
                               List<Map<String, Object>> newOsmList, List<List<String>> deleted, List<OpObject> edited) {
-
         OpObject editObj = new OpObject();
         editObj.setId(oldObj.getId().get(0), oldObj.getId().get(1));
         TreeMap<String, Object> current = new TreeMap<>();
