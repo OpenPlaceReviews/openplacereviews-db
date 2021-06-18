@@ -28,7 +28,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final int SIMILAR_PLACE_DISTANCE = 150;
     private static final String SOURCE_OSM = "source.osm";
     private static final String APPEND = "append";
-    private static final String APPEND_MANY = "appendMany";
+    private static final String APPEND_MANY = "appendmany";
     private static final String PLACE_NAME = "name";
     private static final String POSSIBLE_MERGE = "POSSIBLE_MERGE";
     private static final String START_DATA = "date";
@@ -224,14 +224,17 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         editObj.setId(oldObj.getId().get(0), oldObj.getId().get(1));
         TreeMap<String, Object> current = new TreeMap<>();
         TreeMap<String, Object> changed = new TreeMap<>();
+        TreeMap<String, Object> currentObj = new TreeMap<>();
         TreeMap<String, Object> appendObj = new TreeMap<>();
+
+        currentObj.put(F_OSM, oldOsmList);
         if (newOsmList.size() > 1) {
             appendObj.put(APPEND_MANY, newOsmList);
         } else {
             appendObj.put(APPEND, newOsmList.get(0));
         }
         changed.put(SOURCE_OSM, appendObj);
-        current.put(F_SOURCE, new TreeMap<>().put(F_OSM, oldOsmList));
+        current.put(F_SOURCE, currentObj);
         editObj.putObjectValue(OpObject.F_CHANGE, changed);
         editObj.putObjectValue(OpObject.F_CURRENT, current);
 
@@ -254,7 +257,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         String newName = getPlaceName(newOsmList);
 
         Collator collator = Collator.getInstance();
-        collator.setStrength(Collator.PRIMARY);
+        collator.setStrength(Collator.SECONDARY);
 
         if (oldName == null && newName != null) {
             return true;
