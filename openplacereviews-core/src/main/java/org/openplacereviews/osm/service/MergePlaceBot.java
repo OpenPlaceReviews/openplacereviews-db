@@ -40,6 +40,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String COMMA = ",";
     
     public static final int MONTHS_TO_CHECK = 6;
+    public static final boolean TRACE = true;
 
     @Autowired
     private PublicDataManager dataManager;
@@ -96,6 +97,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				List<List<String>> deleted = new ArrayList<>();
 				List<OpObject> edited = new ArrayList<>();
 				List<List<Feature>> mergeGroups = getMergeGroups(list);
+				int mergedGroupSize = mergeGroups.size();
 				mergeGroups.removeIf(mergeGroup -> mergeGroup.size() > 2);
 
 				for (List<Feature> mergeGroup : mergeGroups) {
@@ -108,8 +110,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				}
 				
 				int cnt = addOperations(deleted, edited);
-				info(String.format("Merge places finished for %s - %s: similar places %d, merged places %d, operations %d",
-						start.toString(), end.toString(), similarPlacesCnt, deleted.size(), cnt));
+				info(String.format("Merge places finished for %s - %s: place groups %d, similar places %d, merged places %d, operations %d",
+						start.toString(), end.toString(), mergedGroupSize, similarPlacesCnt, deleted.size(), cnt));
 				progress++;
 			} 
             setSuccessState();
@@ -165,14 +167,15 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
                 batch = 0;
                 addOpIfNeeded(op, true);
                 op = initOpOperation(objectType());
+                cnt++;
             }
             op.addDeleted(deleted.get(i));
             op.addEdited(edited.get(i));
             batch++;
-            cnt++;
         }
         if (batch > 0) {
         	addOpIfNeeded(op, true);
+        	cnt++;
         }
         return cnt;
     }
@@ -199,7 +202,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
             List<Map<String, Object>> newOsmList = newObj.getField(null, F_SOURCE, F_OSM);
             List<Map<String, Object>> oldOsmList = oldObj.getField(null, F_SOURCE, F_OSM);
             if (newOsmList != null && oldOsmList != null && isMergeByName(newOsmList, oldOsmList)) {
-                addOperation(oldObj, newObj, oldOsmList, newOsmList, deleted, edited);
+				if (TRACE) {
+					info(String.format("Merge - %s with %s", newOsmList, oldOsmList));
+				}
+            	
+                addObjToOperation(oldObj, newObj, oldOsmList, newOsmList, deleted, edited);
             }
         }
     }
@@ -210,7 +217,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
                 .split(COMMA)));
     }
 
-    private void addOperation(OpObject oldObj, OpObject newObj, List<Map<String, Object>> oldOsmList,
+    private void addObjToOperation(OpObject oldObj, OpObject newObj, List<Map<String, Object>> oldOsmList,
                               List<Map<String, Object>> newOsmList, List<List<String>> deleted, List<OpObject> edited) {
 
         OpObject editObj = new OpObject();
