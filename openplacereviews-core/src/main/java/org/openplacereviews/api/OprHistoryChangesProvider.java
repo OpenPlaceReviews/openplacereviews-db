@@ -219,7 +219,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 						// find other created points within distance of 150m
 						findNearestPointAndDelete(createdPoints, merged, pnew);
 						// ! always make sure that groups are following [new, ..., new, deleted, deleted, ..., deleted]
-						fc.features().addAll(merged);
+                        addMergedPlaces(fc.features(), merged);
 					}
 				}
 			}
@@ -232,6 +232,41 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
+	private void addMergedPlaces(List<Feature> features, List<Feature> merged) {
+		double latm = merged.get(0).properties().get(ATTR_LATITUDE).getAsDouble();
+		double lonm = merged.get(0).properties().get(ATTR_LONGITUDE).getAsDouble();
+		int start = -1;
+		boolean groupFound = false;
+		for (int i = 0; i < features.size(); i++) {
+			if (!groupFound) {
+				double lat = features.get(i).properties().get(ATTR_LATITUDE).getAsDouble();
+				double lon = features.get(i).properties().get(ATTR_LONGITUDE).getAsDouble();
+				if (OsmMapUtils.getDistance(lat, lon, latm, lonm) < 150
+						&& !features.get(i).properties().containsKey(F_DELETED_PLACE)) {
+					groupFound = true;
+					start = i;
+				}
+			} else {
+				if (features.get(i).properties().containsKey(F_DELETED_PLACE)) {
+					List<Feature> deletedFeatures = new ArrayList<>();
+					List<Feature> createdFeatures = new ArrayList<>();
+					for (Feature mf : merged) {
+						if (mf.properties().containsKey(F_DELETED_PLACE)) {
+							deletedFeatures.add(mf);
+						} else {
+							createdFeatures.add(mf);
+						}
+					}
+					features.addAll(start, createdFeatures);
+					features.addAll(i + createdFeatures.size(), deletedFeatures);
+					break;
+				}
+			}
+		}
+		if (!groupFound) {
+			features.addAll(merged);
+		}
+	}
 
 	private void findNearestPointAndDelete(LinkedList<Feature> list, List<Feature> merged, Point point) {
 		Iterator<Feature> it = list.iterator();
