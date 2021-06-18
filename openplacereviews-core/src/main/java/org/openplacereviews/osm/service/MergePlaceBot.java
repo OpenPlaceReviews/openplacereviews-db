@@ -28,7 +28,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final int SIMILAR_PLACE_DISTANCE = 150;
     private static final String SOURCE_OSM = "source.osm";
     private static final String APPEND = "append";
-    private static final String APPEND_MANY = "appendMany";
+    private static final String APPEND_MANY = "appendmany";
     private static final String PLACE_NAME = "name";
     private static final String POSSIBLE_MERGE = "POSSIBLE_MERGE";
     private static final String START_DATA = "date";
