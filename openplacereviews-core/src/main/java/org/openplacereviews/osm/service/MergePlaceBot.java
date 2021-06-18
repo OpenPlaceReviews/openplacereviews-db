@@ -46,6 +46,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
     @Autowired
     protected BlocksManager blocksManager;
+    
+    private int totalCnt = 1;
+	private int progress = 0;
 
     public MergePlaceBot(OpObject botObject) {
         super(botObject);
@@ -77,7 +80,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
                 info("Merge has failed: no history provider");
                 return this;
             }
-            
+            progress = 1;
+            totalCnt = MONTHS_TO_CHECK + 1;
             Map<String, String[]> params = new ParameterMap<>();
 			for (int i = 0; i < MONTHS_TO_CHECK; i++) {
 				LocalDate dt = LocalDate.now().minusMonths(i);
@@ -87,6 +91,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				params.put(START_DATA, new String[] { start.toString() });
 				params.put(END_DATA, new String[] { end.toString() });
 				params.put(FILTER, new String[] { POSSIBLE_MERGE });
+				
 				List<Feature> list = getFeatures(apiEndpoint, params);
 				List<List<String>> deleted = new ArrayList<>();
 				List<OpObject> edited = new ArrayList<>();
@@ -100,11 +105,12 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 						similarPlacesCnt++;
 						mergePlaces(newPlace, oldPlace, deleted, edited);
 					}
-
-					int cnt = addOperations(deleted, edited);
-					info(String.format("Merge places finished for %s - %s: similar places %d, merged places %d, operations %d",
-							start.toString(), end.toString(), similarPlacesCnt, deleted.size(), cnt));
 				}
+				
+				int cnt = addOperations(deleted, edited);
+				info(String.format("Merge places finished for %s - %s: similar places %d, merged places %d, operations %d",
+						start.toString(), end.toString(), similarPlacesCnt, deleted.size(), cnt));
+				progress++;
 			} 
             setSuccessState();
         } catch (Exception e) {
@@ -115,6 +121,16 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
             super.shutdown();
         }
         return this;
+    }
+    
+    @Override
+    public int progress() {
+    	return progress;
+    }
+    
+    @Override
+    public int total() {
+    	return totalCnt;
     }
 
 	private List<List<Feature>> getMergeGroups(List<Feature> list) {
