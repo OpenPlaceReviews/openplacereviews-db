@@ -11,6 +11,7 @@ import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.PublicDataManager;
 import org.openplacereviews.opendb.service.bots.GenericMultiThreadBot;
+import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.OsmMapUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -37,6 +38,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String ALL_PUNCTUATION = "^\\p{Punct}+|\\p{Punct}+$";
     private static final String SPACE = " ";
     private static final String COMMA = ",";
+    
+    public static final int MONTHS_TO_CHECK = 6;
 
     @Autowired
     private PublicDataManager dataManager;
@@ -62,7 +65,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return OPR_PLACE;
     }
 
-
     @Override
     public MergePlaceBot call() throws Exception {
         int similarPlacesCnt = 0;
@@ -70,37 +72,41 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         try {
             info("Merge places has started");
             PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint = dataManager.getEndpoint(HISTORY);
-
-            if (apiEndpoint != null) {
-                Map<String, String[]> params = new ParameterMap<>();
-                addParams(params);
-                List<Feature> list = getFeatures(apiEndpoint, params);
-                if (list != null) {
-                    List<List<String>> deleted = new ArrayList<>();
-                    List<OpObject> edited = new ArrayList<>();
-                    List<List<Feature>> mergeGroups = getMergeGroups(list);
-                    mergeGroups.removeIf(mergeGroup -> mergeGroup.size() > 2);
-
-                    for (List<Feature> mergeGroup : mergeGroups) {
-                        Feature newPlace = mergeGroup.get(0);
-                        Feature oldPlace = mergeGroup.get(1);
-                        if (areNearbyPlaces(newPlace, oldPlace)) {
-                            similarPlacesCnt++;
-                            mergePlaces(newPlace, oldPlace, deleted, edited);
-                        }
-                    }
-
-                    List<OpOperation> opList = createOperations(deleted, edited);
-
-                    for (OpOperation op : opList) {
-                        addOpIfNeeded(op, true);
-                    }
-
-                    info(String.format("Bot finished! Similar places %d, merged places %d, operations %d",
-                            similarPlacesCnt,deleted.size(), opList.size()));
-                }
-                setSuccessState();
+            if (apiEndpoint == null) {
+            	setFailedState();
+                info("Merge has failed: no history provider");
+                return this;
             }
+            
+            Map<String, String[]> params = new ParameterMap<>();
+			for (int i = 0; i < MONTHS_TO_CHECK; i++) {
+				LocalDate dt = LocalDate.now().minusMonths(i);
+				LocalDate start = LocalDate.of(dt.getYear(), dt.getMonth(), 1);
+				LocalDate dts = LocalDate.now().minusMonths(i - 1);
+				LocalDate end = LocalDate.of(dts.getYear(), dts.getMonth(), 1).minusDays(1);
+				params.put(START_DATA, new String[] { start.toString() });
+				params.put(END_DATA, new String[] { end.toString() });
+				params.put(FILTER, new String[] { POSSIBLE_MERGE });
+				List<Feature> list = getFeatures(apiEndpoint, params);
+				List<List<String>> deleted = new ArrayList<>();
+				List<OpObject> edited = new ArrayList<>();
+				List<List<Feature>> mergeGroups = getMergeGroups(list);
+				mergeGroups.removeIf(mergeGroup -> mergeGroup.size() > 2);
+
+				for (List<Feature> mergeGroup : mergeGroups) {
+					Feature newPlace = mergeGroup.get(0);
+					Feature oldPlace = mergeGroup.get(1);
+					if (areNearbyPlaces(newPlace, oldPlace)) {
+						similarPlacesCnt++;
+						mergePlaces(newPlace, oldPlace, deleted, edited);
+					}
+
+					int cnt = addOperations(deleted, edited);
+					info(String.format("Merge places finished for %s - %s: similar places %d, merged places %d, operations %d",
+							start.toString(), end.toString(), similarPlacesCnt, deleted.size(), cnt));
+				}
+			} 
+            setSuccessState();
         } catch (Exception e) {
             setFailedState();
             info("Merge has failed: " + e.getMessage(), e);
@@ -111,26 +117,29 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return this;
     }
 
-    private List<List<Feature>> getMergeGroups(List<Feature> list) {
-        List<List<Feature>> mergeGroups = new ArrayList<>();
-        int currentGroupBeginIndex = 0;
-        for (int i = 1; i < list.size() - 1; i++) {
-            if (!isDeleted(list, i) && isDeleted(list, i - 1)) {
-                mergeGroups.add(list.subList(currentGroupBeginIndex, i));
-                currentGroupBeginIndex = i;
-            }
-        }
-        mergeGroups.add(list.subList(currentGroupBeginIndex, list.size()));
-        return mergeGroups;
-    }
+	private List<List<Feature>> getMergeGroups(List<Feature> list) {
+		List<List<Feature>> mergeGroups = new ArrayList<>();
+		if (list == null) {
+			return mergeGroups;
+		}
+		int currentGroupBeginIndex = 0;
+		for (int i = 1; i < list.size() - 1; i++) {
+			if (!isDeleted(list, i) && isDeleted(list, i - 1)) {
+				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
+				currentGroupBeginIndex = i;
+			}
+		}
+		mergeGroups.add(list.subList(currentGroupBeginIndex, list.size()));
+		return mergeGroups;
+	}
 
     private boolean isDeleted(List<Feature> list, int i) {
         return list.get(i).properties().containsKey(F_DELETED_OSM);
     }
 
-    private List<OpOperation> createOperations(List<List<String>> deleted, List<OpObject> edited) {
-        List<OpOperation> opList = new ArrayList<>();
+    private int addOperations(List<List<String>> deleted, List<OpObject> edited) throws FailedVerificationException {
         int batch = 0;
+        int cnt = 0;
         OpOperation op = initOpOperation(objectType());
         if (deleted.size() != edited.size()) {
             throw new IllegalStateException();
@@ -138,30 +147,18 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         for (int i = 0; i < deleted.size() && i < edited.size(); i++) {
             if (batch >= placesPerOperation) {
                 batch = 0;
-                opList.add(op);
+                addOpIfNeeded(op, true);
                 op = initOpOperation(objectType());
             }
             op.addDeleted(deleted.get(i));
             op.addEdited(edited.get(i));
             batch++;
+            cnt++;
         }
         if (batch > 0) {
-            opList.add(op);
+        	addOpIfNeeded(op, true);
         }
-        return opList;
-    }
-
-    private void addParams(Map<String, String[]> params) {
-        LocalDate date = LocalDate.now();
-        String[] startDate = {"2021-06-01"};
-        //String[] startDate = {date.minusDays(10).toString()};
-        String[] endDate = {"2021-06-10"};
-        //String[] endDate = {date.toString()};
-        String[] filter = {POSSIBLE_MERGE};
-
-        params.put(START_DATA, startDate);
-        params.put(END_DATA, endDate);
-        params.put(FILTER, filter);
+        return cnt;
     }
 
     private List<Feature> getFeatures(PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint, Map<String, String[]> params) {
