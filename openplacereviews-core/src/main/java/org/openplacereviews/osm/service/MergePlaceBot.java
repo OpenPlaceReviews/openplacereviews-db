@@ -256,8 +256,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         String newName = getPlaceName(newOsmList);
 
         Collator collator = Collator.getInstance();
-        collator.setStrength(Collator.SECONDARY);
+        collator.setStrength(Collator.PRIMARY);
 
+        //if name appeared
         if (oldName == null && newName != null) {
             return true;
         }
@@ -265,7 +266,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         if (oldName != null && newName != null) {
             String oldNameLower = oldName.toLowerCase();
             String newNameLower = newName.toLowerCase();
-            if (collator.compare(oldNameLower, newNameLower) > 0) {
+            //if names equal
+            if (collator.compare(oldNameLower, newNameLower) == 0) {
                 return true;
             }
 
@@ -273,7 +275,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
             List<String> newNameList = getWords(newNameLower);
             Collections.sort(oldNameList);
             Collections.sort(newNameList);
-
+            //if names have the same words in different order
+            //or one of the names is part of another name
             return oldNameList.equals(newNameList)
                     || isSubCollection(newNameList, oldNameList, collator)
                     || isSubCollection(oldNameList, newNameList, collator);
@@ -284,16 +287,20 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private List<String> getWords(String name) {
         List<String> wordList = new ArrayList<>();
         for (String word : name.split(SPACE)) {
-            wordList.add(word.trim().replaceAll(ALL_PUNCTUATION, ""));
+            String res = word.trim().replaceAll(ALL_PUNCTUATION, "");
+            if (!res.equals("")) {
+                wordList.add(res);
+            }
         }
         return wordList;
     }
+
 
     private boolean isSubCollection(List<String> mainList, List<String> subList, Collator collator) {
         int matchedCount = 0;
         for (String wordMain : mainList) {
             for (String wordSub : subList) {
-                if (collator.compare(wordMain, wordSub) > 0) {
+                if (collator.compare(wordMain, wordSub) == 0) {
                     matchedCount++;
                     if (matchedCount == subList.size()) {
                         return true;
