@@ -26,7 +26,9 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
     private static final int SIMILAR_PLACE_DISTANCE = 150;
-    private static final String SOURCE_OSM = "source.osm";
+    private static final String IMAGES = "images";
+    private static final String SOURCE = "source";
+    private static final String SET = "set";
     private static final String APPEND = "append";
     private static final String APPEND_MANY = "appendmany";
     private static final String PLACE_NAME = "name";
@@ -39,7 +41,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String SPACE = " ";
     private static final String COMMA = ",";
     
-    public static final int MONTHS_TO_CHECK = 6;
+    public static final int MONTHS_TO_CHECK = 1;
     public static final boolean TRACE = true;
 
     @Autowired
@@ -206,9 +208,37 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				if (TRACE) {
 					info(String.format("Merge - %s with %s", newOsmList, oldOsmList));
 				}
-                addObjToOperation(oldObj, newObj, oldOsmList, newOsmList, deleted, edited);
+                addObjToOperation(oldObj, newObj, deleted, edited);
             }
         }
+    }
+
+    private boolean isMergeByName(List<Map<String, Object>> newOsmList, List<Map<String, Object>> oldOsmList) {
+        Map<String, Object> newTags = (Map<String, Object>) newOsmList.get(newOsmList.size() - 1).get(TAGS);
+        Map<String, Object> oldTags = (Map<String, Object>) oldOsmList.get(oldOsmList.size() - 1).get(TAGS);
+        String oldName = getPlaceName(oldTags);
+        String newName = getPlaceName(newTags);
+
+        //all names null
+        if (oldName == null && newName == null) {
+            return true;
+        }
+        //if name appeared
+        if (oldName == null) {
+            return true;
+        }
+
+        if (newName != null) {
+            if (checkNames(oldName, newName) || checkOtherNames(newTags, oldName)) {
+                return true;
+            }
+        }
+
+        if (newName == null) {
+            return checkOtherNames(newTags, oldName);
+        }
+
+        return false;
     }
 
     private List<String> getPlaceId(Feature feature) {
@@ -217,23 +247,15 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
                 .split(COMMA)));
     }
 
-    private void addObjToOperation(OpObject oldObj, OpObject newObj, List<Map<String, Object>> oldOsmList,
-                              List<Map<String, Object>> newOsmList, List<List<String>> deleted, List<OpObject> edited) {
+    private void addObjToOperation(OpObject oldObj, OpObject newObj, List<List<String>> deleted, List<OpObject> edited) {
         OpObject editObj = new OpObject();
         editObj.setId(oldObj.getId().get(0), oldObj.getId().get(1));
         TreeMap<String, Object> current = new TreeMap<>();
         TreeMap<String, Object> changed = new TreeMap<>();
-        TreeMap<String, Object> currentObj = new TreeMap<>();
-        TreeMap<String, Object> appendObj = new TreeMap<>();
 
-        currentObj.put(F_OSM, oldOsmList);
-        if (newOsmList.size() > 1) {
-            appendObj.put(APPEND_MANY, newOsmList);
-        } else {
-            appendObj.put(APPEND, newOsmList.get(0));
-        }
-        changed.put(SOURCE_OSM, appendObj);
-        current.put(F_SOURCE, currentObj);
+        mergeFields(SOURCE, oldObj, newObj, current, changed);
+        mergeFields(IMAGES, oldObj, newObj, current, changed);
+
         editObj.putObjectValue(OpObject.F_CHANGE, changed);
         editObj.putObjectValue(OpObject.F_CURRENT, current);
 
@@ -241,45 +263,77 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         edited.add(editObj);
     }
 
-    private String getPlaceName(List<Map<String, Object>> osmList) {
-        for (Map<String, Object> osm : osmList) {
-            Map<String, Object> tagsValue = (Map<String, Object>) osm.get(TAGS);
-            if (tagsValue != null && tagsValue.containsKey(PLACE_NAME)) {
-                return tagsValue.get(PLACE_NAME).toString();
+    private void mergeFields(String type, OpObject oldObj, OpObject newObj,
+                             TreeMap<String, Object> current, TreeMap<String, Object> changed) {
+        Map<String, Object> newFields = newObj.getField(null, type);
+        Map<String, Object> oldFields = oldObj.getField(null, type);
+        if (newFields != null) {
+            for (Map.Entry<String, Object> newf : newFields.entrySet()) {
+                TreeMap<String, Object> appendObj = new TreeMap<>();
+                String category = type + "." + newf.getKey();
+                List<Map<String, Object>> newCategoryList = (List<Map<String, Object>>) newf.getValue();
+                if(!newCategoryList.isEmpty()) {
+                    if (oldFields == null || !oldFields.containsKey(newf.getKey())) {
+                        appendObj.put(SET, newCategoryList);
+                    } else {
+                        if (newCategoryList.size() > 1) {
+                            appendObj.put(APPEND_MANY, newCategoryList);
+                        } else {
+                            appendObj.put(APPEND, newCategoryList.get(0));
+                        }
+                        current.put(category, oldFields.get(newf.getKey()));
+                    }
+                    changed.put(category, appendObj);
+                }
             }
+        }
+    }
+
+    private String getPlaceName(Map<String, Object> tags) {
+        if (tags != null && tags.containsKey(PLACE_NAME)) {
+            return tags.get(PLACE_NAME).toString();
         }
         return null;
     }
 
-    private boolean isMergeByName(List<Map<String, Object>> newOsmList, List<Map<String, Object>> oldOsmList) {
-        String oldName = getPlaceName(oldOsmList);
-        String newName = getPlaceName(newOsmList);
+    private List<String> getOtherPlaceName(Map<String, Object> tags) {
+        List<String> otherNames = new ArrayList<>();
+        for (Map.Entry<String, Object> tag : tags.entrySet()) {
+            if (tag.getKey().startsWith(PLACE_NAME) && !tag.getKey().equals(PLACE_NAME)) {
+                otherNames.add((String) tag.getValue());
+            }
+        }
+        return otherNames;
+    }
 
+    private boolean checkNames(String oldName, String newName) {
         Collator collator = Collator.getInstance();
         collator.setStrength(Collator.PRIMARY);
 
-        //if name appeared
-        if (oldName == null && newName != null) {
+        String oldNameLower = oldName.toLowerCase();
+        String newNameLower = newName.toLowerCase();
+        //if names equal
+        if (collator.compare(oldNameLower, newNameLower) == 0) {
             return true;
         }
 
-        if (oldName != null && newName != null) {
-            String oldNameLower = oldName.toLowerCase();
-            String newNameLower = newName.toLowerCase();
-            //if names equal
-            if (collator.compare(oldNameLower, newNameLower) == 0) {
+        List<String> oldNameList = getWords(oldNameLower);
+        List<String> newNameList = getWords(newNameLower);
+        Collections.sort(oldNameList);
+        Collections.sort(newNameList);
+        //if names have the same words in different order
+        //or one of the names is part of another name
+        return oldNameList.equals(newNameList)
+                || isSubCollection(newNameList, oldNameList, collator)
+                || isSubCollection(oldNameList, newNameList, collator);
+    }
+
+    private boolean checkOtherNames(Map<String, Object> newTags, String oldName) {
+        List<String> otherNames = getOtherPlaceName(newTags);
+        for (String name : otherNames) {
+            if (checkNames(oldName, name)) {
                 return true;
             }
-
-            List<String> oldNameList = getWords(oldNameLower);
-            List<String> newNameList = getWords(newNameLower);
-            Collections.sort(oldNameList);
-            Collections.sort(newNameList);
-            //if names have the same words in different order
-            //or one of the names is part of another name
-            return oldNameList.equals(newNameList)
-                    || isSubCollection(newNameList, oldNameList, collator)
-                    || isSubCollection(oldNameList, newNameList, collator);
         }
         return false;
     }
