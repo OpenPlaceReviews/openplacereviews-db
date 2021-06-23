@@ -112,7 +112,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				}
 				
 				int cnt = addOperations(deleted, edited);
-				info(String.format("Merge places finished for %s - %s: place groups %d, size=2 and close by %d, merged %d, operations %d",
+				info(String.format("Merge places has finished for %s - %s: place groups %d, size=2 and close by %d, merged %d, operations %d",
 						start.toString(), end.toString(), mergedGroupSize, similarPlacesCnt, deleted.size(), cnt));
 				progress++;
 			}
