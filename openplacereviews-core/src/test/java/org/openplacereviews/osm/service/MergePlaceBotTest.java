@@ -17,8 +17,8 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
 
 public class MergePlaceBotTest {
 
-    private static final String PLACES_PATH = "./src/test/java/org/openplacereviews/osm/service/places.json";
-    private static final String PLACES_NOT_MERGE_PATH = "./src/test/java/org/openplacereviews/osm/service/places_not_merge.json";
+    private static final String PLACES_PATH = "src/test/resources/merge/places.json";
+    private static final String PLACES_NOT_MERGE_PATH = "src/test/resources/merge/places_not_merge.json";
 
     private MergePlaceBot bot;
     private OpObject[] places;
