@@ -4,8 +4,7 @@ package org.openplacereviews.api;
 
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_IMG_REVIEW;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -75,6 +74,7 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 
 	public static final String IMG_REVIEW_SIZE = "img_review_size";
 	public static final String PLACE_DELETED = "place_deleted";
+	public static final String PLACE_CLOSED = "place_closed";
 	
 	protected Gson geoJson;
 	
@@ -238,6 +238,9 @@ public abstract class BaseOprPlaceDataProvider implements IPublicDataProvider<Ma
 			Object deletedPlaceField = o.getField(null, F_DELETED_PLACE);
 			if (deletedPlaceField != null) {
 				bld.put(PLACE_DELETED, new JsonPrimitive(String.valueOf(deletedPlaceField)));
+			}
+			if(mainOSM.containsKey(F_DELETED_OSM)) {
+				bld.put(PLACE_CLOSED, new JsonPrimitive(F_DELETED_OSM));
 			}
 			
 			double lat = (double) mainOSM.get(ATTR_LATITUDE);
