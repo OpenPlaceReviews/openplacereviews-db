@@ -107,8 +107,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 					Feature oldPlace = mergeGroup.get(1);
 					if (areNearbyPlaces(newPlace, oldPlace)) {
 						similarPlacesCnt++;
-                        OpObject newObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(newPlace));
-                        OpObject oldObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(oldPlace));
+						OpObject newObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(newPlace));
+						OpObject oldObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(oldPlace));
 						mergePlaces(newObj, oldObj, deleted, edited);
 					}
 				}

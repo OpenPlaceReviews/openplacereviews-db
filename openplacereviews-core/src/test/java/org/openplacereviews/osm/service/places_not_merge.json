@@ -1,0 +1,136 @@
+[
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "obfjbx"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "105581891",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "fast_food",
+          "tags": {
+            "amenity": "fast_food",
+            "delivery": "yes",
+            "fast_food": "cafeteria",
+            "name": "Royal",
+            "old_name": "La Gauchita",
+            "opening_hours": "Mo-Fr 10:00-14:00",
+            "operator": "BEVANDA s.r.o.",
+            "source": "survey"
+          },
+          "timestamp": "2021-05-30T19:44:40Z",
+          "type": "node",
+          "version": "4"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "gpr3ei"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "43473461",
+          "deleted": "2021-05-30T20:26:12.299+0000",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "name": "Masala",
+            "old_name": "La Gauchita",
+            "source": "survey"
+          },
+          "timestamp": "2016-11-07T21:02:30Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "obfjbx"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "105581891",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "fast_food",
+          "tags": {
+            "amenity": "fast_food",
+            "delivery": "yes",
+            "fast_food": "cafeteria",
+            "name": "Royal Masala Cafe",
+            "old_name": "La Gauchita",
+            "opening_hours": "Mo-Fr 10:00-14:00",
+            "operator": "BEVANDA s.r.o.",
+            "source": "survey"
+          },
+          "timestamp": "2021-05-30T19:44:40Z",
+          "type": "node",
+          "version": "4"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "gpr3ei"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "43473461",
+          "deleted": "2021-05-30T20:26:12.299+0000",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "name": "Royal Masala Pub",
+            "old_name": "La Gauchita",
+            "source": "survey"
+          },
+          "timestamp": "2016-11-07T21:02:30Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  }
+]
