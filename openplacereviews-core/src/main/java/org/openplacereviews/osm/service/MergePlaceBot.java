@@ -42,7 +42,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String COMMA = ",";
     
     public static final int MONTHS_TO_CHECK = 6;
-    public static final boolean TRACE = true;
+    public boolean TRACE = true;
 
     @Autowired
     private PublicDataManager dataManager;
@@ -107,7 +107,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 					Feature oldPlace = mergeGroup.get(1);
 					if (areNearbyPlaces(newPlace, oldPlace)) {
 						similarPlacesCnt++;
-						mergePlaces(newPlace, oldPlace, deleted, edited);
+						OpObject newObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(newPlace));
+						OpObject oldObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(oldPlace));
+						mergePlaces(newObj, oldObj, deleted, edited);
 					}
 				}
 				
@@ -197,10 +199,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return false;
     }
 
-    private void mergePlaces(Feature f1, Feature f2, List<List<String>> deleted, List<OpObject> edited) {
-        OpObject newObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(f1));
-        OpObject oldObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(f2));
-
+    protected void mergePlaces(OpObject newObj, OpObject oldObj, List<List<String>> deleted, List<OpObject> edited) {
         if (newObj != null && oldObj != null) {
             List<Map<String, Object>> newOsmList = newObj.getField(null, F_SOURCE, F_OSM);
             List<Map<String, Object>> oldOsmList = oldObj.getField(null, F_SOURCE, F_OSM);
@@ -213,7 +212,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         }
     }
 
-    private boolean isMergeByName(List<Map<String, Object>> newOsmList, List<Map<String, Object>> oldOsmList) {
+    protected boolean isMergeByName(List<Map<String, Object>> newOsmList, List<Map<String, Object>> oldOsmList) {
         Map<String, Object> newTags = (Map<String, Object>) newOsmList.get(newOsmList.size() - 1).get(TAGS);
         Map<String, Object> oldTags = (Map<String, Object>) oldOsmList.get(oldOsmList.size() - 1).get(TAGS);
         String oldName = getPlaceName(oldTags);

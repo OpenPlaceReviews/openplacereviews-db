@@ -1,0 +1,659 @@
+[{
+  "eval": {
+    "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+    "parentType": "opr.place"
+  },
+  "id": [
+    "8FWV54",
+    "obfjbx"
+  ],
+  "source": {
+    "osm": [
+      {
+        "changeset": "105581891",
+        "id": 1934855941,
+        "lat": 48.1503594,
+        "lon": 17.1258664,
+        "osm_tag": "amenity",
+        "osm_value": "fast_food",
+        "tags": {
+          "amenity": "fast_food",
+          "delivery": "yes",
+          "fast_food": "cafeteria",
+          "name": "Veranda",
+          "old_name": "La Gauchita",
+          "opening_hours": "Mo-Fr 10:00-14:00",
+          "operator": "BEVANDA s.r.o.",
+          "source": "survey"
+        },
+        "timestamp": "2021-05-30T19:44:40Z",
+        "type": "node",
+        "version": "4"
+      }
+    ]
+  }
+},
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "gpr3ei"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "43473461",
+          "deleted": "2021-05-30T20:26:12.299+0000",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "name": "Veranda",
+            "old_name": "La Gauchita",
+            "source": "survey"
+          },
+          "timestamp": "2016-11-07T21:02:30Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "6a0347f298d59cb8a2436723c25df0eabcb243291f598c494ca5db807e4ab9ce",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "qwo3m8"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "104788051",
+          "id": 3613379397,
+          "lat": 48.1610053,
+          "lon": 17.13029,
+          "osm_tag": "amenity",
+          "osm_value": "cafe",
+          "tags": {
+            "amenity": "cafe",
+            "contact:facebook": "https://www.facebook.com/pages/category/Restaurant/Open-House-Cafe-Bistro-2191301447775528/",
+            "name": "Open House",
+            "source": "survey"
+          },
+          "timestamp": "2021-05-16T23:14:14Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "6a0347f298d59cb8a2436723c25df0eabcb243291f598c494ca5db807e4ab9ce",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "hutrv7"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "78714315",
+          "deleted": "2021-05-17T00:05:24.622+0000",
+          "id": 3613379397,
+          "lat": 48.1610053,
+          "lon": 17.13029,
+          "osm_tag": "amenity",
+          "osm_value": "cafe",
+          "tags": {
+            "amenity": "cafe",
+            "contact:facebook": "https://www.facebook.com/pages/category/Restaurant/Open-House-Cafe-Bistro-2191301447775528/",
+            "source": "survey"
+          },
+          "timestamp": "2019-12-21T14:50:06Z",
+          "type": "node",
+          "version": "2"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "842a64ecfc449a4e3bcda5d84d43243f29dcac7dc0099d6226fc943c7543200c",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV63",
+      "9bd7zw"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "104083911",
+          "id": 8695396905,
+          "lat": 48.2489833,
+          "lon": 17.0627855,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "name": "Pútnický mlyn"
+          },
+          "timestamp": "2021-05-04T00:44:48Z",
+          "type": "node",
+          "version": "1"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "842a64ecfc449a4e3bcda5d84d43243f29dcac7dc0099d6226fc943c7543200c",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV63",
+      "08dkgt"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "102194911",
+          "deleted": "2021-05-04T01:10:45.855+0000",
+          "id": 606842300,
+          "lat": 48.24907832849643,
+          "lon": 17.06290012562339,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "addr:city": "Marianka",
+            "addr:conscriptionnumber": "61",
+            "addr:country": "SK",
+            "addr:housenumber": "61/1",
+            "addr:postcode": "90033",
+            "addr:street": "Námestie 4. apríla",
+            "addr:streetnumber": "1",
+            "amenity": "restaurant",
+            "building": "hotel",
+            "name": "Pútnický mlyn",
+            "ref:minvskaddress": "5800828",
+            "source": "kapor2",
+            "source:addr": "minvskaddress 2021-03",
+            "tourism": "guest_house"
+          },
+          "timestamp": "2021-04-02T12:51:15Z",
+          "type": "way",
+          "version": "5"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "641cdfa3547b0cc52a5749761efa00cbd81210ee7d64d1782eefc71db18e70f9",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWF5M",
+      "qycwf5"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "105566572",
+          "id": 1383367344,
+          "lat": 48.1686889,
+          "lon": 9.6856484,
+          "osm_tag": "amenity",
+          "osm_value": "pub",
+          "tags": {
+            "amenity": "pub",
+            "name": "Gasthof Rösle"
+          },
+          "timestamp": "2021-05-30T12:42:15Z",
+          "type": "node",
+          "version": "2"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "641cdfa3547b0cc52a5749761efa00cbd81210ee7d64d1782eefc71db18e70f9",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWF5M",
+      "zojqzm"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "8903574",
+          "deleted": "2021-05-30T13:12:39.164+0000",
+          "id": 1383367344,
+          "lat": 48.1687291,
+          "lon": 9.6855478,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant"
+          },
+          "timestamp": "2011-08-02T18:32:39Z",
+          "type": "node",
+          "version": "1"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "obfjbx"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "105581891",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "fast_food",
+          "tags": {
+            "amenity": "fast_food",
+            "delivery": "yes",
+            "fast_food": "cafeteria",
+            "old_name": "La Gauchita",
+            "opening_hours": "Mo-Fr 10:00-14:00",
+            "operator": "BEVANDA s.r.o.",
+            "source": "survey"
+          },
+          "timestamp": "2021-05-30T19:44:40Z",
+          "type": "node",
+          "version": "4"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "gpr3ei"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "43473461",
+          "deleted": "2021-05-30T20:26:12.299+0000",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "old_name": "La Gauchita",
+            "source": "survey"
+          },
+          "timestamp": "2016-11-07T21:02:30Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "obfjbx"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "105581891",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "fast_food",
+          "tags": {
+            "amenity": "fast_food",
+            "delivery": "yes",
+            "fast_food": "cafeteria",
+            "name:en": "Veranda",
+            "old_name": "La Gauchita",
+            "opening_hours": "Mo-Fr 10:00-14:00",
+            "operator": "BEVANDA s.r.o.",
+            "source": "survey"
+          },
+          "timestamp": "2021-05-30T19:44:40Z",
+          "type": "node",
+          "version": "4"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "gpr3ei"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "43473461",
+          "deleted": "2021-05-30T20:26:12.299+0000",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "name": "Veranda",
+            "old_name": "La Gauchita",
+            "source": "survey"
+          },
+          "timestamp": "2016-11-07T21:02:30Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "obfjbx"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "105581891",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "fast_food",
+          "tags": {
+            "amenity": "fast_food",
+            "delivery": "yes",
+            "fast_food": "cafeteria",
+            "name": "Veranda",
+            "old_name": "La Gauchita",
+            "opening_hours": "Mo-Fr 10:00-14:00",
+            "operator": "BEVANDA s.r.o.",
+            "source": "survey"
+          },
+          "timestamp": "2021-05-30T19:44:40Z",
+          "type": "node",
+          "version": "4"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "gpr3ei"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "43473461",
+          "deleted": "2021-05-30T20:26:12.299+0000",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "name:en": "Veranda",
+            "old_name": "La Gauchita",
+            "source": "survey"
+          },
+          "timestamp": "2016-11-07T21:02:30Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "obfjbx"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "105581891",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "fast_food",
+          "tags": {
+            "amenity": "fast_food",
+            "delivery": "yes",
+            "fast_food": "cafeteria",
+            "name": "Royal Masala Tandoori",
+            "old_name": "La Gauchita",
+            "opening_hours": "Mo-Fr 10:00-14:00",
+            "operator": "BEVANDA s.r.o.",
+            "source": "survey"
+          },
+          "timestamp": "2021-05-30T19:44:40Z",
+          "type": "node",
+          "version": "4"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "gpr3ei"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "43473461",
+          "deleted": "2021-05-30T20:26:12.299+0000",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "name": "Royal Masala",
+            "old_name": "La Gauchita",
+            "source": "survey"
+          },
+          "timestamp": "2016-11-07T21:02:30Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "obfjbx"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "105581891",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "fast_food",
+          "tags": {
+            "amenity": "fast_food",
+            "delivery": "yes",
+            "fast_food": "cafeteria",
+            "name": "Royal New Masala",
+            "old_name": "La Gauchita",
+            "opening_hours": "Mo-Fr 10:00-14:00",
+            "operator": "BEVANDA s.r.o.",
+            "source": "survey"
+          },
+          "timestamp": "2021-05-30T19:44:40Z",
+          "type": "node",
+          "version": "4"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "gpr3ei"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "43473461",
+          "deleted": "2021-05-30T20:26:12.299+0000",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "name": "Royal Masala",
+            "old_name": "La Gauchita",
+            "source": "survey"
+          },
+          "timestamp": "2016-11-07T21:02:30Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "obfjbx"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "105581891",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "fast_food",
+          "tags": {
+            "amenity": "fast_food",
+            "delivery": "yes",
+            "fast_food": "cafeteria",
+            "name": "Royal",
+            "old_name": "La Gauchita",
+            "opening_hours": "Mo-Fr 10:00-14:00",
+            "operator": "BEVANDA s.r.o.",
+            "source": "survey"
+          },
+          "timestamp": "2021-05-30T19:44:40Z",
+          "type": "node",
+          "version": "4"
+        }
+      ]
+    }
+  },
+  {
+    "eval": {
+      "parentHash": "c6c21b15359841f2e8bb0268e6d70745abdd08f37d55491fa375fcd42456ad40",
+      "parentType": "opr.place"
+    },
+    "id": [
+      "8FWV54",
+      "gpr3ei"
+    ],
+    "source": {
+      "osm": [
+        {
+          "changeset": "43473461",
+          "deleted": "2021-05-30T20:26:12.299+0000",
+          "id": 1934855941,
+          "lat": 48.1503594,
+          "lon": 17.1258664,
+          "osm_tag": "amenity",
+          "osm_value": "restaurant",
+          "tags": {
+            "amenity": "restaurant",
+            "name": "Royal Masala",
+            "old_name": "La Gauchita",
+            "source": "survey"
+          },
+          "timestamp": "2016-11-07T21:02:30Z",
+          "type": "node",
+          "version": "3"
+        }
+      ]
+    }
+  }
+]
