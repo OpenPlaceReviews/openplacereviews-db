@@ -13,10 +13,8 @@ import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.api.OprMapCollectionApiResult.MapCollectionParameters;
-import org.openplacereviews.opendb.ops.OpBlock;
-import org.openplacereviews.opendb.ops.OpBlockChain;
-import org.openplacereviews.opendb.ops.OpObject;
-import org.openplacereviews.opendb.ops.OpOperation;
+import org.openplacereviews.opendb.ops.*;
+import org.openplacereviews.opendb.service.DBSchemaManager;
 import org.openplacereviews.opendb.service.PublicDataManager.CacheHolder;
 import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
 import org.openplacereviews.osm.model.OsmMapUtils;
@@ -86,7 +84,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		fc.parameters.put(OprMapCollectionApiResult.PARAM_REQUEST_FILTER, requestFilter);
 		fc.parameters.put(OprMapCollectionApiResult.PARAM_DATE_KEY, true);
 		fc.parameters.put(OprMapCollectionApiResult.PARAM_DATE2_KEY, true);
-		if (params.date != null) {
+
+		if (params.tileId != null) {
+			fetchObjectsByTileId(formatTile(params.tileId), fc.geo);
+			retrievePlaces(params.requestFilter, fc.geo);
+		} else if (params.date != null) {
 			try {
 				retrievePlacesByDate(params.date, params.date2, params.requestFilter, fc.geo);
 			} catch (ParseException e) {
@@ -97,7 +99,15 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		return fc;
 	}
 
-	
+	@Override
+	public void fetchObjectsByTileId(String tileId, FeatureCollection fc) {
+		OpBlockChain blc = blocksManager.getBlockchain();
+		OpBlockChain.ObjectsSearchRequest r = new OpBlockChain.ObjectsSearchRequest();
+		OpIndexColumn ind = blocksManager.getIndex(OPR_PLACE, DBSchemaManager.INDEX_P[0]);
+		blc.fetchObjectsByIndex(OPR_PLACE, ind, r, tileId);
+		generateFeatureCollectionFromResult(r.result, fc);
+	}
+
 	public void retrievePlacesByDate(Date date, Date date2, String requestFilter, FeatureCollection fc) throws ParseException {
 		List<OpBlock> listBlocks = blocksManager.getBlockchain().getBlockHeaders(-1);
 		List<OpBlock> blocksByDate = new LinkedList<>();
@@ -124,6 +134,32 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			}
 		}
 
+	}
+
+	public void retrievePlaces(String filter, FeatureCollection fc) {
+		RequestFilter requestFilter = RequestFilter.valueOf(filter);
+		List<Feature> features = fc.features();
+		List<Feature> newList = new ArrayList<>();
+		for (Feature feature : features) {
+			OpObject obj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(feature));
+			if (requestFilter == RequestFilter.REVIEW_IMAGES) {
+				Object imgReviewField = obj.getFieldByExpr(F_IMG_REVIEW);
+				if (imgReviewField != null) {
+					newList.add(feature);
+				}
+			}
+		}
+
+		if (requestFilter == RequestFilter.REVIEW_IMAGES) {
+			fc.features().clear();
+			fc.features().addAll(newList);
+		}
+	}
+
+	private List<String> getPlaceId(Feature feature) {
+		return new ArrayList<>(Arrays.asList(feature.properties()
+				.get(OPR_ID).getAsString()
+				.split(",")));
 	}
 
 
