@@ -305,7 +305,12 @@ public abstract class BaseOprPlaceDataProvider
 		Map<String, Object> main = null;
 		for (Map<String, Object> m : osmList) {
 			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(OSM_VALUE)) {
-				main = m;
+				if(!m.containsKey(F_DELETED_OSM)) {
+					return m;
+				}
+				if (main == null) {
+					main = m;
+				}
 			}
 		}
 		return main;
