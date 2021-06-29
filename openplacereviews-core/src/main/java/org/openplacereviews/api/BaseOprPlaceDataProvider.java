@@ -308,7 +308,7 @@ public abstract class BaseOprPlaceDataProvider
 				if(!m.containsKey(F_DELETED_OSM)) {
 					return m;
 				}
-				if (main != null) {
+				if (main == null) {
 					main = m;
 				}
 			}
