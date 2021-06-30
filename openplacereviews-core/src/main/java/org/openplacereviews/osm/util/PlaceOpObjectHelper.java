@@ -47,6 +47,7 @@ public class PlaceOpObjectHelper {
 	public static final String F_TIMESTAMP = "timestamp";
 	public static final String F_DELETED_OSM = "deleted";
 	public static final String F_DELETED_PLACE = "deleted";
+	public static final String F_IMG = "images";
 	public static final String F_IMG_SIZE = "images_size";
 	public static final String F_IMG_REVIEW = "images.review";
 	public static final SimpleDateFormat TIMESTAMP_FORMAT = OpBlock.dateFormat;

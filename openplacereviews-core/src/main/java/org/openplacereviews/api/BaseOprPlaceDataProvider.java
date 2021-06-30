@@ -231,7 +231,7 @@ public abstract class BaseOprPlaceDataProvider
 			}
 			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
 
-			Map<String, List<Map<String, Object>>> imagesObj = o.getField(null, F_IMG_SIZE);
+			Map<String, List<Map<String, Object>>> imagesObj = o.getField(null, F_IMG);
 			if (imagesObj != null) {
 				int imagesSize = 0;
 				for (Entry<String, List<Map<String, Object>>> category : imagesObj.entrySet()) {
@@ -273,6 +273,7 @@ public abstract class BaseOprPlaceDataProvider
 					put(obj, CHANGESET, sourceObj);
 					put(obj, ATTR_LATITUDE, sourceObj);
 					put(obj, ATTR_LONGITUDE, sourceObj);
+					put(obj, F_DELETED_PLACE, sourceObj);
 					Map<String, Object> tagsValue = (Map<String, Object>) sourceObj.get(TAGS);
 					if (tagsValue != null) {
 						JsonObject tagsObj = new JsonObject();
