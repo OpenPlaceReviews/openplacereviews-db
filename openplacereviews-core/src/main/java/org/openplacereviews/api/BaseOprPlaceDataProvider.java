@@ -231,13 +231,13 @@ public abstract class BaseOprPlaceDataProvider
 			}
 			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
 
-			Map<String, List<Map<String, Object>>> imagesObj = o.getField(null, F_IMG);
+			Map<String, List<Map<String, Object>>> imagesObj = o.getField(null, F_IMG_SIZE);
 			if (imagesObj != null) {
 				int imagesSize = 0;
 				for (Entry<String, List<Map<String, Object>>> category : imagesObj.entrySet()) {
 					imagesSize += category.getValue().size();
 				}
-				bld.put(F_IMG, new JsonPrimitive(String.valueOf(imagesSize)));
+				bld.put(F_IMG_SIZE, new JsonPrimitive(String.valueOf(imagesSize)));
 			}
 
 			Object imgReviewField = o.getFieldByExpr(F_IMG_REVIEW);
