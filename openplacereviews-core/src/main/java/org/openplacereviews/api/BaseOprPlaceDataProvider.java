@@ -374,16 +374,18 @@ public abstract class BaseOprPlaceDataProvider
 	@Override
 	public boolean operationAdded(PublicAPIEndpoint<MapCollectionParameters, OprMapCollectionApiResult> api,
 								  OpOperation op, OpBlock block) {
-		boolean changed = false;
 		if (op.getType().equals(OPR_PLACE)) {
+			String tileOp = op.getEdited().get(0).getId().get(0);
 			for (MapCollectionParameters p : api.getCacheKeys()) {
-				CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
-				if (holder != null) {
-					holder.forceUpdate = true;
-					changed = true;
+				if (p.tileId.equals(tileOp)) {
+					CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
+					if (holder != null) {
+						holder.forceUpdate = true;
+						return true;
+					}
 				}
 			}
 		}
-		return changed;
+		return false;
 	}
 }
