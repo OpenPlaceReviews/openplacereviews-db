@@ -7,16 +7,8 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -375,17 +367,40 @@ public abstract class BaseOprPlaceDataProvider
 	public boolean operationAdded(PublicAPIEndpoint<MapCollectionParameters, OprMapCollectionApiResult> api,
 								  OpOperation op, OpBlock block) {
 		if (op.getType().equals(OPR_PLACE)) {
-			String tileOp = op.getEdited().get(0).getId().get(0);
+			Set<String> tiles = new HashSet<>();
+
+			addTilesByPlace(op.getEdited(), tiles);
+			addTilesByPlace(op.getCreated(), tiles);
+			addTilesByPlaceId(op.getDeleted(), tiles);
+
 			for (MapCollectionParameters p : api.getCacheKeys()) {
-				if (p.tileId.equals(tileOp)) {
-					CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
-					if (holder != null) {
-						holder.forceUpdate = true;
-						return true;
+				for(String tile : tiles) {
+					if (p.tileId.equals(tile)) {
+						CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
+						if (holder != null) {
+							holder.forceUpdate = true;
+							return true;
+						}
 					}
 				}
 			}
 		}
 		return false;
+	}
+
+	private void addTilesByPlace(List<OpObject> places, Set<String> tiles) {
+		if (!places.isEmpty()) {
+			for (OpObject opObject : places) {
+				tiles.add(opObject.getId().get(0));
+			}
+		}
+	}
+
+	private void addTilesByPlaceId(List<List<String>> placesId, Set<String> tiles) {
+		if (!placesId.isEmpty()) {
+			for (List<String> id : placesId) {
+				tiles.add(id.get(0));
+			}
+		}
 	}
 }
