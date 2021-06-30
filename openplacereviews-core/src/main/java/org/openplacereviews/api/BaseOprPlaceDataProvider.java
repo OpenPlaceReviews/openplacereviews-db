@@ -1,10 +1,9 @@
 package org.openplacereviews.api;
 
+import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_IMG_REVIEW;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -22,10 +21,8 @@ import java.util.TreeSet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.api.OprMapCollectionApiResult.MapCollectionParameters;
-import org.openplacereviews.opendb.ops.OpBlockChain;
+import org.openplacereviews.opendb.ops.*;
 import org.openplacereviews.opendb.ops.OpBlockChain.ObjectsSearchRequest;
-import org.openplacereviews.opendb.ops.OpIndexColumn;
-import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.DBSchemaManager;
 import org.openplacereviews.opendb.service.IPublicDataProvider;
@@ -234,6 +231,15 @@ public abstract class BaseOprPlaceDataProvider
 			}
 			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
 
+			Map<String, List<Map<String, Object>>> imagesObj = o.getField(null, F_IMG);
+			if (imagesObj != null) {
+				int imagesSize = 0;
+				for (Entry<String, List<Map<String, Object>>> category : imagesObj.entrySet()) {
+					imagesSize += category.getValue().size();
+				}
+				bld.put(F_IMG, new JsonPrimitive(String.valueOf(imagesSize)));
+			}
+
 			Object imgReviewField = o.getFieldByExpr(F_IMG_REVIEW);
 			if (imgReviewField != null) {
 				bld.put(IMG_REVIEW_SIZE, new JsonPrimitive(String.valueOf(((List<?>) imgReviewField).size())));
@@ -362,5 +368,21 @@ public abstract class BaseOprPlaceDataProvider
 		} else {
 			return string;
 		}
+	}
+
+	@Override
+	public boolean operationAdded(PublicAPIEndpoint<MapCollectionParameters, OprMapCollectionApiResult> api,
+								  OpOperation op, OpBlock block) {
+		boolean changed = false;
+		if (op.getType().equals(OPR_PLACE)) {
+			for (MapCollectionParameters p : api.getCacheKeys()) {
+				CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
+				if (holder != null) {
+					holder.forceUpdate = true;
+					changed = true;
+				}
+			}
+		}
+		return changed;
 	}
 }
