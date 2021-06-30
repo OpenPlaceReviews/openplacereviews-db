@@ -1,31 +1,20 @@
 package org.openplacereviews.api;
 
+import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_IMG_REVIEW;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openplacereviews.api.OprMapCollectionApiResult.MapCollectionParameters;
-import org.openplacereviews.opendb.ops.OpBlockChain;
+import org.openplacereviews.opendb.ops.*;
 import org.openplacereviews.opendb.ops.OpBlockChain.ObjectsSearchRequest;
-import org.openplacereviews.opendb.ops.OpIndexColumn;
-import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.DBSchemaManager;
 import org.openplacereviews.opendb.service.IPublicDataProvider;
@@ -234,6 +223,15 @@ public abstract class BaseOprPlaceDataProvider
 			}
 			bld.put(OPR_ID, new JsonPrimitive(o.getId().get(0) + "," + o.getId().get(1)));
 
+			Map<String, List<Map<String, Object>>> imagesObj = o.getField(null, F_IMG);
+			if (imagesObj != null) {
+				int imagesSize = 0;
+				for (Entry<String, List<Map<String, Object>>> category : imagesObj.entrySet()) {
+					imagesSize += category.getValue().size();
+				}
+				bld.put(F_IMG_SIZE, new JsonPrimitive(String.valueOf(imagesSize)));
+			}
+
 			Object imgReviewField = o.getFieldByExpr(F_IMG_REVIEW);
 			if (imgReviewField != null) {
 				bld.put(IMG_REVIEW_SIZE, new JsonPrimitive(String.valueOf(((List<?>) imgReviewField).size())));
@@ -267,6 +265,7 @@ public abstract class BaseOprPlaceDataProvider
 					put(obj, CHANGESET, sourceObj);
 					put(obj, ATTR_LATITUDE, sourceObj);
 					put(obj, ATTR_LONGITUDE, sourceObj);
+					put(obj, F_DELETED_PLACE, sourceObj);
 					Map<String, Object> tagsValue = (Map<String, Object>) sourceObj.get(TAGS);
 					if (tagsValue != null) {
 						JsonObject tagsObj = new JsonObject();
@@ -361,6 +360,47 @@ public abstract class BaseOprPlaceDataProvider
 			return string.substring(0, INDEXED_TILEID);
 		} else {
 			return string;
+		}
+	}
+
+	@Override
+	public boolean operationAdded(PublicAPIEndpoint<MapCollectionParameters, OprMapCollectionApiResult> api,
+								  OpOperation op, OpBlock block) {
+		if (op.getType().equals(OPR_PLACE)) {
+			Set<String> tiles = new HashSet<>();
+
+			addTilesByPlace(op.getEdited(), tiles);
+			addTilesByPlace(op.getCreated(), tiles);
+			addTilesByPlaceId(op.getDeleted(), tiles);
+
+			for (MapCollectionParameters p : api.getCacheKeys()) {
+				for(String tile : tiles) {
+					if (p.tileId.equals(tile)) {
+						CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
+						if (holder != null) {
+							holder.forceUpdate = true;
+							return true;
+						}
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	private void addTilesByPlace(List<OpObject> places, Set<String> tiles) {
+		if (!places.isEmpty()) {
+			for (OpObject opObject : places) {
+				tiles.add(opObject.getId().get(0));
+			}
+		}
+	}
+
+	private void addTilesByPlaceId(List<List<String>> placesId, Set<String> tiles) {
+		if (!placesId.isEmpty()) {
+			for (List<String> id : placesId) {
+				tiles.add(id.get(0));
+			}
 		}
 	}
 }
