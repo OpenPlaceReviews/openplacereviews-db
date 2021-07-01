@@ -65,6 +65,7 @@ public abstract class BaseOprPlaceDataProvider
 	public static final String IMG_REVIEW_SIZE = "img_review_size";
 	public static final String PLACE_DELETED = "place_deleted";
 	public static final String PLACE_DELETED_OSM = "place_deleted_osm";
+	public static final String HAS_TRIPADVISOR = "has_tripadvisor";
 
 	protected Gson geoJson;
 
@@ -254,6 +255,9 @@ public abstract class BaseOprPlaceDataProvider
 			Set<String> mainTagKeys = new TreeSet<String>();
 			for (String tp : sourcesObj.keySet()) {
 				List<Map<String, Object>> listValues = sourcesObj.get(tp);
+				if (tp.equals(F_SOURCE_TRIPADVISOR)) {
+					bld.put(HAS_TRIPADVISOR, new JsonPrimitive(String.valueOf(true)));
+				}
 				for (int ind = 0; ind < listValues.size(); ind++) {
 					JsonObject obj = new JsonObject();
 					Map<String, Object> sourceObj = listValues.get(ind);
