@@ -178,7 +178,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 									osm = lmp;
 								}
 							}
-							if (allOsmRefsDeleted && osm != null) {
+							if (allOsmRefsDeleted && osm != null && nObj.getField(null, F_DELETED_PLACE) == null) {
 								addDeletedPlaceField(additionalFieldsMap, nObj);
 								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, additionalFieldsMap);
 								break changeKeys;
