@@ -15,6 +15,7 @@ dependencies {
    implementation "commons-logging:commons-logging:1.2"
    implementation "org.apache.commons:commons-math3:3.6.1"
    implementation "org.apache.commons:commons-lang3:3.11"
+   implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
    
    implementation group: 'javax.activation', name: 'activation', version: '1.1.1'
    implementation group: 'commons-codec', name: 'commons-codec', version: '1.12'
