@@ -378,9 +378,7 @@ public abstract class BaseOprPlaceDataProvider
 			addTilesByPlaceId(op.getDeleted(), tiles);
 
 			for (MapCollectionParameters p : api.getCacheKeys()) {
-				if (p.tileId == null) {
-					break;
-				} else {
+				if (p.tileId != null) {
 					for (String tile : tiles) {
 						if (p.tileId.equals(tile)) {
 							CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
