@@ -4,6 +4,7 @@ import com.github.filosganga.geogson.model.Feature;
 import com.github.filosganga.geogson.model.Point;
 
 import org.apache.catalina.util.ParameterMap;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.openplacereviews.api.OprMapCollectionApiResult;
 import org.openplacereviews.opendb.ops.OpObject;
 
@@ -25,7 +26,7 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
-    private static final int SIMILAR_PLACE_DISTANCE = 150;
+    private static final int SIMILAR_PLACE_DISTANCE = 100;
     private static final String IMAGES = "images";
     private static final String SOURCE = "source";
     private static final String SET = "set";
@@ -353,7 +354,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         int matchedCount = 0;
         for (String wordMain : mainList) {
             for (String wordSub : subList) {
-                if (collator.compare(wordMain, wordSub) == 0) {
+                if (collator.compare(wordMain, wordSub) == 0
+                        || new LevenshteinDistance().apply(wordMain, wordSub) <= getMaxLevenshteinDistance(wordMain, wordSub)) {
                     matchedCount++;
                     if (matchedCount == subList.size()) {
                         return true;
@@ -362,5 +364,21 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
             }
         }
         return false;
+    }
+
+    private int getMaxLevenshteinDistance(String wordMain, String wordSub) {
+        int wordMainLength = wordMain.length();
+        int wordSubLength = wordSub.length();
+        int resLength = Math.min(wordMainLength, wordSubLength);
+        if (resLength < 3) {
+            return 1;
+        }
+        if (resLength <= 5) {
+            return 2;
+        }
+        if (resLength <= 7) {
+            return 3;
+        }
+        return 4;
     }
 }
