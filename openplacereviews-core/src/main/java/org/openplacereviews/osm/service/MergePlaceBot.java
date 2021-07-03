@@ -257,12 +257,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         if (checkTags(getTag(newTags, WEBSITE), getTag(oldTags, WEBSITE))) {
             return true;
         }
-        if (checkTags(getTag(newTags, PHONE), getTag(oldTags, PHONE))) {
-            return true;
-        }
-        if (checkTags(getTag(newTags, DESCRIPTION), getTag(oldTags, DESCRIPTION))) {
-            return true;
-        }
         return false;
     }
 
