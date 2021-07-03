@@ -35,7 +35,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String PLACE_NAME = "name";
     private static final String WIKIDATA = "wikidata";
     private static final String WEBSITE = "website";
-    private static final String CUISINE = "cuisine";
     private static final String PHONE = "phone";
     private static final String DESCRIPTION = "description";
     private static final String POSSIBLE_MERGE = "POSSIBLE_MERGE";
@@ -259,9 +258,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
             return true;
         }
         if (checkTags(getTag(newTags, PHONE), getTag(oldTags, PHONE))) {
-            return true;
-        }
-        if (checkTags(getTag(newTags, CUISINE), getTag(oldTags, CUISINE))) {
             return true;
         }
         if (checkTags(getTag(newTags, DESCRIPTION), getTag(oldTags, DESCRIPTION))) {
