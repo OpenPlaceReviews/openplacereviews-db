@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.catalina.util.ParameterMap;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.openplacereviews.api.OprMapCollectionApiResult;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -34,13 +35,17 @@ import com.github.filosganga.geogson.model.Point;
 
 public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
-    private static final int SIMILAR_PLACE_DISTANCE = 150;
+    private static final int SIMILAR_PLACE_DISTANCE = 100;
     private static final String IMAGES = "images";
     private static final String SOURCE = "source";
     private static final String SET = "set";
     private static final String APPEND = "append";
     private static final String APPEND_MANY = "appendmany";
     private static final String PLACE_NAME = "name";
+    private static final String WIKIDATA = "wikidata";
+    private static final String WEBSITE = "website";
+    private static final String PHONE = "phone";
+    private static final String DESCRIPTION = "description";
     private static final String POSSIBLE_MERGE = "POSSIBLE_MERGE";
     private static final String START_DATA = "date";
     private static final String END_DATA = "date2";
@@ -49,6 +54,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String ALL_PUNCTUATION = "^\\p{Punct}+|\\p{Punct}+$";
     private static final String SPACE = " ";
     private static final String COMMA = ",";
+    private static final String OLD_NAME = "old_name";
     
     public static final int MONTHS_TO_CHECK = 6;
     public boolean TRACE = true;
@@ -228,7 +234,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         if (newObj != null && oldObj != null) {
             List<Map<String, Object>> newOsmList = newObj.getField(null, F_SOURCE, F_OSM);
             List<Map<String, Object>> oldOsmList = oldObj.getField(null, F_SOURCE, F_OSM);
-            if (newOsmList != null && oldOsmList != null && isMergeByName(newOsmList, oldOsmList)) {
+            if (newOsmList != null && oldOsmList != null
+                    && (isMergeByName(newOsmList, oldOsmList) || isMergeByTags(newOsmList, oldOsmList))) {
 				if (TRACE) {
 					info(String.format("Merge - %s with %s", newOsmList, oldOsmList));
 				}
@@ -240,8 +247,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     protected boolean isMergeByName(List<Map<String, Object>> newOsmList, List<Map<String, Object>> oldOsmList) {
         Map<String, Object> newTags = (Map<String, Object>) newOsmList.get(newOsmList.size() - 1).get(TAGS);
         Map<String, Object> oldTags = (Map<String, Object>) oldOsmList.get(oldOsmList.size() - 1).get(TAGS);
-        String oldName = getPlaceName(oldTags);
-        String newName = getPlaceName(newTags);
+        String oldName = getTag(oldTags, PLACE_NAME);
+        String newName = getTag(newTags, PLACE_NAME);
 
         //all names null
         if (oldName == null && newName == null) {
@@ -265,7 +272,27 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return false;
     }
 
-    protected List<String> getPlaceId(Feature feature) {
+    protected boolean isMergeByTags(List<Map<String, Object>> newOsmList, List<Map<String, Object>> oldOsmList) {
+        Map<String, Object> newTags = (Map<String, Object>) newOsmList.get(newOsmList.size() - 1).get(TAGS);
+        Map<String, Object> oldTags = (Map<String, Object>) oldOsmList.get(oldOsmList.size() - 1).get(TAGS);
+
+        if (checkTags(getTag(newTags, WIKIDATA), getTag(oldTags, WIKIDATA))) {
+            return true;
+        }
+        if (checkTags(getTag(newTags, WEBSITE), getTag(oldTags, WEBSITE))) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean checkTags(String tag1, String tag2) {
+        if (tag1 != null && tag2 != null) {
+            return tag1.equals(tag2);
+        }
+        return false;
+    }
+
+    private List<String> getPlaceId(Feature feature) {
         return new ArrayList<>(Arrays.asList(feature.properties()
                 .get(OPR_ID).getAsString()
                 .split(COMMA)));
@@ -313,9 +340,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         }
     }
 
-    private String getPlaceName(Map<String, Object> tags) {
-        if (tags != null && tags.containsKey(PLACE_NAME)) {
-            return tags.get(PLACE_NAME).toString();
+    private String getTag(Map<String, Object> tags, String name) {
+        if (tags != null && tags.containsKey(name)) {
+            return tags.get(name).toString();
         }
         return null;
     }
@@ -323,7 +350,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private List<String> getOtherPlaceName(Map<String, Object> tags) {
         List<String> otherNames = new ArrayList<>();
         for (Map.Entry<String, Object> tag : tags.entrySet()) {
-            if (tag.getKey().startsWith(PLACE_NAME) && !tag.getKey().equals(PLACE_NAME)) {
+            if ((tag.getKey().startsWith(PLACE_NAME) || tag.getKey().equals(OLD_NAME)) && !tag.getKey().equals(PLACE_NAME)) {
                 otherNames.add((String) tag.getValue());
             }
         }
@@ -338,6 +365,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         String newNameLower = newName.toLowerCase();
         //if names equal
         if (collator.compare(oldNameLower, newNameLower) == 0) {
+            return true;
+        }
+
+        if (oldNameLower.replaceAll("\\s+", "")
+                .equals(newNameLower.replaceAll("\\s+", ""))) {
             return true;
         }
 
@@ -378,7 +410,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         int matchedCount = 0;
         for (String wordMain : mainList) {
             for (String wordSub : subList) {
-                if (collator.compare(wordMain, wordSub) == 0) {
+                if (collator.compare(wordMain, wordSub) == 0
+                        || new LevenshteinDistance().apply(wordMain, wordSub) <= getMaxLevenshteinDistance(wordMain, wordSub)) {
                     matchedCount++;
                     if (matchedCount == subList.size()) {
                         return true;
@@ -387,5 +420,21 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
             }
         }
         return false;
+    }
+
+    private int getMaxLevenshteinDistance(String wordMain, String wordSub) {
+        int wordMainLength = wordMain.length();
+        int wordSubLength = wordSub.length();
+        int resLength = Math.min(wordMainLength, wordSubLength);
+        if (resLength < 3) {
+            return 1;
+        }
+        if (resLength <= 5) {
+            return 2;
+        }
+        if (resLength <= 7) {
+            return 3;
+        }
+        return 4;
     }
 }

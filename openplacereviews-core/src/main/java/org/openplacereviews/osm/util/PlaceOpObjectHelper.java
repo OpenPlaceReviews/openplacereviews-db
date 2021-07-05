@@ -50,6 +50,7 @@ public class PlaceOpObjectHelper {
 	public static final String F_IMG = "images";
 	public static final String F_IMG_SIZE = "images_size";
 	public static final String F_IMG_REVIEW = "images.review";
+	public static final String F_SOURCE_TRIPADVISOR = "tripadvisor";
 	public static final SimpleDateFormat TIMESTAMP_FORMAT = OpBlock.dateFormat;
 	public static OpObject generateNewOprObject(Entity entity, TreeMap<String, Object> osmObject ) {
 		OpObject create = new OpObject();
