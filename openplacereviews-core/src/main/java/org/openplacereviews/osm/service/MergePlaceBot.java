@@ -37,7 +37,7 @@ import com.github.filosganga.geogson.model.Feature;
 
 public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
-    private static final int SIMILAR_PLACE_DISTANCE = 200;
+    private static final int SIMILAR_PLACE_DISTANCE = 100;
     private static final String IMAGES = "images";
     private static final String SOURCE = "source";
     private static final String SET = "set";
@@ -293,7 +293,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 						if (mt.allow2PlacesMerge) {
 							matched = i;
 						} else {
-							// System.out.println(oldOsmTags + " 2!= " + placesToMergeTags);
+							// System.out.println("Not merge (2>): " + oldOsmTags + " != " + placesToMergeTags);
 							return null;
 						}
 					} else {
@@ -309,9 +309,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				return placesToMerge.remove(matched);
 			}
 		}
-		if (TRACE) {
-			// info("Not merge " + oldOsmTags + " != " + placesToMergeTags);
-		}
+		// System.out.println("Not merge:" + oldOsmTags + " != " + placesToMergeTags);
 		return null;
     }
     
@@ -329,11 +327,14 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     		return checkNames(oldName, newName);
     	} else if(mt == MatchType.OTHER_NAME_MATCH) {
     		List<String> otherNames = getOtherPlaceName(newOsmTags);
-            for (String name : otherNames) {
-                if (checkNames(oldName, name)) {
-                    return true;
-                }
-            }
+    		List<String> otherOldNames = getOtherPlaceName(oldOsmTags);
+			for (String name : otherNames) {
+				for (String name2 : otherOldNames) {
+					if (checkNames(name2, name)) {
+						return true;
+					}
+				}
+			}
 		} else if (mt == MatchType.EMPTY_NAME_MATCH) {
 			// all names null
 			if (OUtils.isEmpty(oldName) && OUtils.isEmpty(newName)) {
@@ -438,7 +439,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private List<String> getOtherPlaceName(Map<String, String> tags) {
         List<String> otherNames = new ArrayList<>();
 		for (Map.Entry<String, String> tag : tags.entrySet()) {
-			if (tag.getKey().startsWith(PLACE_NAME + ":") || tag.getKey().equals(OLD_NAME)) {
+			if (tag.getKey().startsWith(PLACE_NAME) || tag.getKey().equals(OLD_NAME)) {
 				otherNames.add((String) tag.getValue());
 			}
 		}
