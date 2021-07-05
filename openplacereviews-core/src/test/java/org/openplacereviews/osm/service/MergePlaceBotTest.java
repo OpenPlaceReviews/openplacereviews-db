@@ -40,8 +40,10 @@ public class MergePlaceBotTest {
 	public void testMergeByName() {
 		for (int i = 0; i < places.length; i += 2) {
 			List<OpObject> lst = new ArrayList<>();
-			lst.add(places[i + 1]);
-			assertTrue(bot.mergePlaces(EnumSet.of(MatchType.NAME_MATCH), places[i], lst, new ArrayList<>(), new ArrayList<>()) != null);
+			lst.add(places[i]);
+			System.out.println(places[i]);
+			System.out.println(places[i+1]);
+			assertTrue(bot.mergePlaces(EnumSet.allOf(MatchType.class), places[i + 1], lst, new ArrayList<>(), new ArrayList<>()) != null);
 		}
 	}
 
@@ -51,8 +53,8 @@ public class MergePlaceBotTest {
 			List<List<String>> deleted = new ArrayList<>();
 			List<OpObject> edited = new ArrayList<>();
 			List<OpObject> lst = new ArrayList<>();
-			lst.add(places[i + 1]);
-			bot.mergePlaces(EnumSet.allOf(MatchType.class), places[i], lst,
+			lst.add(places[i]);
+			bot.mergePlaces(EnumSet.allOf(MatchType.class), places[i + 1], lst,
 					deleted, edited);
 
 			assertFalse(deleted.isEmpty());
@@ -63,8 +65,8 @@ public class MergePlaceBotTest {
 	public void testNotMergeByName() {
 		for (int i = 0; i < placesNotMerge.length; i += 2) {
 			List<OpObject> lst = new ArrayList<>();
-			lst.add(places[i + 1]);
-			assertFalse(bot.mergePlaces(EnumSet.allOf(MatchType.class), places[i],
+			lst.add(places[i]);
+			assertFalse(bot.mergePlaces(EnumSet.allOf(MatchType.class), places[i + 1],
 					lst, new ArrayList<>(), new ArrayList<>()) == null);
 		}
 	}
