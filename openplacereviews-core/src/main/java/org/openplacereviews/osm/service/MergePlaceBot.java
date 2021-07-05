@@ -44,8 +44,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String PLACE_NAME = "name";
     private static final String WIKIDATA = "wikidata";
     private static final String WEBSITE = "website";
-    private static final String PHONE = "phone";
-    private static final String DESCRIPTION = "description";
     private static final String POSSIBLE_MERGE = "POSSIBLE_MERGE";
     private static final String START_DATA = "date";
     private static final String END_DATA = "date2";
