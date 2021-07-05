@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.zip.GZIPInputStream;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -79,8 +78,8 @@ public class MergePlaceBotOtherTest {
         
         MergeInfo info = new MergeInfo();
     	bot.mergePlaces(rs.geo.features(), info);
-    	System.out.println(String.format("Merge places has finished: place groups %d, close by groups %d, merged %d", 
-				info.mergedGroupSize, info.similarPlacesCnt, info.deleted.size()));
+    	System.out.println(String.format("Merge places has finished: place groups %d, closed places %d, found similar places %d, merged %d", 
+				info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt));
     }
 
 }

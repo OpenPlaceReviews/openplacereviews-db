@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,7 @@ import com.github.filosganga.geogson.model.Feature;
 
 public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
-    private static final int SIMILAR_PLACE_DISTANCE = 100;
+    private static final int SIMILAR_PLACE_DISTANCE = 200;
     private static final String IMAGES = "images";
     private static final String SOURCE = "source";
     private static final String SET = "set";
@@ -94,14 +95,22 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     	List<List<String>> deleted = new ArrayList<>();
 		List<OpObject> edited = new ArrayList<>();
 		int mergedGroupSize;
+		int closedPlaces;
 		int similarPlacesCnt;
+		int mergedPlacesCnt;
     }
     
     protected enum MatchType {
-    	NAME_MATCH,
-    	OTHER_TAGS_MATCH,
-    	OTHER_NAME_MATCH,
-    	EMPTY_NAME_MATCH,
+    	NAME_MATCH(true),
+    	OTHER_TAGS_MATCH(true),
+    	OTHER_NAME_MATCH(true),
+    	EMPTY_NAME_MATCH(false);
+    	
+    	public final boolean allow2PlacesMerge;
+
+		private MatchType(boolean allow2PlacesMerge) {
+			this.allow2PlacesMerge = allow2PlacesMerge;
+    	}
     }
 
     @Override
@@ -131,8 +140,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				List<Feature> list = getFeatures(apiEndpoint, params);
 				mergePlaces(list, info);
 				int cnt = addOperations(info.deleted, info.edited);
-				info(String.format("%Merge places has finished for %s - %s: place groups %d, grouped close by %d, merged %d, operations %d", 
-						start.toString(), end.toString(), info.mergedGroupSize, info.similarPlacesCnt, info.deleted.size(), cnt));
+				info(String.format("Merge places has finished for %s - %s: place groups %d, closed places %d, found similar places %d, merged %d, operations %d", 
+						start.toString(), end.toString(), info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt, cnt));
 				progress++;
 			}
 			info("Merge places completed: " + new Date());
@@ -150,48 +159,50 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 	protected void mergePlaces(List<Feature> list, MergeInfo info) {
 		List<List<Feature>> mergeGroups = getMergeGroups(list);
 		info.mergedGroupSize = mergeGroups.size();
-		List<OpObject> placesToMerge = new ArrayList<>();
+		List<OpObject> closedPlaces = new ArrayList<>();
+		List<OpObject> groupPlacesToMerge = new ArrayList<>();
 		for (List<Feature> mergeGroup : mergeGroups) {
-			OpObject deleted = null;
-			placesToMerge.clear();
+			groupPlacesToMerge.clear();
+			closedPlaces.clear();
 			for (Feature f : mergeGroup) {
 				OpObject obj = getCurrentObject(f);
 				Map<String, Object> mainOsm = getMainOsmFromList(obj);
 				if (mainOsm != null) {
 					boolean delOsm = mainOsm.containsKey(F_DELETED_OSM);
 					if (delOsm) {
-						if (deleted == null) {
-							deleted = obj;
-						} else {
-							// nothing to merge 2 deleted objs
-							deleted = null;
-							break;
-						}
+						closedPlaces.add(obj);
 					} else {
-						placesToMerge.add(obj);
+						groupPlacesToMerge.add(obj);
 					}
-				}
+				} 
 			}
-			if (deleted == null || placesToMerge.size() == 0) {
-				// nothing to merge
-				continue;
-			}
-			info.similarPlacesCnt++;
-			LatLon l = getLatLon(deleted);
-			Iterator<OpObject> it = placesToMerge.iterator();
-			while (it.hasNext()) {
-				OpObject o = it.next();
-				LatLon l2 = getLatLon(o);
-				if (l2 == null || OsmMapUtils.getDistance(l, l2) > SIMILAR_PLACE_DISTANCE) {
-					it.remove();
-				}
+			for (OpObject deleted : closedPlaces) {
+				LatLon l = getLatLon(deleted);
+				info.closedPlaces++;
+				List<OpObject> placesToMerge = new ArrayList<>(groupPlacesToMerge);
+				Iterator<OpObject> it = placesToMerge.iterator();
+				while (it.hasNext()) {
+					OpObject o = it.next();
+					LatLon l2 = getLatLon(o);
+					if (l2 == null || OsmMapUtils.getDistance(l, l2) > SIMILAR_PLACE_DISTANCE) {
+						it.remove();
+					}
 
+				}
+				if (deleted == null || placesToMerge.size() == 0) {
+					// nothing to merge
+					continue;
+				}
+				info.similarPlacesCnt++;
+				EnumSet<MatchType> es = closedPlaces.size() == 1 ? EnumSet.allOf(MatchType.class)
+						: EnumSet.range(MatchType.NAME_MATCH, MatchType.OTHER_NAME_MATCH);
+				OpObject deletedMerged = mergePlaces(es, deleted, placesToMerge, info.deleted, info.edited);
+				if (deletedMerged != null) {
+					groupPlacesToMerge.remove(deletedMerged);
+					info.mergedPlacesCnt++;
+				}
 			}
-			if (deleted == null || placesToMerge.size() == 0) {
-				// nothing to merge
-				continue;
-			}			
-			mergePlaces(deleted, placesToMerge, info.deleted, info.edited);
+
 		}
 	}
 	
@@ -267,20 +278,24 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return collection.geo.features();
     }
 
-    protected void mergePlaces(OpObject oldObj, List<OpObject> placesToMerge, List<List<String>> deleted, List<OpObject> edited) {
-    	List<Map<String, Object>> placesToMergeTags = new ArrayList<>();
-    	Map<String, Object> oldOsmTags = getMainOsmFromList(oldObj);
+    protected OpObject mergePlaces(EnumSet<MatchType> matchTypes, OpObject oldObj, List<OpObject> placesToMerge, List<List<String>> deleted, List<OpObject> edited) {
+    	List<Map<String, String>> placesToMergeTags = new ArrayList<>();
+    	Map<String, String> oldOsmTags = getMainOsmTags(oldObj);
 		for (int i = 0; i < placesToMerge.size(); i++) {
-			placesToMergeTags.add(getMainOsmFromList(placesToMerge.get(i)));
+			placesToMergeTags.add(getMainOsmTags(placesToMerge.get(i)));
 		}
-		for (MatchType mt : MatchType.values()) {
+		for (MatchType mt : matchTypes) {
 			int matched = -1;
 			for (int i = 0; i < placesToMerge.size(); i++) {
 				if (match(mt, oldOsmTags, placesToMergeTags.get(i))) {
 					if (matched >= 0) {
 						// 2 places match
-						matched = -2;
-						break;
+						if (mt.allow2PlacesMerge) {
+							matched = i;
+						} else {
+							// System.out.println(oldOsmTags + " 2!= " + placesToMergeTags);
+							return null;
+						}
 					} else {
 						matched = i;
 					}
@@ -291,25 +306,26 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 					info(String.format("Merge - %s with %s", oldOsmTags, placesToMergeTags.get(matched)));
 				}
 				addObjToOperation(oldObj, placesToMerge.get(matched), deleted, edited);
-				break;
-			} else if (matched < -1) {
-				break;
+				return placesToMerge.remove(matched);
 			}
-			
 		}
+		if (TRACE) {
+			// info("Not merge " + oldOsmTags + " != " + placesToMergeTags);
+		}
+		return null;
     }
     
-    protected boolean match(MatchType mt, Map<String, Object> oldOsmTags, Map<String, Object> newOsmTags) {
+    protected boolean match(MatchType mt, Map<String, String> oldOsmTags, Map<String, String> newOsmTags) {
     	String oldName = (String) oldOsmTags.get(PLACE_NAME);
     	String newName = (String) newOsmTags.get(PLACE_NAME);
-    	if(mt == MatchType.OTHER_TAGS_MATCH) {
-    		if (OUtils.equalsStringValue(oldOsmTags.get(WIKIDATA), newOsmTags.get(WIKIDATA))) {
-                return true;
-            }
-    		if (OUtils.equalsStringValue(oldOsmTags.get(WEBSITE), newOsmTags.get(WEBSITE))) {
-                return true;
-            }
-    	} else if(mt == MatchType.NAME_MATCH) {
+		if (mt == MatchType.OTHER_TAGS_MATCH) {
+			if (equalsNotEmptyStringValue(oldOsmTags.get(WIKIDATA), newOsmTags.get(WIKIDATA))) {
+				return true;
+			}
+			if (equalsNotEmptyStringValue(oldOsmTags.get(WEBSITE), newOsmTags.get(WEBSITE))) {
+				return true;
+			}
+		} else if (mt == MatchType.NAME_MATCH) {
     		return checkNames(oldName, newName);
     	} else if(mt == MatchType.OTHER_NAME_MATCH) {
     		List<String> otherNames = getOtherPlaceName(newOsmTags);
@@ -331,6 +347,22 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		return false;
 	}
 
+	private boolean equalsNotEmptyStringValue(String s1, String s2) {
+		if (OUtils.isEmpty(s1) || OUtils.isEmpty(s2)) {
+			return false;
+		}
+		return OUtils.equalsStringValue(s1, s2);
+	}
+
+	@SuppressWarnings("unchecked")
+	private Map<String, String> getMainOsmTags(OpObject o) {
+		Map<String, Object> m = getMainOsmFromList(o);
+		if (m != null) {
+			return (Map<String, String>) m.get("tags");
+		}
+		return null;
+	}
+	
 	private Map<String, Object> getMainOsmFromList(OpObject o) {
 		if (o == null) {
 			return null;
@@ -403,9 +435,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         }
     }
 
-    private List<String> getOtherPlaceName(Map<String, Object> tags) {
+    private List<String> getOtherPlaceName(Map<String, String> tags) {
         List<String> otherNames = new ArrayList<>();
-		for (Map.Entry<String, Object> tag : tags.entrySet()) {
+		for (Map.Entry<String, String> tag : tags.entrySet()) {
 			if (tag.getKey().startsWith(PLACE_NAME + ":") || tag.getKey().equals(OLD_NAME)) {
 				otherNames.add((String) tag.getValue());
 			}
