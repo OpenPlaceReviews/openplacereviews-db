@@ -50,7 +50,6 @@ public abstract class BaseOprPlaceDataProvider
 	public static final String COLOR = "color";
 	public static final String PLACE_TYPE = "place_type";
 	public static final String OPR_ID = "opr_id";
-	public static final String OSM_VALUE = "osm_value";
 
 	public static final String SOURCES = "sources";
 	public static final String TAGS = "tags";
@@ -245,7 +244,7 @@ public abstract class BaseOprPlaceDataProvider
 			double lat = (double) mainOSM.get(ATTR_LATITUDE);
 			double lon = (double) mainOSM.get(ATTR_LONGITUDE);
 			Point p = Point.from(lon, lat);
-			bld.put(PLACE_TYPE, new JsonPrimitive((String) mainOSM.get(OSM_VALUE)));
+			bld.put(PLACE_TYPE, new JsonPrimitive((String) mainOSM.get(F_OSM_VALUE)));
 			bld.put(TITLE, new JsonPrimitive(getTitle(mainOSM)));
 			bld.put(SUBTITLE, new JsonPrimitive(getSubTitle(mainOSM)));
 			JsonObject mainTags = new JsonObject();
@@ -307,7 +306,7 @@ public abstract class BaseOprPlaceDataProvider
 		}
 		Map<String, Object> main = null;
 		for (Map<String, Object> m : osmList) {
-			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(OSM_VALUE)) {
+			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(F_OSM_VALUE)) {
 				if(!m.containsKey(F_DELETED_OSM)) {
 					return m;
 				}
@@ -352,7 +351,7 @@ public abstract class BaseOprPlaceDataProvider
 	}
 
 	protected String getSubTitle(Map<String, Object> osm) {
-		String osmValue = (String) osm.get(OSM_VALUE);
+		String osmValue = (String) osm.get(F_OSM_VALUE);
 		if (placeTypes().containsKey(osmValue)) {
 			osmValue = placeTypes().get(osmValue);
 		}

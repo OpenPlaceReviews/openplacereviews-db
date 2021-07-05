@@ -4,10 +4,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.util.JsonFormatter;
+import org.openplacereviews.osm.service.MergePlaceBot.MatchType;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +43,7 @@ public class MergePlaceBotTest {
             List<Map<String, Object>> newOsmList = places[i].getField(null, F_SOURCE, F_OSM);
             List<Map<String, Object>> oldOsmList = places[i + 1].getField(null, F_SOURCE, F_OSM);
 
-            assertTrue(bot.isMergeByName(newOsmList, oldOsmList));
+            assertTrue(bot.match(MatchType.NAME_MATCH, newOsmList.get(0), oldOsmList.get(0)));
         }
     }
 
@@ -50,7 +52,7 @@ public class MergePlaceBotTest {
         for (int i = 0; i < places.length; i += 2) {
             List<List<String>> deleted = new ArrayList<>();
             List<OpObject> edited = new ArrayList<>();
-            bot.mergePlaces(places[i], places[i + 1], deleted, edited);
+            bot.mergePlaces(places[i], Collections.singletonList(places[i + 1]), deleted, edited);
 
             assertFalse(deleted.isEmpty());
         }
@@ -62,7 +64,7 @@ public class MergePlaceBotTest {
             List<Map<String, Object>> newOsmList = placesNotMerge[i].getField(null, F_SOURCE, F_OSM);
             List<Map<String, Object>> oldOsmList = placesNotMerge[i + 1].getField(null, F_SOURCE, F_OSM);
 
-            assertFalse(bot.isMergeByName(newOsmList, oldOsmList));
+            assertFalse(bot.match(MatchType.NAME_MATCH, newOsmList.get(0), oldOsmList.get(0)));
         }
     }
 

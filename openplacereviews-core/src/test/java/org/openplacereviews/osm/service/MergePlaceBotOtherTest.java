@@ -28,8 +28,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
-
-@Ignore
 public class MergePlaceBotOtherTest {
 
     private static final String PLACES_PATH = "src/test/resources/merge/opr_june_2021.json.gz";
@@ -60,6 +58,9 @@ public class MergePlaceBotOtherTest {
 				osm.put("timestamp", f.properties().get("timestamp").getAsString());
 				osm.put("type", f.properties().get("osm_type").getAsString());
 				osm.put("version", f.properties().get("version").getAsString());
+				if (f.properties().containsKey("deleted")) {
+					osm.put("deleted", f.properties().get("deleted").getAsString());
+				}
 				osm.put("id", f.properties().get("osm_id").getAsLong());
 				osm.put("lat", f.properties().get("lat").getAsDouble());
 				osm.put("lon", f.properties().get("lon").getAsDouble());
@@ -78,7 +79,7 @@ public class MergePlaceBotOtherTest {
         
         MergeInfo info = new MergeInfo();
     	bot.mergePlaces(rs.geo.features(), info);
-    	System.out.println(String.format("Merge places has finished: place groups %d, size=2 and close by %d, merged %d", 
+    	System.out.println(String.format("Merge places has finished: place groups %d, close by groups %d, merged %d", 
 				info.mergedGroupSize, info.similarPlacesCnt, info.deleted.size()));
     }
 

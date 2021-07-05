@@ -109,6 +109,10 @@ public class OsmMapUtils {
 		return (2 * R * 1000 * Math.asin(Math.sqrt(a)));
 	}
 	
+	public static double getDistance(LatLon l, LatLon l2) {
+		return getDistance(l.getLatitude(), l.getLongitude(), l2.getLatitude(), l2.getLongitude());
+	}
+	
 	public static double getDistance(LatLon l, double latitude, double longitude) {
 		return getDistance(l.getLatitude(), l.getLongitude(), latitude, longitude);
 	}

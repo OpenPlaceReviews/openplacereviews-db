@@ -300,7 +300,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		bld.put(OSM_INDEX, new JsonPrimitive(osmIndex));
 		bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED + " " + getTitle(osm)));
 		bld.put(COLOR, new JsonPrimitive(COLOR_RED));
-		bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(OSM_VALUE)));
+		bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(PlaceOpObjectHelper.F_OSM_VALUE)));
 		generateAdditionalFields(additionalFields, bld);
 		generateFieldsFromOsmSource(osm, bld);
 		generateObjectBlockInfo(opObject, opBlock, opHash, bld);
@@ -318,7 +318,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			bld.put(OSM_INDEX, new JsonPrimitive(i));
 			bld.put(TITLE, new JsonPrimitive(status + " " + getTitle(osm)));
 			bld.put(COLOR, new JsonPrimitive(color));
-			String placeType = (String) osm.get(OSM_VALUE);
+			String placeType = (String) osm.get(PlaceOpObjectHelper.F_OSM_VALUE);
 			if (placeType == null) {
 				continue;
 			}
