@@ -292,7 +292,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return false;
     }
 
-    private List<String> getPlaceId(Feature feature) {
+    protected List<String> getPlaceId(Feature feature) {
         return new ArrayList<>(Arrays.asList(feature.properties()
                 .get(OPR_ID).getAsString()
                 .split(COMMA)));
