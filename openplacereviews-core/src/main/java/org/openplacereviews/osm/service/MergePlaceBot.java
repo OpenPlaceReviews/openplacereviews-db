@@ -171,9 +171,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				if (mainOsm != null) {
 					boolean delOsm = mainOsm.containsKey(F_DELETED_OSM);
 					if (delOsm) {
-						closedPlaces.add(obj);
+						addObj(closedPlaces, obj);
 					} else {
-						groupPlacesToMerge.add(obj);
+						addObj(groupPlacesToMerge, obj);
 					}
 				} 
 			}
@@ -207,6 +207,16 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		}
 	}
 	
+	private void addObj(List<OpObject> ar, OpObject obj) {
+		for (OpObject o : ar) {
+			if (o.getId().equals(obj.getId())) {
+				// duplicate
+				return;
+			}
+		}
+		ar.add(obj);
+	}
+
 	private LatLon getLatLon(OpObject o) {
 		Map<String, Object> mp = getMainOsmFromList(o);
 		if(mp != null && mp.containsKey(ATTR_LATITUDE) && mp.containsKey(ATTR_LONGITUDE)) {
