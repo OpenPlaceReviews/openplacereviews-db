@@ -5,6 +5,7 @@ import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
 
 import java.text.Collator;
 import java.time.LocalDate;
@@ -215,7 +216,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 	}
 
 	protected OpObject getCurrentObject(Feature newPlace) {
-		return blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(newPlace));
+		OpObject obj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(newPlace));
+		if (obj != null && obj.getField(null, F_DELETED_PLACE) != null) {
+			return null;
+		}
+		return obj;
 	}
     
     @Override
