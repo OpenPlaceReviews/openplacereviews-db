@@ -1,12 +1,26 @@
 package org.openplacereviews.osm.service;
 
-import com.github.filosganga.geogson.model.Feature;
-import com.github.filosganga.geogson.model.Point;
+import static org.openplacereviews.api.BaseOprPlaceDataProvider.OPR_ID;
+import static org.openplacereviews.api.BaseOprPlaceDataProvider.PLACE_DELETED;
+import static org.openplacereviews.api.BaseOprPlaceDataProvider.TAGS;
+import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
+
+import java.text.Collator;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.catalina.util.ParameterMap;
 import org.openplacereviews.api.OprMapCollectionApiResult;
 import org.openplacereviews.opendb.ops.OpObject;
-
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.PublicDataManager;
@@ -15,13 +29,8 @@ import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.OsmMapUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.text.Collator;
-import java.time.LocalDate;
-import java.util.*;
-
-import static org.openplacereviews.api.BaseOprPlaceDataProvider.*;
-import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
+import com.github.filosganga.geogson.model.Feature;
+import com.github.filosganga.geogson.model.Point;
 
 public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
@@ -56,6 +65,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     public MergePlaceBot(OpObject botObject) {
         super(botObject);
     }
+    
+    protected MergePlaceBot() {
+    	// test
+    	super("0");
+	}
 
     @Override
     public String getTaskDescription() {
@@ -69,6 +83,13 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
     public String objectType() {
         return OPR_PLACE;
+    }
+    
+    protected static class MergeInfo {
+    	List<List<String>> deleted = new ArrayList<>();
+		List<OpObject> edited = new ArrayList<>();
+		int mergedGroupSize;
+		int similarPlacesCnt;
     }
 
     @Override
@@ -87,6 +108,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
             totalCnt = MONTHS_TO_CHECK + 1;
             Map<String, String[]> params = new ParameterMap<>();
 			for (int i = 0; i < MONTHS_TO_CHECK; i++) {
+				MergeInfo info = new MergeInfo();
 				LocalDate dt = LocalDate.now().minusMonths(i);
 				LocalDate start = LocalDate.of(dt.getYear(), dt.getMonth(), 1);
 				LocalDate dts = LocalDate.now().minusMonths(i - 1);
@@ -94,28 +116,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				params.put(START_DATA, new String[] { start.toString() });
 				params.put(END_DATA, new String[] { end.toString() });
 				params.put(FILTER, new String[] { POSSIBLE_MERGE });
-				
 				List<Feature> list = getFeatures(apiEndpoint, params);
-				List<List<String>> deleted = new ArrayList<>();
-				List<OpObject> edited = new ArrayList<>();
-				List<List<Feature>> mergeGroups = getMergeGroups(list);
-				int mergedGroupSize = mergeGroups.size();
-				mergeGroups.removeIf(mergeGroup -> mergeGroup.size() != 2);
-				int similarPlacesCnt = 0;
-				for (List<Feature> mergeGroup : mergeGroups) {
-					Feature newPlace = mergeGroup.get(0);
-					Feature oldPlace = mergeGroup.get(1);
-					if (areNearbyPlaces(newPlace, oldPlace)) {
-						similarPlacesCnt++;
-						OpObject newObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(newPlace));
-						OpObject oldObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(oldPlace));
-						mergePlaces(newObj, oldObj, deleted, edited);
-					}
-				}
-				
-				int cnt = addOperations(deleted, edited);
-				info(String.format("Merge places has finished for %s - %s: place groups %d, size=2 and close by %d, merged %d, operations %d",
-						start.toString(), end.toString(), mergedGroupSize, similarPlacesCnt, deleted.size(), cnt));
+				mergePlaces(list, info);
+				int cnt = addOperations(info.deleted, info.edited);
+				info(String.format("%Merge places has finished for %s - %s: place groups %d, size=2 and close by %d, merged %d, operations %d", 
+						start.toString(), end.toString(), info.mergedGroupSize, info.similarPlacesCnt, info.deleted.size(), cnt));
 				progress++;
 			}
 			info("Merge places completed: " + new Date());
@@ -129,6 +134,26 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         }
         return this;
     }
+
+	protected void mergePlaces(List<Feature> list, MergeInfo info) {
+		List<List<Feature>> mergeGroups = getMergeGroups(list);
+		info.mergedGroupSize = mergeGroups.size();
+		mergeGroups.removeIf(mergeGroup -> mergeGroup.size() != 2);
+		for (List<Feature> mergeGroup : mergeGroups) {
+			Feature newPlace = mergeGroup.get(0);
+			Feature oldPlace = mergeGroup.get(1);
+			if (areNearbyPlaces(newPlace, oldPlace)) {
+				info.similarPlacesCnt++;
+				OpObject newObj = getCurrentObject(newPlace);
+				OpObject oldObj = getCurrentObject(oldPlace);
+				mergePlaces(newObj, oldObj, info.deleted, info.edited);
+			}
+		}
+	}
+
+	protected OpObject getCurrentObject(Feature newPlace) {
+		return blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(newPlace));
+	}
     
     @Override
     public int progress() {
@@ -240,7 +265,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return false;
     }
 
-    private List<String> getPlaceId(Feature feature) {
+    protected List<String> getPlaceId(Feature feature) {
         return new ArrayList<>(Arrays.asList(feature.properties()
                 .get(OPR_ID).getAsString()
                 .split(COMMA)));
