@@ -9,15 +9,7 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
 
 import java.text.Collator;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 import org.apache.catalina.util.ParameterMap;
 import org.apache.commons.text.similarity.LevenshteinDistance;
@@ -163,9 +155,10 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		List<OpObject> closedPlaces = new ArrayList<>();
 		List<OpObject> groupPlacesToMerge = new ArrayList<>();
 		for (List<Feature> mergeGroup : mergeGroups) {
+			List<Feature> newMergeGroup = deletedDuplicateId(mergeGroup);
 			groupPlacesToMerge.clear();
 			closedPlaces.clear();
-			for (Feature f : mergeGroup) {
+			for (Feature f : newMergeGroup) {
 				OpObject obj = getCurrentObject(f);
 				Map<String, Object> mainOsm = getMainOsmFromList(obj);
 				if (mainOsm != null) {
@@ -205,6 +198,29 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 			}
 
 		}
+	}
+
+	private List<Feature> deletedDuplicateId(List<Feature> mergeGroup) {
+		Set<String> ids = new HashSet<>();
+		List<Feature> newMergeGroup = new ArrayList<>(mergeGroup);
+		List<Integer> duplicateId = new ArrayList<>();
+		for (int i = 0; i < newMergeGroup.size(); i++) {
+			List<String> id = getPlaceId(newMergeGroup.get(i));
+			String stringId = id.get(0) + id.get(1);
+			if (!ids.contains(stringId)) {
+				ids.add(stringId);
+			} else {
+				duplicateId.add(i);
+			}
+		}
+		if (!duplicateId.isEmpty()) {
+			List<Feature> duplicates = new ArrayList<>();
+			for (int ind : duplicateId) {
+				duplicates.add(newMergeGroup.get(ind));
+			}
+			newMergeGroup.removeAll(duplicates);
+		}
+		return newMergeGroup;
 	}
 	
 	private LatLon getLatLon(OpObject o) {
