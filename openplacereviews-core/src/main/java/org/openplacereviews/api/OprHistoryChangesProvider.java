@@ -34,6 +34,7 @@ import com.google.gson.JsonPrimitive;
 public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 	private static final Log LOGGER = LogFactory.getLog(OprHistoryChangesProvider.class);
+	private static final boolean COLLECT_MODIFIED_OBJ_IDS = true; 
 	
 	private enum RequestFilter {
 		REVIEW_IMAGES("Review new images"),
@@ -73,7 +74,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	protected static final String COLOR_BLUE = "blue";
 	protected static final String COLOR_RED = "red";
 
-
 	@Override
 	public OprMapCollectionApiResult getContent(MapCollectionParameters params) {
 		OprMapCollectionApiResult fc = new OprMapCollectionApiResult();
@@ -93,109 +93,60 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				LOGGER.error("Incorrect 'date' format", e);
 			}
 		}
-
 		return fc;
 	}
 
 	
+	@Override
+	public int getConcurrentThreadAvailable() {
+		// requests could be very long (up to 30 min)
+		return 2;
+	}
+	
 	public void retrievePlacesByDate(Date date, Date date2, String requestFilter, FeatureCollection fc) throws ParseException {
 		List<OpBlock> listBlocks = blocksManager.getBlockchain().getBlockHeaders(-1);
+		
+		RequestFilter filter = null;
+		if (requestFilter != null && requestFilter.length() > 0 && !requestFilter.equals("all")) {
+			filter = RequestFilter.valueOf(requestFilter);
+		}
+		Set<String> modifiedObjIdsAdded = null;
+		if (filter == RequestFilter.POSSIBLE_MERGE && COLLECT_MODIFIED_OBJ_IDS) {
+			modifiedObjIdsAdded = new TreeSet<>();
+		}
+		Set<String> placeIdsAdded = new TreeSet<>();
+		
+		
+		Map<String, List<Feature>> createdObjects = new TreeMap<>();
+		Map<String, List<Feature>> deletedObjects = new TreeMap<>();
 		List<OpBlock> blocksByDate = new LinkedList<>();
 		Date nextDate = date2 != null ? DateUtils.addDays(date2, 1) : DateUtils.addDays(date, 1) ; 
 		for (OpBlock opBlock : listBlocks) {
 			Date blockDate = OpBlock.dateFormat.parse(opBlock.getDateString());
 			if (date.getTime() <= blockDate.getTime() && blockDate.getTime() <= nextDate.getTime()) {
 				blocksByDate.add(opBlock);
+			} else if(modifiedObjIdsAdded != null && blockDate.getTime() >= nextDate.getTime()){
+				collectModifiedObjIds(opBlock, modifiedObjIdsAdded);
 			}
-		}
-		RequestFilter r = null;
-		if (requestFilter != null && requestFilter.length() > 0 && !requestFilter.equals("all")) {
-			r = RequestFilter.valueOf(requestFilter);
-		}
-		Set<String> placeIdsAdded = new TreeSet<>();
-		OpBlockChain blc = blocksManager.getBlockchain();
-		for (OpBlock block : blocksByDate) {
-			OpBlock fullBlock = blc.getFullBlockByRawHash(block.getRawHash());
-			List<OpOperation> opOperations = fullBlock.getOperations();
-			for (OpOperation opOperation : opOperations) {
-				if (opOperation.getType().equals(OPR_PLACE)) {
-					filterObjects(r, fc, block, opOperation, placeIdsAdded);
-				}
-			}
-		}
-
-	}
-
-
-	private void filterObjects(RequestFilter filter, FeatureCollection fc, OpBlock opBlock, OpOperation opOperation,
-			Set<String> placeIdsAdded) {
-		String opHash = opOperation.getRawHash();
-		Map<String, List<Feature>> createdObjects = new TreeMap<>();
-		Map<String, List<Feature>> deletedObjects = new TreeMap<>();
-		Map<String, String> additionalFieldsMap = new HashMap<>();
-		for (OpObject opObject : opOperation.getCreated()) {
-			if (filter == RequestFilter.POSSIBLE_MERGE) {
-				OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-				if (nObj != null) {
-					addDeletedPlaceField(additionalFieldsMap, nObj);
-					generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
-				}
-			}
-		}
-	
-		for (OpObject opObject : opOperation.getEdited()) {
-			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
-			
-			changeKeys: for (String changeKey : change.keySet()) {
-				if (filter == RequestFilter.REVIEW_IMAGES) {
-					if (changeKey.startsWith(F_IMG_REVIEW)) {
-						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-						if (nObj != null && placeIdsAdded.add(generateStringId(nObj))) {
-							addImgReviewField(additionalFieldsMap, nObj);
-							generateEntity(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
-						}
-						break changeKeys;
-					}	
-				} else if (filter == RequestFilter.POSSIBLE_MERGE) {
-					// "source.osm[0]": "delete"
-	                // "source.osm[0].deleted": {
-		            // 		"set": "2021-02-08T17:18:40.393+0000"
-		            // }
-
-					int ind = getOsmSourceIndexDeleted(changeKey);
-					if (ind != -1) {
-						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-						if (nObj != null) {
-							List<Map<String, Object>> osmSources = nObj.getField(null, F_SOURCE, F_OSM);
-							Map<String, Object> osm = null;
-							boolean allOsmRefsDeleted = true;
-							for (int i = 0; i < osmSources.size(); i++) {
-								Map<String, Object> lmp = osmSources.get(i);
-								if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED_OSM)) {
-									allOsmRefsDeleted = false;
-								}
-								if (i == ind) {
-									osm = lmp;
-								}
-							}
-							if (allOsmRefsDeleted && osm != null && nObj.getField(null, F_DELETED_PLACE) == null) {
-								addDeletedPlaceField(additionalFieldsMap, nObj);
-								addDeletedFeature(deletedObjects, ind, osm, opBlock, opHash, opObject, additionalFieldsMap);
-								break changeKeys;
-							}
-						}
-					}
-				} else {
-					throw new UnsupportedOperationException();
-				}
-			}				
 		}
 		
-		// ignore deleted cause they are typical merge action 
+		LOGGER.info(String.format("Get history started %s %s - %d blocks...", date, date2, blocksByDate.size()));
+		for (OpBlock block : blocksByDate) {
+			OpBlockChain blc = blocksManager.getBlockchain();
+			OpBlock fullBlock = blc.getFullBlockByRawHash(block.getRawHash());
+			List<OpOperation> opOperations = fullBlock.getOperations();
+			LOGGER.info(String.format("Get history %s - %s block %d (%d)...", date, date2, block.getBlockId(), opOperations.size()));
+			for (OpOperation opOperation : opOperations) {
+				if (opOperation.getType().equals(OPR_PLACE)) {
+					filterObjects(filter, fc, block, opOperation, modifiedObjIdsAdded, placeIdsAdded, createdObjects, deletedObjects);
+				}
+			}
+		}
+
+		// ignore deleted cause they are typical merge action
 //		for (List<String> objId : opOperation.getDeleted()) {
 //			addRemovedEntityFromOpObject(objId, deletedObjects, opBlock, opHash);
 //		}
-		
 		if (filter == RequestFilter.POSSIBLE_MERGE) {
 			Set<String> tiles = createdObjects.keySet();
 			for (String tileId : tiles) {
@@ -230,7 +181,93 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				fc.features().addAll(cList);
 			}
 		}
+		LOGGER.info(String.format("Get history %s - %s finished.", date, date2));
 	}
+
+
+	private void collectModifiedObjIds(OpBlock block, Set<String> modifiedObjIdsAdded) {
+		OpBlock fullBlock = blocksManager.getBlockchain().getFullBlockByRawHash(block.getRawHash());
+		List<OpOperation> opOperations = fullBlock.getOperations();
+		for (OpOperation opOperation : opOperations) {
+			if (opOperation.getType().equals(OPR_PLACE)) {
+				for (OpObject opObject : opOperation.getCreated()) {
+					modifiedObjIdsAdded.add(generateStringId(opObject));
+				}
+				for (OpObject opObject : opOperation.getEdited()) {
+					modifiedObjIdsAdded.add(generateStringId(opObject));
+				}
+				for (List<String> opObject : opOperation.getDeleted()) {
+					modifiedObjIdsAdded.add(generateStringId(opObject));
+				}
+			}
+		}
+	}
+
+
+	private void filterObjects(RequestFilter filter, FeatureCollection fc, OpBlock opBlock, OpOperation opOperation,
+			Set<String> modifiedPlaceIds, Set<String> placeIdsAdded, Map<String, List<Feature>> createdObjects, Map<String, List<Feature>> deletedObjects) {
+		String opHash = opOperation.getRawHash();
+		for (OpObject opObject : opOperation.getCreated()) {
+			if (filter == RequestFilter.POSSIBLE_MERGE) {
+				OpObject nObj = opObject;
+				// speed up scanning by reducing number of obj id
+				if (modifiedPlaceIds == null || modifiedPlaceIds.contains(generateStringId(opObject))) {
+					nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+				}
+				if (nObj != null) {
+					addAddedObject(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN);
+				}
+			}
+		}
+		for (OpObject opObject : opOperation.getEdited()) {
+			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
+			
+			changeKeys: for (String changeKey : change.keySet()) {
+				if (filter == RequestFilter.REVIEW_IMAGES) {
+					if (changeKey.startsWith(F_IMG_REVIEW)) {
+						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+						boolean newObject = placeIdsAdded.add(generateStringId(nObj));
+						if (nObj != null && newObject) {
+							addAddedObject(createdObjects, opBlock, opHash, nObj, OBJ_CREATED, COLOR_GREEN);
+						}
+						break changeKeys;
+					}	
+				} else if (filter == RequestFilter.POSSIBLE_MERGE) {
+					// "source.osm[0]": "delete"
+	                // "source.osm[0].deleted": {
+		            // 		"set": "2021-02-08T17:18:40.393+0000"
+		            // }
+
+					int ind = getOsmSourceIndexDeleted(changeKey);
+					if (ind != -1) {
+						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+						if (nObj != null) {
+							List<Map<String, Object>> osmSources = nObj.getField(null, F_SOURCE, F_OSM);
+							Map<String, Object> osm = null;
+							boolean allOsmRefsDeleted = true;
+							for (int i = 0; i < osmSources.size(); i++) {
+								Map<String, Object> lmp = osmSources.get(i);
+								if (!lmp.containsKey(PlaceOpObjectHelper.F_DELETED_OSM)) {
+									allOsmRefsDeleted = false;
+								}
+								if (i == ind) {
+									osm = lmp;
+								}
+							}
+							if (allOsmRefsDeleted && osm != null && nObj.getField(null, F_DELETED_PLACE) == null) {
+								addPossiblyDeletedObject(deletedObjects, ind, osm, opBlock, opHash, nObj);
+								break changeKeys;
+							}
+						}
+					}
+				} else {
+					throw new UnsupportedOperationException();
+				}
+			}				
+		}
+
+	}
+
 
 	private void addMergedPlaces(List<Feature> features, List<Feature> merged) {
 		double latm = merged.get(0).properties().get(ATTR_LATITUDE).getAsDouble();
@@ -280,28 +317,14 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
-	private void addDeletedPlaceField(Map<String, String> fieldsMap, OpObject nObj) {
-		Object deletedPlace = nObj.getField(null, F_DELETED_PLACE);
-		if (deletedPlace != null) {
-			fieldsMap.putAll(Map.of(PLACE_DELETED, deletedPlace.toString()));
-		}
-	}
-
-	private void addImgReviewField(Map<String, String> fieldsMap, OpObject nObj) {
-		Object imgReview = nObj.getFieldByExpr(F_IMG_REVIEW);
-		if (imgReview != null) {
-			fieldsMap.putAll(Map.of(IMG_REVIEW_SIZE, String.valueOf(((List<?>) imgReview).size())));
-		}
-	}
-
-	private void addDeletedFeature(Map<String, List<Feature>> deletedObjects, int osmIndex, Map<String, Object> osm,
-								   OpBlock opBlock, String opHash, OpObject opObject, Map<String, String> additionalFields) {
+	private void addPossiblyDeletedObject(Map<String, List<Feature>> deletedObjects, int osmIndex, Map<String, Object> osm,
+								   OpBlock opBlock, String opHash, OpObject opObject) {
 		ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 		bld.put(OSM_INDEX, new JsonPrimitive(osmIndex));
 		bld.put(TITLE, new JsonPrimitive(OBJ_REMOVED + " " + getTitle(osm)));
 		bld.put(COLOR, new JsonPrimitive(COLOR_RED));
 		bld.put(PLACE_TYPE, new JsonPrimitive((String) osm.get(PlaceOpObjectHelper.F_OSM_VALUE)));
-		generateAdditionalFields(additionalFields, bld);
+		addAdditionalFields(opObject, bld);
 		generateFieldsFromOsmSource(osm, bld);
 		generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 		Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
@@ -309,8 +332,20 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 
-	private void generateEntity(Map<String, List<Feature>> objects, OpBlock opBlock, String opHash, OpObject opObject, 
-			String status, String color, Map<String, String> additionalFields) {
+	private void addAdditionalFields(OpObject opObject, ImmutableMap.Builder<String, JsonElement> bld) {
+		Object deletedPlace = opObject.getField(null, F_DELETED_PLACE);
+		if (deletedPlace != null) {
+			bld.put(PLACE_DELETED, new JsonPrimitive(deletedPlace.toString()));
+		}
+		Object imgReview = opObject.getFieldByExpr(F_IMG_REVIEW);
+		if (imgReview != null) {
+			bld.put(IMG_REVIEW_SIZE, new JsonPrimitive(String.valueOf(((List<?>) imgReview).size())));
+		}
+	}
+
+
+	private void addAddedObject(Map<String, List<Feature>> objects, OpBlock opBlock, String opHash, OpObject opObject, 
+			String status, String color) {
 		List<Map<String, Object>> osmList = opObject.getField(null, F_SOURCE, F_OSM);
 		for (int i = 0; i < osmList.size(); i++) {
 			Map<String, Object> osm = osmList.get(i);
@@ -323,19 +358,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				continue;
 			}
 			bld.put(PLACE_TYPE, new JsonPrimitive(placeType));
-			generateAdditionalFields(additionalFields, bld);
+			addAdditionalFields(opObject, bld);
 			generateFieldsFromOsmSource(osm, bld);
 			generateObjectBlockInfo(opObject, opBlock, opHash, bld);
 			Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
 			add(objects, opObject.getId().get(0), f);
-		}
-	}
-
-	private void generateAdditionalFields(Map<String, String> additionalFields, ImmutableMap.Builder<String, JsonElement> bld) {
-		if (additionalFields != null && additionalFields.size() != 0) {
-			for (Map.Entry<String, String> entry : additionalFields.entrySet()) {
-				bld.put(entry.getKey(), new JsonPrimitive(entry.getValue()));
-			}
 		}
 	}
 
@@ -428,7 +455,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 	private String generateStringId(OpObject opObject) {
-		return opObject.getId().get(0) + "," + opObject.getId().get(1);
+		return generateStringId(opObject.getId());
+	}
+	
+	private String generateStringId(List<String> list) {
+		return list.get(0) + "," + list.get(1);
 	}
 
 
