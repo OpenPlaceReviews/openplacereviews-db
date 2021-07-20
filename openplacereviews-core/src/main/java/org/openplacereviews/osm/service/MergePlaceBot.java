@@ -21,6 +21,7 @@ import java.util.TreeMap;
 
 import org.apache.catalina.util.ParameterMap;
 import org.apache.commons.text.similarity.LevenshteinDistance;
+import org.openplacereviews.api.OprHistoryChangesProvider;
 import org.openplacereviews.api.OprMapCollectionApiResult;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
@@ -47,9 +48,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String PLACE_NAME = "name";
     private static final String WIKIDATA = "wikidata";
     private static final String WEBSITE = "website";
-    private static final String POSSIBLE_MERGE = "POSSIBLE_MERGE";
-    private static final String START_DATA = "date";
-    private static final String END_DATA = "date2";
+    private static final String REQUEST_FILTER = OprHistoryChangesProvider.RequestFilter.REVIEW_CLOSED_PLACES.name();
+    private static final String START_DATE = "date";
+    private static final String END_DATE = "date2";
     private static final String FILTER = "requestFilter";
     private static final String HISTORY = "history";
     private static final String ALL_PUNCTUATION = "^\\p{Punct}+|\\p{Punct}+$";
@@ -135,9 +136,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				LocalDate start = LocalDate.of(dt.getYear(), dt.getMonth(), 1);
 				LocalDate dts = LocalDate.now().minusMonths(i - 1);
 				LocalDate end = LocalDate.of(dts.getYear(), dts.getMonth(), 1).minusDays(1);
-				params.put(START_DATA, new String[] { start.toString() });
-				params.put(END_DATA, new String[] { end.toString() });
-				params.put(FILTER, new String[] { POSSIBLE_MERGE });
+				params.put(START_DATE, new String[] { start.toString() });
+				params.put(END_DATE, new String[] { end.toString() });
+				params.put(FILTER, new String[] { REQUEST_FILTER });
 				List<Feature> list = getFeatures(apiEndpoint, params);
 				mergePlaces(list, info);
 				int cnt = addOperations(info.deleted, info.edited);
@@ -250,7 +251,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		}
 		int currentGroupBeginIndex = 0;
 		for (int i = 1; i < list.size() - 1; i++) {
-			if (!isDeleted(list, i) && isDeleted(list, i - 1)) {
+			if (isDeleted(list, i) && !isDeleted(list, i - 1)) {
 				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
 				currentGroupBeginIndex = i;
 			}

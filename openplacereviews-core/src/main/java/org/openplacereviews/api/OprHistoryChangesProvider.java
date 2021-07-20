@@ -4,10 +4,24 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_IMG_REVIEW;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
 
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.logging.Log;
@@ -19,12 +33,10 @@ import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.PublicDataManager.CacheHolder;
 import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
-import org.openplacereviews.opendb.util.OUtils;
 import org.openplacereviews.osm.model.OsmMapUtils;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 
 import com.github.filosganga.geogson.model.Feature;
-import com.github.filosganga.geogson.model.FeatureCollection;
 import com.github.filosganga.geogson.model.Point;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
@@ -37,7 +49,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	private static final Log LOGGER = LogFactory.getLog(OprHistoryChangesProvider.class);
 	private static final boolean SKIP_INADVANCE_REV_CLOSED_PLACES_REPORT = true; 
 	
-	private enum RequestFilter {
+	public enum RequestFilter {
 		REVIEW_IMAGES("Review new images"),
 		REVIEW_CLOSED_PLACES("Review closed places");
 		
@@ -185,12 +197,14 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					if (!merged.isEmpty()) {
 						merged.add(0, fdel);
 					}
+					// currently 1 closed place is not supported (due to limitation of bot & UI) - group id could be set later
 					if (merged.size() > 0) {
 						// find other deleted points within distance of 150m
 						findNearestPointAndDelete(deletedPoints, merged, pdel);
 						// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could be empty
                         addMergedPlaces(res.geo.features(), merged);
 					}
+				
 				}
 			}
 		} else if (filter == RequestFilter.REVIEW_IMAGES) {
