@@ -136,24 +136,19 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		LOGGER.info("opOperation.getCreated() started...");
 		long startTime = System.currentTimeMillis();
 		for (OpObject opObject : opOperation.getCreated()) {
-			LOGGER.info("op created started...");
+			long startTime2 = System.currentTimeMillis();
 			if (filter == RequestFilter.POSSIBLE_MERGE) {
-				LOGGER.info("getObjectByName started...");
 				OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-				LOGGER.info("getObjectByName finished...");
 				if (nObj != null) {
-					LOGGER.info("addDeletedPlaceField started...");
 					addDeletedPlaceField(additionalFieldsMap, nObj);
-					LOGGER.info("addDeletedPlaceField finished...");
-					LOGGER.info("generateEntity started...");
 					generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
-					LOGGER.info("generateEntity finished...");
 				}
 			}
-			long endTime = System.currentTimeMillis();
-			LOGGER.info("op created finished..." + (endTime - startTime) + " mc");
+			long endTime2 = System.currentTimeMillis();
+			LOGGER.info("op created finished..." + (endTime2 - startTime2) + " mc");
 		}
-		LOGGER.info("opOperation.getCreated() finished...");
+		long endTime = System.currentTimeMillis();
+		LOGGER.info("opOperation.getCreated() finished..." + (endTime - startTime) + " mc");
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 			
