@@ -97,7 +97,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 	
-	public void retrievePlacesByDate(Date date, Date date2, String requestFilter, FeatureCollection fc) throws ParseException {
+	// FIXME: Make method synchronized to avoid too much load on the server - 1 query could load for 30 min CPU
+	public synchronized void retrievePlacesByDate(Date date, Date date2, String requestFilter, FeatureCollection fc) throws ParseException {
 		List<OpBlock> listBlocks = blocksManager.getBlockchain().getBlockHeaders(-1);
 		
 		RequestFilter filter = null;
@@ -183,14 +184,16 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		OpBlock fullBlock = blocksManager.getBlockchain().getFullBlockByRawHash(block.getRawHash());
 		List<OpOperation> opOperations = fullBlock.getOperations();
 		for (OpOperation opOperation : opOperations) {
-			for (OpObject opObject : opOperation.getCreated()) {
-				modifiedObjIdsAdded.add(generateStringId(opObject));
-			}
-			for (OpObject opObject : opOperation.getEdited()) {
-				modifiedObjIdsAdded.add(generateStringId(opObject));
-			}
-			for (List<String> opObject : opOperation.getDeleted()) {
-				modifiedObjIdsAdded.add(generateStringId(opObject));
+			if (opOperation.getType().equals(OPR_PLACE)) {
+				for (OpObject opObject : opOperation.getCreated()) {
+					modifiedObjIdsAdded.add(generateStringId(opObject));
+				}
+				for (OpObject opObject : opOperation.getEdited()) {
+					modifiedObjIdsAdded.add(generateStringId(opObject));
+				}
+				for (List<String> opObject : opOperation.getDeleted()) {
+					modifiedObjIdsAdded.add(generateStringId(opObject));
+				}
 			}
 		}
 	}
