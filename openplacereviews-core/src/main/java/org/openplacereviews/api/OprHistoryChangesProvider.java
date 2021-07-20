@@ -117,8 +117,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 		Set<String> placeIdsAdded = new TreeSet<>();
 		OpBlockChain blc = blocksManager.getBlockchain();
+		LOGGER.info("Get history started...");
 		for (OpBlock block : blocksByDate) {
+			LOGGER.info("Get fullBlock...");
 			OpBlock fullBlock = blc.getFullBlockByRawHash(block.getRawHash());
+			LOGGER.info("Get operations...");
 			List<OpOperation> opOperations = fullBlock.getOperations();
 			long startTime4 = System.currentTimeMillis();
 			for (OpOperation opOperation : opOperations) {
