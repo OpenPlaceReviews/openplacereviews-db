@@ -78,7 +78,7 @@ public class MergePlaceBotOtherTest {
         bot.TRACE = false;
         
         MergeInfo info = new MergeInfo();
-    	bot.mergePlaces(rs.geo.features(), info);
+    	bot.mergePlaces(rs, info);
     	System.out.println(String.format("Merge places has finished: place groups %d, closed places %d, found similar places %d, merged %d", 
 				info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt));
     	Assert.assertTrue(info.mergedPlacesCnt > 2100);
