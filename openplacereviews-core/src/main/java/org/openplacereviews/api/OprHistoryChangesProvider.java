@@ -118,16 +118,16 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		Set<String> placeIdsAdded = new TreeSet<>();
 		OpBlockChain blc = blocksManager.getBlockchain();
 		LOGGER.info("Get history started...");
+		LOGGER.info("BlocksByDate size = " + blocksByDate.size());
 		for (OpBlock block : blocksByDate) {
 			OpBlock fullBlock = blc.getFullBlockByRawHash(block.getRawHash());
 			List<OpOperation> opOperations = fullBlock.getOperations();
 			long startTime4 = System.currentTimeMillis();
+			LOGGER.info("OpOperations size = " + opOperations.size());
 			for (OpOperation opOperation : opOperations) {
-				LOGGER.info("Get filterObjects started...");
 				if (opOperation.getType().equals(OPR_PLACE)) {
 					filterObjects(r, fc, block, opOperation, placeIdsAdded);
 				}
-				LOGGER.info("Get filterObjects finished...");
 			}
 			long endTime4 = System.currentTimeMillis();
 			resFilterObjects = resFilterObjects + (endTime4 - startTime4);
@@ -136,7 +136,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		LOGGER.info("Get opOperation.getEdited() = " + resEdited + " ms");
 		LOGGER.info("Get result merge places = " + resFilterMerge + " ms");
 		LOGGER.info("Get filterObjects = " + resFilterObjects + "ms");
-
 	}
 
 
