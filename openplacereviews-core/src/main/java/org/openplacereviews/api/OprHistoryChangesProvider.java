@@ -149,6 +149,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 		long endTime = System.currentTimeMillis();
 		LOGGER.info("opOperation.getCreated() finished..." + (endTime - startTime) + " mc");
+		LOGGER.info("opOperation.getEdited() started...");
+		long startTime3 = System.currentTimeMillis();
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 			
@@ -196,10 +198,14 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				}
 			}				
 		}
+		long endTime3 = System.currentTimeMillis();
+		LOGGER.info("opOperation.getEdited() finished..." + (endTime3 - startTime3) + " mc");
 		// ignore deleted cause they are typical merge action
 //		for (List<String> objId : opOperation.getDeleted()) {
 //			addRemovedEntityFromOpObject(objId, deletedObjects, opBlock, opHash);
 //		}
+		LOGGER.info("merge filter started...");
+		long startTime4 = System.currentTimeMillis();
 		if (filter == RequestFilter.POSSIBLE_MERGE) {
 			Set<String> tiles = createdObjects.keySet();
 			for (String tileId : tiles) {
@@ -234,6 +240,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				fc.features().addAll(cList);
 			}
 		}
+		long endTime4 = System.currentTimeMillis();
+		LOGGER.info("merge finished..." + (endTime4 - startTime4) + " mc");
 	}
 
 
