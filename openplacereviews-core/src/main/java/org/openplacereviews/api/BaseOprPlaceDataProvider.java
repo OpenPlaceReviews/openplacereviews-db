@@ -299,7 +299,7 @@ public abstract class BaseOprPlaceDataProvider
 		}
 	}
 
-	private Map<String, Object> getMainOsmFromList(OpObject o) {
+	protected Map<String, Object> getMainOsmFromList(OpObject o) {
 		List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
 		if (osmList == null) {
 			return null;

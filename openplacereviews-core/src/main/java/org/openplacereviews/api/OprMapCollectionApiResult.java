@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.github.filosganga.geogson.model.Feature;
 import com.github.filosganga.geogson.model.FeatureCollection;
@@ -16,6 +18,8 @@ public class OprMapCollectionApiResult {
 	public static final String PARAM_REQUEST_FILTER = "requestFilter";
 	
 	public FeatureCollection geo = new FeatureCollection(new ArrayList<Feature>());
+	
+	public Set<String> alreadyReviewedPlaceIds = new TreeSet<>();
 	
 	public Map<String, Object> parameters = new LinkedHashMap<>();
 	
