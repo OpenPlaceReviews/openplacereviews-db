@@ -149,10 +149,16 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		LOGGER.info("opOperation.getCreated() started...");
 		for (OpObject opObject : opOperation.getCreated()) {
 			if (filter == RequestFilter.POSSIBLE_MERGE) {
+				LOGGER.info("getObjectByName started...");
 				OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+				LOGGER.info("getObjectByName finished...");
 				if (nObj != null) {
+					LOGGER.info("addDeletedPlaceField started...");
 					addDeletedPlaceField(additionalFieldsMap, nObj);
+					LOGGER.info("addDeletedPlaceField finished...");
+					LOGGER.info("generateEntity started...");
 					generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
+					LOGGER.info("generateEntity finished...");
 				}
 			}
 		}
