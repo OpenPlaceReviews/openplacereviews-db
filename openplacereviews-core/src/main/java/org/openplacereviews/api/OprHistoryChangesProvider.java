@@ -112,18 +112,18 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 		Set<String> placeIdsAdded = new TreeSet<>();
 		OpBlockChain blc = blocksManager.getBlockchain();
-		LOGGER.info("Get history started...");
-		LOGGER.info("BlocksByDate size = " + blocksByDate.size());
+		LOGGER.info(String.format("Get history started %s %s - %d blocks...", date, date2, blocksByDate.size()));
 		for (OpBlock block : blocksByDate) {
 			OpBlock fullBlock = blc.getFullBlockByRawHash(block.getRawHash());
 			List<OpOperation> opOperations = fullBlock.getOperations();
-			LOGGER.info("OpOperations size = " + opOperations.size());
+			LOGGER.info(String.format("Get history %s - %s block %d (%d)...", date, date2, block.getBlockId(), opOperations.size()));
 			for (OpOperation opOperation : opOperations) {
 				if (opOperation.getType().equals(OPR_PLACE)) {
 					filterObjects(r, fc, block, opOperation, placeIdsAdded);
 				}
 			}
 		}
+		LOGGER.info(String.format("Get history %s - %s finished.", date, date2));
 	}
 
 
@@ -133,10 +133,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		Map<String, List<Feature>> createdObjects = new TreeMap<>();
 		Map<String, List<Feature>> deletedObjects = new TreeMap<>();
 		Map<String, String> additionalFieldsMap = new HashMap<>();
-		LOGGER.info("opOperation.getCreated() started...");
-		long startTime = System.currentTimeMillis();
 		for (OpObject opObject : opOperation.getCreated()) {
-			long startTime2 = System.currentTimeMillis();
 			if (filter == RequestFilter.POSSIBLE_MERGE) {
 				OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 				if (nObj != null) {
@@ -144,13 +141,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					generateEntity(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN, additionalFieldsMap);
 				}
 			}
-			long endTime2 = System.currentTimeMillis();
-			LOGGER.info("op created finished..." + (endTime2 - startTime2) + " mc");
 		}
-		long endTime = System.currentTimeMillis();
-		LOGGER.info("opOperation.getCreated() finished..." + (endTime - startTime) + " mc");
-		LOGGER.info("opOperation.getEdited() started...");
-		long startTime3 = System.currentTimeMillis();
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 			
@@ -198,14 +189,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				}
 			}				
 		}
-		long endTime3 = System.currentTimeMillis();
-		LOGGER.info("opOperation.getEdited() finished..." + (endTime3 - startTime3) + " mc");
 		// ignore deleted cause they are typical merge action
 //		for (List<String> objId : opOperation.getDeleted()) {
 //			addRemovedEntityFromOpObject(objId, deletedObjects, opBlock, opHash);
 //		}
-		LOGGER.info("merge filter started...");
-		long startTime4 = System.currentTimeMillis();
 		if (filter == RequestFilter.POSSIBLE_MERGE) {
 			Set<String> tiles = createdObjects.keySet();
 			for (String tileId : tiles) {
@@ -240,8 +227,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				fc.features().addAll(cList);
 			}
 		}
-		long endTime4 = System.currentTimeMillis();
-		LOGGER.info("merge finished..." + (endTime4 - startTime4) + " mc");
 	}
 
 
