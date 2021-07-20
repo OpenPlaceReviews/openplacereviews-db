@@ -97,8 +97,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 	
-	// FIXME: Make method synchronized to avoid too much load on the server - 1 query could load for 30 min CPU
-	public synchronized void retrievePlacesByDate(Date date, Date date2, String requestFilter, FeatureCollection fc) throws ParseException {
+	@Override
+	public int getConcurrentThreadAvailable() {
+		// requests could be very long (up to 30 min)
+		return 2;
+	}
+	
+	public void retrievePlacesByDate(Date date, Date date2, String requestFilter, FeatureCollection fc) throws ParseException {
 		List<OpBlock> listBlocks = blocksManager.getBlockchain().getBlockHeaders(-1);
 		
 		RequestFilter filter = null;
