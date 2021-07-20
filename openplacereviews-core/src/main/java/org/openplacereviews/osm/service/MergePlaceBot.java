@@ -139,8 +139,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				params.put(START_DATE, new String[] { start.toString() });
 				params.put(END_DATE, new String[] { end.toString() });
 				params.put(FILTER, new String[] { REQUEST_FILTER });
-				List<Feature> list = getFeatures(apiEndpoint, params);
-				mergePlaces(list, info);
+				OprMapCollectionApiResult res = getReport(apiEndpoint, params);
+				mergePlaces(res, info);
 				int cnt = addOperations(info.deleted, info.edited);
 				info(String.format("Merge places has finished for %s - %s: place groups %d, closed places %d, found similar places %d, merged %d, operations %d", 
 						start.toString(), end.toString(), info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt, cnt));
@@ -158,8 +158,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return this;
     }
 
-	protected void mergePlaces(List<Feature> list, MergeInfo info) {
-		List<List<Feature>> mergeGroups = getMergeGroups(list);
+	protected void mergePlaces(OprMapCollectionApiResult res, MergeInfo info) {
+		List<List<Feature>> mergeGroups = getMergeGroups(res.geo.features());
 		info.mergedGroupSize = mergeGroups.size();
 		List<OpObject> closedPlaces = new ArrayList<>();
 		List<OpObject> groupPlacesToMerge = new ArrayList<>();
@@ -167,6 +167,10 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 			groupPlacesToMerge.clear();
 			closedPlaces.clear();
 			for (Feature f : mergeGroup) {
+				// skip already reviewed
+				if (res.alreadyReviewedPlaceIds.contains(getOprGenId(f))) {
+					continue;
+				}
 				OpObject obj = getCurrentObject(f);
 				Map<String, Object> mainOsm = getMainOsmFromList(obj);
 				if (mainOsm != null) {
@@ -289,9 +293,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return cnt;
     }
 
-    private List<Feature> getFeatures(PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint, Map<String, String[]> params) {
+    private OprMapCollectionApiResult getReport(PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint, Map<String, String[]> params) {
         OprMapCollectionApiResult collection = (OprMapCollectionApiResult) apiEndpoint.getContentObject(params);
-        return collection.geo.features();
+        return collection;
     }
 
     protected OpObject mergePlaces(EnumSet<MatchType> matchTypes, OpObject oldObj, List<OpObject> placesToMerge, List<List<String>> deleted, List<OpObject> edited) {
@@ -404,10 +408,12 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
 
     protected List<String> getPlaceId(Feature feature) {
-        return new ArrayList<>(Arrays.asList(feature.properties()
-                .get(OPR_ID).getAsString()
-                .split(COMMA)));
+        return new ArrayList<>(Arrays.asList(getOprGenId(feature).split(COMMA)));
     }
+
+	private String getOprGenId(Feature feature) {
+		return feature.properties().get(OPR_ID).getAsString();
+	}
 
     private void addObjToOperation(OpObject oldObj, OpObject newObj, List<List<String>> deleted, List<OpObject> edited) {
         OpObject editObj = new OpObject();
