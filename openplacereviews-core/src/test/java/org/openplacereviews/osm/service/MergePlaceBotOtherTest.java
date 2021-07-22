@@ -1,14 +1,12 @@
 package org.openplacereviews.osm.service;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.zip.GZIPInputStream;
 
 import org.junit.Assert;
@@ -31,18 +29,23 @@ import com.google.gson.JsonObject;
 public class MergePlaceBotOtherTest {
 
     private static final String PLACES_PATH = "src/test/resources/merge/opr_june_2021.json.gz";
-    
+
     @Spy
 	private MergePlaceBot bot;
-    
+
     @Test
 	public void testCoordinates() throws IOException {
     	Gson geoJson = new GsonBuilder().registerTypeAdapterFactory(new GeometryAdapterFactory()).create();
     	OprMapCollectionApiResult rs = geoJson.fromJson(new InputStreamReader(new GZIPInputStream(new FileInputStream(PLACES_PATH))), OprMapCollectionApiResult.class);
 
+		List<Feature> listFeatures = rs.geo.features();
+		OprMapCollectionApiResult newRs = new OprMapCollectionApiResult();
+		newRs.geo.features().addAll(replacesFeature(listFeatures));
+		newRs.parameters.putAll(rs.parameters);
+
         // bot.TRACE = false;
         MockitoAnnotations.initMocks(this);
-    	
+
         Mockito.doAnswer(new Answer<OpObject>() {
 
 			@Override
@@ -78,10 +81,40 @@ public class MergePlaceBotOtherTest {
         bot.TRACE = false;
         
         MergeInfo info = new MergeInfo();
-    	bot.mergePlaces(rs, info);
+    	bot.mergePlaces(newRs, info);
     	System.out.println(String.format("Merge places has finished: place groups %d, closed places %d, found similar places %d, merged %d", 
 				info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt));
     	Assert.assertTrue(info.mergedPlacesCnt > 2100);
     }
 
+	private List<Feature> replacesFeature(List<Feature> listFeatures) {
+		List<List<Feature>> mergeGroups = getMergeGroups(listFeatures);
+		List<Feature> newList = new ArrayList<>();
+		for (List<Feature> group : mergeGroups) {
+			ArrayList<Feature> temp = new ArrayList<>(group);
+			Collections.reverse(temp);
+			newList.addAll(temp);
+		}
+		return newList;
+	}
+
+	private List<List<Feature>> getMergeGroups(List<Feature> list) {
+		List<List<Feature>> mergeGroups = new ArrayList<>();
+		if (list == null) {
+			return mergeGroups;
+		}
+		int currentGroupBeginIndex = 0;
+		for (int i = 1; i < list.size() - 1; i++) {
+			if (!isDeleted(list, i) && isDeleted(list, i - 1)) {
+				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
+				currentGroupBeginIndex = i;
+			}
+		}
+		mergeGroups.add(list.subList(currentGroupBeginIndex, list.size()));
+		return mergeGroups;
+	}
+
+	private boolean isDeleted(List<Feature> list, int i) {
+		return list.get(i).properties().containsKey(F_DELETED_OSM);
+	}
 }
