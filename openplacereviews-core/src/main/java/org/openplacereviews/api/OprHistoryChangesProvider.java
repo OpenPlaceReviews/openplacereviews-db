@@ -194,14 +194,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					Feature fdel = deletedPoints.poll();
 					Point pdel = (Point) fdel.geometry();
 					findNearestPointAndDelete(createdPoints, merged, pdel);
-					if (!merged.isEmpty()) {
-						merged.add(0, fdel);
-					}
 					// currently 1 closed place is not supported (due to limitation of bot & UI) - group id could be set later
 					if (merged.size() > 0) {
+						merged.add(0, fdel);
 						// find other deleted points within distance of 150m
 						findNearestPointAndDelete(deletedPoints, merged, pdel);
-						// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could be empty
+						// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
+						// probably later we could have new list empty
                         addMergedPlaces(res.geo.features(), merged);
 					}
 				
@@ -228,6 +227,12 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				addObject(createdObjects, opBlock, opHash, opObject, OBJ_CREATED, COLOR_GREEN);
 			}
 		}
+		for (List<String> opObject : opOperation.getDeleted()) {
+			if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
+				res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
+			}
+		}
+		
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 			// skip already reviewed place ids
