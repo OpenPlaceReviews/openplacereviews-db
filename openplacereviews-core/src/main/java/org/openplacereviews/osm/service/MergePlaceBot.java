@@ -221,7 +221,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				List<Feature> features = res.geo.features();
 				List<Feature> placesToMerge = getNoDeletedPlaces(features);
 				placesToMerge = filterByDistance(placesToMerge, deleted);
-				placesToMerge = filterByOsmId(placesToMerge, deleted);
 				if (placesToMerge.isEmpty() || !foundPlaceWithSameName(placesToMerge, deleted)) {
 					return permanentlyClosePlace(deleted, edited);
 				}
@@ -244,19 +243,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 			for (Feature feature : placesToMerge) {
 				Point featurePoint = (Point) feature.geometry();
 				if (OsmMapUtils.getDistance(latLonDeleted.getLatitude(), latLonDeleted.getLongitude(), featurePoint.lat(), featurePoint.lon()) < 150) {
-					res.add(feature);
-				}
-			}
-		}
-		return res;
-	}
-
-	private List<Feature> filterByOsmId(List<Feature> placesToMerge, OpObject deleted) {
-		String osmIdDeleted = getOsmId(deleted);
-		List<Feature> res = new ArrayList<>();
-		if (osmIdDeleted != null) {
-			for (Feature feature : placesToMerge) {
-				if (!feature.properties().get(OSM_ID).toString().equals(osmIdDeleted)) {
 					res.add(feature);
 				}
 			}
@@ -421,16 +407,16 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
             throw new IllegalStateException();
         }
 
-        for (OpObject object:closed) {
-			if (batch >= placesPerOperation) {
-				batch = 0;
-				addOpIfNeeded(op, true);
-				op = initOpOperation(objectType());
-				cnt++;
-			}
-			op.addEdited(object);
-			batch++;
-		}
+	    for (OpObject object : closed) {
+		    if (batch >= placesPerOperation) {
+			    batch = 0;
+			    addOpIfNeeded(op, true);
+			    op = initOpOperation(objectType());
+			    cnt++;
+		    }
+		    op.addEdited(object);
+		    batch++;
+	    }
 
         for (int i = 0; i < deleted.size() && i < edited.size(); i++) {
             if (batch >= placesPerOperation) {
