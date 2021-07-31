@@ -8,12 +8,10 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
 
 import java.text.Collator;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import com.github.filosganga.geogson.model.Point;
@@ -219,11 +217,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 	private boolean closeDeletedPlace(OpObject deleted, List<OpObject> edited) {
 		if (wasDeletedMoreThanTenDaysAgo(deleted)) {
 			OprMapCollectionApiResult res = getDataReport(deleted.getId().get(0));
-			if (res != null && res.geo.features() != null) {
-				List<Feature> placesToMerge = getNonDeletedClosedPlaces(res.geo.features(), deleted);
-				if (placesToMerge.isEmpty() || !foundPlaceWithSameName(placesToMerge, deleted)) {
-					return permanentlyClosePlace(deleted, edited);
-				}
+			if (res != null && res.geo.features() != null && !hasNonDeletedClosedPlaces(res.geo.features(), deleted)) {
+				return permanentlyClosePlace(deleted, edited);
 			}
 		}
 		return false;
@@ -236,47 +231,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		return true;
 	}
 
-	private List<Feature> filterByDistance(List<Feature> placesToMerge, OpObject deleted) {
+	private boolean hasNonDeletedClosedPlaces(List<Feature> features, OpObject deleted) {
 		LatLon latLonDeleted = getLatLon(deleted);
-		List<Feature> res = new ArrayList<>();
 		if (latLonDeleted != null) {
-			for (Feature feature : placesToMerge) {
-				Point featurePoint = (Point) feature.geometry();
-				if (OsmMapUtils.getDistance(latLonDeleted.getLatitude(), latLonDeleted.getLongitude(), featurePoint.lat(), featurePoint.lon()) < 150) {
-					res.add(feature);
-				}
-			}
-		}
-		return res;
-	}
-
-	private boolean foundPlaceWithSameName(List<Feature> placesToMerge, OpObject deleted) {
-		List<Map<String, String>> placesToMergeTags = new ArrayList<>();
-		Map<String, String> oldOsmTags = getMainOsmTags(deleted);
-		if (oldOsmTags != null) {
-			List<OpObject> objToMerge = new ArrayList<>();
-			for (Feature feature : placesToMerge) {
-				objToMerge.add(getCurrentObject(feature));
-			}
-			for (int i = 0; i < placesToMerge.size(); i++) {
-				placesToMergeTags.add(getMainOsmTags(objToMerge.get(i)));
-			}
-			for (MatchType mt : EnumSet.allOf(MatchType.class)) {
-				int matched = -1;
-				for (int i = 0; i < placesToMerge.size(); i++) {
-					if (match(mt, oldOsmTags, placesToMergeTags.get(i))) {
-						if (matched >= 0) {
-							if (mt.allow2PlacesMerge) {
-								matched = i;
-							} else {
-								return false;
-							}
-						} else {
-							matched = i;
-						}
-					}
-				}
-				if (matched >= 0) {
+			for (Feature feature : features) {
+				if (isNonDeleted(feature) && getDistance(latLonDeleted, feature) <= 150 && hasSimilarName(feature, deleted)) {
 					return true;
 				}
 			}
@@ -284,30 +243,41 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		return false;
 	}
 
-	private List<Feature> getNonDeletedClosedPlaces(List<Feature> features, OpObject deleted) {
-		List<Feature> res = new ArrayList<>();
-		for (Feature feature : features) {
-			if (!feature.properties().containsKey(F_DELETED_PLACE)) {
-				Map<String, Object> osm = getMainOsmFromList(getCurrentObject(feature));
-				if (osm != null && !osm.containsKey(F_DELETED_OSM)) {
-					res.add(feature);
+	private boolean isNonDeleted(Feature feature) {
+		if (!feature.properties().containsKey(F_DELETED_PLACE)) {
+			Map<String, Object> osm = getMainOsmFromList(getCurrentObject(feature));
+			return osm != null && !osm.containsKey(F_DELETED_OSM);
+		}
+		return false;
+	}
+
+	private double getDistance(LatLon latLonDeleted, Feature feature) {
+		Point featurePoint = (Point) feature.geometry();
+		return OsmMapUtils.getDistance(latLonDeleted.getLatitude(), latLonDeleted.getLongitude(),
+				featurePoint.lat(), featurePoint.lon());
+	}
+
+	private boolean hasSimilarName(Feature feature, OpObject deleted) {
+		Map<String, String> oldOsmTags = getMainOsmTags(deleted);
+		OpObject objToMerge = getCurrentObject(feature);
+		Map<String, String> placeToMergeTags = getMainOsmTags(objToMerge);
+		if (oldOsmTags != null && placeToMergeTags != null) {
+			for (MatchType mt : EnumSet.allOf(MatchType.class)) {
+				if (match(mt, oldOsmTags, placeToMergeTags)) {
+					return true;
 				}
 			}
 		}
-		return filterByDistance(res, deleted);
+		return false;
 	}
 
-	private Date getDeletedDate(OpObject deleted) {
+	private LocalDate getDeletedDate(OpObject deleted) {
 		Map<String, Object> mainOsm = getMainOsmFromList(deleted);
 		if (mainOsm != null) {
 			for (Map.Entry<String, Object> entry : mainOsm.entrySet()) {
 				if (entry.getKey().equals(F_DELETED_OSM)) {
 					String date = (String) entry.getValue();
-					try {
-						return new SimpleDateFormat(TIMESTAMP_FORMAT).parse(date);
-					} catch (ParseException e) {
-						return null;
-					}
+					return  LocalDate.parse(date, DateTimeFormatter.ofPattern(TIMESTAMP_FORMAT));
 				}
 			}
 		}
@@ -316,14 +286,12 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
 	private boolean wasDeletedMoreThanTenDaysAgo(OpObject deleted) {
 		LocalDate dateToday = LocalDate.now();
-		Date dateDeleted = getDeletedDate(deleted);
+		LocalDate dateDeleted = getDeletedDate(deleted);
 		if (dateDeleted != null) {
-			return Duration.between(LocalDate.ofInstant(dateDeleted.toInstant(), ZoneOffset.UTC).atStartOfDay(),
-					dateToday.atStartOfDay()).toDays() >= 10;
+			return Duration.between(dateDeleted.atStartOfDay(), dateToday.atStartOfDay()).toDays() >= 10;
 		} else {
 			return false;
 		}
-
 	}
 
 	private OprMapCollectionApiResult getDataReport(String tileId) {
