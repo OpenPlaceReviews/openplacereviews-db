@@ -8,10 +8,12 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
 
 import java.text.Collator;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 import java.util.*;
 
 import com.github.filosganga.geogson.model.Point;
@@ -55,6 +57,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String SPACE = " ";
     private static final String COMMA = ",";
     private static final String OLD_NAME = "old_name";
+	private static final String TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
     
     public static final int MONTHS_TO_CHECK = 6;
     public boolean TRACE = true;
@@ -294,16 +297,17 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		return filterByDistance(res, deleted);
 	}
 
-	private LocalDate transformStringDateToLocaleDate(String date) {
-		return LocalDate.parse(date.substring(0, date.indexOf("+")), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-	}
-
-	private LocalDate getDeletedDate(OpObject deleted) {
+	private Date getDeletedDate(OpObject deleted) {
 		Map<String, Object> mainOsm = getMainOsmFromList(deleted);
 		if (mainOsm != null) {
 			for (Map.Entry<String, Object> entry : mainOsm.entrySet()) {
 				if (entry.getKey().equals(F_DELETED_OSM)) {
-					return transformStringDateToLocaleDate((String) entry.getValue());
+					String date = (String) entry.getValue();
+					try {
+						return new SimpleDateFormat(TIMESTAMP_FORMAT).parse(date);
+					} catch (ParseException e) {
+						return null;
+					}
 				}
 			}
 		}
@@ -312,10 +316,10 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
 	private boolean wasDeletedMoreThanTenDaysAgo(OpObject deleted) {
 		LocalDate dateToday = LocalDate.now();
-		LocalDate dateDeleted = getDeletedDate(deleted);
-
+		Date dateDeleted = getDeletedDate(deleted);
 		if (dateDeleted != null) {
-			return Duration.between(dateDeleted.atStartOfDay(), dateToday.atStartOfDay()).toDays() >= 10;
+			return Duration.between(LocalDate.ofInstant(dateDeleted.toInstant(), ZoneOffset.UTC).atStartOfDay(),
+					dateToday.atStartOfDay()).toDays() >= 10;
 		} else {
 			return false;
 		}
