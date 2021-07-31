@@ -2,7 +2,6 @@ package org.openplacereviews.osm.service;
 
 import static org.openplacereviews.api.BaseOprPlaceDataProvider.OPR_ID;
 import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
-import static org.openplacereviews.api.OprHistoryChangesProvider.OSM_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
@@ -216,11 +215,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
 	private boolean closeDeletedPlace(OpObject deleted, List<OpObject> edited) {
 		if (wasDeletedMoreThanTenDaysAgo(deleted)) {
-			OprMapCollectionApiResult res = getDataReport(deleted);
+			OprMapCollectionApiResult res = getDataReport(deleted.getId().get(0));
 			if (res != null && res.geo.features() != null) {
-				List<Feature> features = res.geo.features();
-				List<Feature> placesToMerge = getNoDeletedPlaces(features);
-				placesToMerge = filterByDistance(placesToMerge, deleted);
+				List<Feature> placesToMerge = getNonDeletedClosedPlaces(res.geo.features(), deleted);
 				if (placesToMerge.isEmpty() || !foundPlaceWithSameName(placesToMerge, deleted)) {
 					return permanentlyClosePlace(deleted, edited);
 				}
@@ -284,7 +281,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		return false;
 	}
 
-	private List<Feature> getNoDeletedPlaces(List<Feature> features) {
+	private List<Feature> getNonDeletedClosedPlaces(List<Feature> features, OpObject deleted) {
 		List<Feature> res = new ArrayList<>();
 		for (Feature feature : features) {
 			if (!feature.properties().containsKey(F_DELETED_PLACE)) {
@@ -294,7 +291,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				}
 			}
 		}
-		return res;
+		return filterByDistance(res, deleted);
 	}
 
 	private LocalDate transformStringDateToLocaleDate(String date) {
@@ -325,11 +322,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
 	}
 
-	private OprMapCollectionApiResult getDataReport(OpObject deleted) {
+	private OprMapCollectionApiResult getDataReport(String tileId) {
 		PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint = dataManager.getEndpoint(GEO);
 		if (apiEndpoint != null) {
 			Map<String, String[]> dataParams = new LinkedHashMap<>();
-			dataParams.put(TILE_ID, new String[]{deleted.getId().get(0)});
+			dataParams.put(TILE_ID, new String[]{tileId});
 			return getReport(apiEndpoint, dataParams);
 		}
 		return null;
@@ -349,14 +346,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		Map<String, Object> mp = getMainOsmFromList(o);
 		if(mp != null && mp.containsKey(ATTR_LATITUDE) && mp.containsKey(ATTR_LONGITUDE)) {
 			return new LatLon((double) mp.get(ATTR_LATITUDE), (double) mp.get(ATTR_LONGITUDE));
-		}
-		return null;
-	}
-
-	private String getOsmId(OpObject o) {
-		Map<String, Object> mp = getMainOsmFromList(o);
-		if (mp != null && mp.containsKey(OSM_ID)) {
-			return (String) mp.get(OSM_ID);
 		}
 		return null;
 	}
