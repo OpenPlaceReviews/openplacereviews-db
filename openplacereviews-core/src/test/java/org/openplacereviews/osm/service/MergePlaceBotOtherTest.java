@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.zip.GZIPInputStream;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -33,6 +34,7 @@ public class MergePlaceBotOtherTest {
     @Spy
 	private MergePlaceBot bot;
 
+	@Ignore
     @Test
 	public void testCoordinates() throws IOException {
     	Gson geoJson = new GsonBuilder().registerTypeAdapterFactory(new GeometryAdapterFactory()).create();

@@ -2,23 +2,20 @@ package org.openplacereviews.osm.service;
 
 import static org.openplacereviews.api.BaseOprPlaceDataProvider.OPR_ID;
 import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
+import static org.openplacereviews.api.OprHistoryChangesProvider.OSM_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
 
 import java.text.Collator;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
+import com.github.filosganga.geogson.model.Point;
 import org.apache.catalina.util.ParameterMap;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.openplacereviews.api.OprHistoryChangesProvider;
@@ -51,8 +48,10 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String REQUEST_FILTER = OprHistoryChangesProvider.RequestFilter.REVIEW_CLOSED_PLACES.name();
     private static final String START_DATE = "date";
     private static final String END_DATE = "date2";
+	private static final String TILE_ID = "tileid";
     private static final String FILTER = "requestFilter";
     private static final String HISTORY = "history";
+	private static final String GEO = "geo";
     private static final String ALL_PUNCTUATION = "^\\p{Punct}+|\\p{Punct}+$";
     private static final String SPACE = " ";
     private static final String COMMA = ",";
@@ -96,6 +95,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     protected static class MergeInfo {
     	List<List<String>> deleted = new ArrayList<>();
 		List<OpObject> edited = new ArrayList<>();
+		List<OpObject> closed = new ArrayList<>();
 		int mergedGroupSize;
 		int closedPlaces;
 		int similarPlacesCnt;
@@ -141,7 +141,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				params.put(FILTER, new String[] { REQUEST_FILTER });
 				OprMapCollectionApiResult res = getReport(apiEndpoint, params);
 				mergePlaces(res, info);
-				int cnt = addOperations(info.deleted, info.edited);
+				int cnt = addOperations(info.deleted, info.edited, info.closed);
 				info(String.format("Merge places has finished for %s - %s: place groups %d, closed places %d, found similar places %d, merged %d, operations %d", 
 						start.toString(), end.toString(), info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt, cnt));
 				progress++;
@@ -195,8 +195,10 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 					}
 
 				}
-				if (deleted == null || placesToMerge.size() == 0) {
-					// nothing to merge
+				if (deleted == null || placesToMerge.isEmpty()) {
+					if (closeDeletedPlace(deleted, info.closed)) {
+						info.mergedPlacesCnt++;
+					}
 					continue;
 				}
 				info.similarPlacesCnt++;
@@ -210,6 +212,141 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 			}
 
 		}
+	}
+
+	private boolean closeDeletedPlace(OpObject deleted, List<OpObject> edited) {
+		if (wasDeletedMoreThanTenDaysAgo(deleted)) {
+			OprMapCollectionApiResult res = getDataReport(deleted);
+			if (res != null && res.geo.features() != null) {
+				List<Feature> features = res.geo.features();
+				List<Feature> placesToMerge = getNoDeletedPlaces(features);
+				placesToMerge = filterByDistance(placesToMerge, deleted);
+				placesToMerge = filterByOsmId(placesToMerge, deleted);
+				if (placesToMerge.isEmpty() || !foundPlaceWithSameName(placesToMerge, deleted)) {
+					return permanentlyClosePlace(deleted, edited);
+				}
+			}
+		}
+		return false;
+	}
+
+	private boolean permanentlyClosePlace(OpObject oldObj, List<OpObject> edited) {
+		OpObject newObj = new OpObject(oldObj, false);
+		newObj.setFieldByExpr(F_DELETED_PLACE, Instant.now().toString());
+		addObjToOperation(oldObj, newObj, null, edited);
+		return true;
+	}
+
+	private List<Feature> filterByDistance(List<Feature> placesToMerge, OpObject deleted) {
+		LatLon latLonDeleted = getLatLon(deleted);
+		List<Feature> res = new ArrayList<>();
+		if (latLonDeleted != null) {
+			for (Feature feature : placesToMerge) {
+				Point featurePoint = (Point) feature.geometry();
+				if (OsmMapUtils.getDistance(latLonDeleted.getLatitude(), latLonDeleted.getLongitude(), featurePoint.lat(), featurePoint.lon()) < 150) {
+					res.add(feature);
+				}
+			}
+		}
+		return res;
+	}
+
+	private List<Feature> filterByOsmId(List<Feature> placesToMerge, OpObject deleted) {
+		String osmIdDeleted = getOsmId(deleted);
+		List<Feature> res = new ArrayList<>();
+		if (osmIdDeleted != null) {
+			for (Feature feature : placesToMerge) {
+				if (!feature.properties().get(OSM_ID).toString().equals(osmIdDeleted)) {
+					res.add(feature);
+				}
+			}
+		}
+		return res;
+	}
+
+	private boolean foundPlaceWithSameName(List<Feature> placesToMerge, OpObject deleted) {
+		List<Map<String, String>> placesToMergeTags = new ArrayList<>();
+		Map<String, String> oldOsmTags = getMainOsmTags(deleted);
+		if (oldOsmTags != null) {
+			List<OpObject> objToMerge = new ArrayList<>();
+			for (Feature feature : placesToMerge) {
+				objToMerge.add(getCurrentObject(feature));
+			}
+			for (int i = 0; i < placesToMerge.size(); i++) {
+				placesToMergeTags.add(getMainOsmTags(objToMerge.get(i)));
+			}
+			for (MatchType mt : EnumSet.allOf(MatchType.class)) {
+				int matched = -1;
+				for (int i = 0; i < placesToMerge.size(); i++) {
+					if (match(mt, oldOsmTags, placesToMergeTags.get(i))) {
+						if (matched >= 0) {
+							if (mt.allow2PlacesMerge) {
+								matched = i;
+							} else {
+								return false;
+							}
+						} else {
+							matched = i;
+						}
+					}
+				}
+				if (matched >= 0) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private List<Feature> getNoDeletedPlaces(List<Feature> features) {
+		List<Feature> res = new ArrayList<>();
+		for (Feature feature : features) {
+			if (!feature.properties().containsKey(F_DELETED_PLACE)) {
+				Map<String, Object> osm = getMainOsmFromList(getCurrentObject(feature));
+				if (osm != null && !osm.containsKey(F_DELETED_OSM)) {
+					res.add(feature);
+				}
+			}
+		}
+		return res;
+	}
+
+	private LocalDate transformStringDateToLocaleDate(String date) {
+		return LocalDate.parse(date.substring(0, date.indexOf("+")), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+	}
+
+	private LocalDate getDeletedDate(OpObject deleted) {
+		Map<String, Object> mainOsm = getMainOsmFromList(deleted);
+		if (mainOsm != null) {
+			for (Map.Entry<String, Object> entry : mainOsm.entrySet()) {
+				if (entry.getKey().equals(F_DELETED_OSM)) {
+					return transformStringDateToLocaleDate((String) entry.getValue());
+				}
+			}
+		}
+		return null;
+	}
+
+	private boolean wasDeletedMoreThanTenDaysAgo(OpObject deleted) {
+		LocalDate dateToday = LocalDate.now();
+		LocalDate dateDeleted = getDeletedDate(deleted);
+
+		if (dateDeleted != null) {
+			return Duration.between(dateDeleted.atStartOfDay(), dateToday.atStartOfDay()).toDays() >= 10;
+		} else {
+			return false;
+		}
+
+	}
+
+	private OprMapCollectionApiResult getDataReport(OpObject deleted) {
+		PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint = dataManager.getEndpoint(GEO);
+		if (apiEndpoint != null) {
+			Map<String, String[]> dataParams = new LinkedHashMap<>();
+			dataParams.put(TILE_ID, new String[]{deleted.getId().get(0)});
+			return getReport(apiEndpoint, dataParams);
+		}
+		return null;
 	}
 	
 	private void addObj(List<OpObject> ar, OpObject obj) {
@@ -226,6 +363,14 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		Map<String, Object> mp = getMainOsmFromList(o);
 		if(mp != null && mp.containsKey(ATTR_LATITUDE) && mp.containsKey(ATTR_LONGITUDE)) {
 			return new LatLon((double) mp.get(ATTR_LATITUDE), (double) mp.get(ATTR_LONGITUDE));
+		}
+		return null;
+	}
+
+	private String getOsmId(OpObject o) {
+		Map<String, Object> mp = getMainOsmFromList(o);
+		if (mp != null && mp.containsKey(OSM_ID)) {
+			return (String) mp.get(OSM_ID);
 		}
 		return null;
 	}
@@ -268,13 +413,25 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return list.get(i).properties().containsKey(F_DELETED_OSM);
     }
 
-    private int addOperations(List<List<String>> deleted, List<OpObject> edited) throws FailedVerificationException {
+    private int addOperations(List<List<String>> deleted, List<OpObject> edited, List<OpObject> closed) throws FailedVerificationException {
         int batch = 0;
         int cnt = 0;
         OpOperation op = initOpOperation(objectType());
         if (deleted.size() != edited.size()) {
             throw new IllegalStateException();
         }
+
+        for (OpObject object:closed) {
+			if (batch >= placesPerOperation) {
+				batch = 0;
+				addOpIfNeeded(op, true);
+				op = initOpOperation(objectType());
+				cnt++;
+			}
+			op.addEdited(object);
+			batch++;
+		}
+
         for (int i = 0; i < deleted.size() && i < edited.size(); i++) {
             if (batch >= placesPerOperation) {
                 batch = 0;
@@ -419,17 +576,38 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         OpObject editObj = new OpObject();
         editObj.setId(oldObj.getId().get(0), oldObj.getId().get(1));
         TreeMap<String, Object> current = new TreeMap<>();
-        TreeMap<String, Object> changed = new TreeMap<>();
+		TreeMap<String, Object> changed = new TreeMap<>();
 
-        mergeFields(SOURCE, oldObj, newObj, current, changed);
-        mergeFields(IMAGES, oldObj, newObj, current, changed);
+		if (deleted == null) {
+			permClosed(F_DELETED_PLACE, oldObj, newObj, current, changed);
+		} else {
+			mergeFields(SOURCE, oldObj, newObj, current, changed);
+			mergeFields(IMAGES, oldObj, newObj, current, changed);
+		}
 
         editObj.putObjectValue(OpObject.F_CHANGE, changed);
         editObj.putObjectValue(OpObject.F_CURRENT, current);
 
-        deleted.add(newObj.getId());
-        edited.add(editObj);
+		if (deleted != null) {
+			deleted.add(newObj.getId());
+		}
+
+		edited.add(editObj);
     }
+
+    private void permClosed(String type, OpObject oldObj, OpObject newObj,
+							TreeMap<String, Object> current, TreeMap<String, Object> changed) {
+		String newField = newObj.getField(null, type);
+		String oldField = oldObj.getField(null, type);
+		if (newField != null) {
+			TreeMap<String, Object> appendObj = new TreeMap<>();
+			if (oldField == null) {
+				appendObj.put(SET, newField);
+			}
+			current.put(F_DELETED_PLACE, oldField);
+			changed.put(F_DELETED_PLACE, appendObj);
+		}
+	}
 
     @SuppressWarnings("unchecked")
 	private void mergeFields(String type, OpObject oldObj, OpObject newObj,
