@@ -141,7 +141,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				params.put(END_DATE, new String[] { end.toString() });
 				params.put(FILTER, new String[] { REQUEST_FILTER });
 				OprMapCollectionApiResult res = getReport(apiEndpoint, params);
-				mergePlaces(res, info);
+				mergeAndClosePlaces(res, info);
 				int cnt = addOperations(info.deleted, info.edited, info.closed);
 				info(String.format(
 						"Merge places has finished for %s - %s: place groups %d, closed places %d, found similar places %d - merged %d, perm closed %d operations %d", 
@@ -160,11 +160,12 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         return this;
     }
 
-	protected void mergePlaces(OprMapCollectionApiResult res, MergeInfo info) {
+	protected void mergeAndClosePlaces(OprMapCollectionApiResult res, MergeInfo info) {
 		List<List<Feature>> mergeGroups = getMergeGroups(res.geo.features());
 		info.mergedGroupSize = mergeGroups.size();
 		List<OpObject> closedPlaces = new ArrayList<>();
 		List<OpObject> groupPlacesToMerge = new ArrayList<>();
+		Set<String> closedPlacesSet = new TreeSet<>();
 		for (List<Feature> mergeGroup : mergeGroups) {
 			groupPlacesToMerge.clear();
 			closedPlaces.clear();
@@ -198,9 +199,10 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
 				}
 				if (placesToMerge.isEmpty()) {
-					if (wasDeletedMoreThanTenDaysAgo(deleted)) {
+					if (wasDeletedMoreThanTenDaysAgo(deleted) && !closedPlacesSet.contains(deleted.getId().toString())) {
 						if (closeDeletedPlace(deleted, info.closed)) {
 							info.closedPlacesCnt++;
+							closedPlacesSet.add(deleted.getId().toString());
 						}
 					}
 				} else {
