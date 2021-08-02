@@ -241,8 +241,8 @@ public abstract class BaseOprPlaceDataProvider
 				bld.put(PLACE_DELETED, new JsonPrimitive(String.valueOf(deletedPlaceField)));
 			}
 
-			double lat = (double) mainOSM.get(ATTR_LATITUDE);
-			double lon = (double) mainOSM.get(ATTR_LONGITUDE);
+			double lat = ((Number) mainOSM.get(ATTR_LATITUDE)).doubleValue();
+			double lon = ((Number) mainOSM.get(ATTR_LONGITUDE)).doubleValue();
 			Point p = Point.from(lon, lat);
 			bld.put(PLACE_TYPE, new JsonPrimitive((String) mainOSM.get(F_OSM_VALUE)));
 			bld.put(TITLE, new JsonPrimitive(getTitle(mainOSM)));
