@@ -130,7 +130,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
             }
             progress = 1;
             totalCnt = MONTHS_TO_CHECK + 1;
-            Map<String, String[]> params = new ParameterMap<>();
+            Map<String, String[]> params = new TreeMap<>();
 			for (int i = 0; i < MONTHS_TO_CHECK; i++) {
 				MergeInfo info = new MergeInfo();
 				LocalDate dt = LocalDate.now().minusMonths(i);
@@ -226,8 +226,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 			}
 			OpObject newObj = new OpObject(deleted, false);
 			newObj.setFieldByExpr(F_DELETED_PLACE, Instant.now().toString());
-			// TODO revert once tested
-			// addObjToOperation(deleted, newObj, null, edited);
+			addObjToOperation(deleted, newObj, null, edited);
 			return true;
 		}
 		return false;
