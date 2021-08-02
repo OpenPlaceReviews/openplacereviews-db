@@ -100,6 +100,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		int closedPlaces;
 		int similarPlacesCnt;
 		int mergedPlacesCnt;
+		int closedPlacesCnt;
     }
     
     protected enum MatchType {
@@ -142,8 +143,9 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				OprMapCollectionApiResult res = getReport(apiEndpoint, params);
 				mergePlaces(res, info);
 				int cnt = addOperations(info.deleted, info.edited, info.closed);
-				info(String.format("Merge places has finished for %s - %s: place groups %d, closed places %d, found similar places %d, merged %d, operations %d", 
-						start.toString(), end.toString(), info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt, cnt));
+				info(String.format(
+						"Merge places has finished for %s - %s: place groups %d, closed places %d, found similar places %d - merged %d, perm closed %d operations %d", 
+						start.toString(), end.toString(), info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt, info.closedPlacesCnt, cnt));
 				progress++;
 			}
 			info("Merge places completed: " + new Date());
@@ -195,19 +197,21 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 					}
 
 				}
-				if (deleted == null || placesToMerge.isEmpty()) {
-					if (closeDeletedPlace(deleted, info.closed)) {
+				if (placesToMerge.isEmpty()) {
+					if (wasDeletedMoreThanTenDaysAgo(deleted)) {
+						if (closeDeletedPlace(deleted, info.closed)) {
+							info.closedPlacesCnt++;
+						}
+					}
+				} else {
+					info.similarPlacesCnt++;
+					EnumSet<MatchType> es = closedPlaces.size() == 1 ? EnumSet.allOf(MatchType.class)
+							: EnumSet.range(MatchType.NAME_MATCH, MatchType.OTHER_NAME_MATCH);
+					OpObject deletedMerged = mergePlaces(es, deleted, placesToMerge, info.deleted, info.edited);
+					if (deletedMerged != null) {
+						groupPlacesToMerge.remove(deletedMerged);
 						info.mergedPlacesCnt++;
 					}
-					continue;
-				}
-				info.similarPlacesCnt++;
-				EnumSet<MatchType> es = closedPlaces.size() == 1 ? EnumSet.allOf(MatchType.class)
-						: EnumSet.range(MatchType.NAME_MATCH, MatchType.OTHER_NAME_MATCH);
-				OpObject deletedMerged = mergePlaces(es, deleted, placesToMerge, info.deleted, info.edited);
-				if (deletedMerged != null) {
-					groupPlacesToMerge.remove(deletedMerged);
-					info.mergedPlacesCnt++;
 				}
 			}
 
@@ -215,27 +219,27 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 	}
 
 	private boolean closeDeletedPlace(OpObject deleted, List<OpObject> edited) {
-		if (wasDeletedMoreThanTenDaysAgo(deleted)) {
-			OprMapCollectionApiResult res = getDataReport(deleted.getId().get(0));
-			if (res != null && res.geo.features() != null && !hasNonDeletedClosedPlaces(res.geo.features(), deleted)) {
-				return permanentlyClosePlace(deleted, edited);
+		OprMapCollectionApiResult res = getDataReport(deleted.getId().get(0));
+		if (res != null && res.geo.features() != null && !hasSimilarClosebyActivePlaces(res.geo.features(), deleted)) {
+			if (TRACE) {
+				info(String.format("Close %s - %s", deleted.getId(), getMainOsmFromList(deleted)));
 			}
+			OpObject newObj = new OpObject(deleted, false);
+			newObj.setFieldByExpr(F_DELETED_PLACE, Instant.now().toString());
+			// TODO revert once tested
+			// addObjToOperation(deleted, newObj, null, edited);
+			return true;
 		}
 		return false;
 	}
 
-	private boolean permanentlyClosePlace(OpObject oldObj, List<OpObject> edited) {
-		OpObject newObj = new OpObject(oldObj, false);
-		newObj.setFieldByExpr(F_DELETED_PLACE, Instant.now().toString());
-		addObjToOperation(oldObj, newObj, null, edited);
-		return true;
-	}
 
-	private boolean hasNonDeletedClosedPlaces(List<Feature> features, OpObject deleted) {
+	private boolean hasSimilarClosebyActivePlaces(List<Feature> features, OpObject deleted) {
 		LatLon latLonDeleted = getLatLon(deleted);
 		if (latLonDeleted != null) {
 			for (Feature feature : features) {
-				if (isNonDeleted(feature) && getDistance(latLonDeleted, feature) <= 150 && hasSimilarName(feature, deleted)) {
+				if (isNonDeleted(feature) && getDistance(latLonDeleted, feature) <= SIMILAR_PLACE_DISTANCE
+						&& hasSimilarName(feature, deleted)) {
 					return true;
 				}
 			}
@@ -277,7 +281,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 			for (Map.Entry<String, Object> entry : mainOsm.entrySet()) {
 				if (entry.getKey().equals(F_DELETED_OSM)) {
 					String date = (String) entry.getValue();
-					return  LocalDate.parse(date, DateTimeFormatter.ofPattern(TIMESTAMP_FORMAT));
+					return LocalDate.parse(date, DateTimeFormatter.ofPattern(TIMESTAMP_FORMAT));
 				}
 			}
 		}
