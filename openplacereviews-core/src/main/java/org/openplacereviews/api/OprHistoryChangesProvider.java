@@ -306,7 +306,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				//	"source.osm": {
 				//		"append": {
 				if (changeKey.equals("source.osm")) {
-					if (((Map<String, ?>) change.get(changeKey)).containsKey("append")) {
+					Map<String, ?> changeFields = ((Map<String, ?>) change.get(changeKey));
+					if (changeFields.containsKey("append") || changeFields.containsKey("appendmany")) {
 						res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
 						break changeKeys;
 					}
