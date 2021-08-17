@@ -15,7 +15,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import com.github.filosganga.geogson.model.Point;
-import org.apache.catalina.util.ParameterMap;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.openplacereviews.api.OprHistoryChangesProvider;
 import org.openplacereviews.api.OprMapCollectionApiResult;
@@ -57,7 +56,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String OLD_NAME = "old_name";
 	private static final String TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
     
-    public static final int MONTHS_TO_CHECK = 6;
+    public static final int MONTHS_TO_CHECK = 1;
     public boolean TRACE = true;
 
     @Autowired
@@ -200,7 +199,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				}
 				if (placesToMerge.isEmpty()) {
 					if (wasDeletedMoreThanTenDaysAgo(deleted) && !closedPlacesSet.contains(deleted.getId().toString())) {
-						if (closeDeletedPlace(deleted, info.closed)) {
+						if (closeDeletedPlace(deleted, info.closed, res)) {
 							info.closedPlacesCnt++;
 							closedPlacesSet.add(deleted.getId().toString());
 						}
@@ -220,9 +219,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		}
 	}
 
-	private boolean closeDeletedPlace(OpObject deleted, List<OpObject> edited) {
-		OprMapCollectionApiResult res = getDataReport(deleted.getId().get(0));
-		if (res != null && res.geo.features() != null && !hasSimilarClosebyActivePlaces(res.geo.features(), deleted)) {
+	private boolean closeDeletedPlace(OpObject deleted, List<OpObject> edited, OprMapCollectionApiResult resHistory) {
+		OprMapCollectionApiResult resData = getDataReport(deleted.getId().get(0));
+		if (resData != null
+				&& resData.geo.features() != null
+				&& !hasSimilarClosebyActivePlaces(resData.geo.features(), deleted, resHistory)) {
 			if (TRACE) {
 				info(String.format("Close %s - %s", deleted.getId(), getMainOsmFromList(deleted)));
 			}
@@ -235,12 +236,14 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 	}
 
 
-	private boolean hasSimilarClosebyActivePlaces(List<Feature> features, OpObject deleted) {
+	private boolean hasSimilarClosebyActivePlaces(List<Feature> features, OpObject deleted, OprMapCollectionApiResult resHistory) {
 		LatLon latLonDeleted = getLatLon(deleted);
 		if (latLonDeleted != null) {
 			for (Feature feature : features) {
-				if (isNonDeleted(feature) && getDistance(latLonDeleted, feature) <= SIMILAR_PLACE_DISTANCE
-						&& hasSimilarName(feature, deleted)) {
+				if (isNonDeleted(feature)
+						&& getDistance(latLonDeleted, feature) <= SIMILAR_PLACE_DISTANCE
+						&& hasSimilarName(feature, deleted)
+						&& !resHistory.alreadyReviewedPlaceIds.contains(getOprGenId(feature))) {
 					return true;
 				}
 			}
