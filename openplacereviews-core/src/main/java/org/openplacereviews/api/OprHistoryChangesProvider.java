@@ -194,16 +194,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					Feature fdel = deletedPoints.poll();
 					Point pdel = (Point) fdel.geometry();
 					findNearestPointAndDelete(createdPoints, merged, pdel);
-					// currently 1 closed place is not supported (due to limitation of bot & UI) - group id could be set later
-					if (merged.size() > 0) {
-						merged.add(0, fdel);
-						// find other deleted points within distance of 150m
-						findNearestPointAndDelete(deletedPoints, merged, pdel);
-						// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
-						// probably later we could have new list empty
-                        addMergedPlaces(res.geo.features(), merged);
-					}
-				
+					// group id could be set later
+					merged.add(0, fdel);
+					// find other deleted points within distance of 150m
+					findNearestPointAndDelete(deletedPoints, merged, pdel);
+					// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
+					// probably later we could have new list empty
+					addMergedPlaces(res.geo.features(), merged);
 				}
 			}
 		} else if (filter == RequestFilter.REVIEW_IMAGES) {
