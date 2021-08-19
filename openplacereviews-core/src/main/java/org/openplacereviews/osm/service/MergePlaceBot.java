@@ -34,7 +34,7 @@ import com.github.filosganga.geogson.model.Feature;
 
 public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
-    private static final int SIMILAR_PLACE_DISTANCE = 100;
+    private static final int SIMILAR_PLACE_DISTANCE = 250;
     private static final String IMAGES = "images";
     private static final String SOURCE = "source";
     private static final String SET = "set";
