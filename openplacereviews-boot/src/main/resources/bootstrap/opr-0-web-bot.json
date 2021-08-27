@@ -27,6 +27,16 @@
       			"key" : "tourism",
       			"values" : ["hotel","motel","hostel","apartment","guest_house"],
             	"type" : ["node", "way"]
+          },
+          "attraction": {
+            "key": "historic",
+            "values": [
+              "historic_ruins"
+            ],
+            "type": [
+              "node",
+              "way"
+            ]
           }
         }
       },
