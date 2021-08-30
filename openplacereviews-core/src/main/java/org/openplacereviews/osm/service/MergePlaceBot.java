@@ -15,7 +15,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import com.github.filosganga.geogson.model.Point;
-import org.apache.catalina.util.ParameterMap;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.openplacereviews.api.OprHistoryChangesProvider;
 import org.openplacereviews.api.OprMapCollectionApiResult;
@@ -55,7 +54,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String SPACE = " ";
     private static final String COMMA = ",";
     private static final String OLD_NAME = "old_name";
-	private static final String TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
+	private static final String TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.[SSSZ][SSSSZ]";
     
     public static final int MONTHS_TO_CHECK = 6;
     public boolean TRACE = true;
