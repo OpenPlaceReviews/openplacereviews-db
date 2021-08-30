@@ -30,13 +30,8 @@
           },
           "attraction": {
             "key": "historic",
-            "values": [
-              "historic_ruins"
-            ],
-            "type": [
-              "node",
-              "way"
-            ]
+            "values": ["ruins"],
+            "type": ["node", "way"]
           }
         }
       },
