@@ -185,34 +185,41 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				} 
 			}
 			for (OpObject deleted : closedPlaces) {
-				LatLon l = getLatLon(deleted);
-				info.closedPlaces++;
-				List<OpObject> placesToMerge = new ArrayList<>(groupPlacesToMerge);
-				Iterator<OpObject> it = placesToMerge.iterator();
-				while (it.hasNext()) {
-					OpObject o = it.next();
-					LatLon l2 = getLatLon(o);
-					if (l2 == null || OsmMapUtils.getDistance(l, l2) > SIMILAR_PLACE_DISTANCE) {
-						it.remove();
-					}
+				try {
+					LatLon l = getLatLon(deleted);
+					info.closedPlaces++;
+					List<OpObject> placesToMerge = new ArrayList<>(groupPlacesToMerge);
+					Iterator<OpObject> it = placesToMerge.iterator();
+					while (it.hasNext()) {
+						OpObject o = it.next();
+						LatLon l2 = getLatLon(o);
+						if (l2 == null || OsmMapUtils.getDistance(l, l2) > SIMILAR_PLACE_DISTANCE) {
+							it.remove();
+						}
 
-				}
-				if (placesToMerge.isEmpty()) {
-					if (wasDeletedMoreThanTenDaysAgo(deleted) && !closedPlacesSet.contains(deleted.getId().toString())) {
-						if (closeDeletedPlace(deleted, info.closed)) {
-							info.closedPlacesCnt++;
-							closedPlacesSet.add(deleted.getId().toString());
+					}
+					if (placesToMerge.isEmpty()) {
+						if (wasDeletedMoreThanTenDaysAgo(deleted)
+								&& !closedPlacesSet.contains(deleted.getId().toString())) {
+							if (closeDeletedPlace(deleted, info.closed)) {
+								info.closedPlacesCnt++;
+								closedPlacesSet.add(deleted.getId().toString());
+							}
+						}
+					} else {
+						info.similarPlacesCnt++;
+						EnumSet<MatchType> es = closedPlaces.size() == 1 ? EnumSet.allOf(MatchType.class)
+								: EnumSet.range(MatchType.NAME_MATCH, MatchType.OTHER_NAME_MATCH);
+						OpObject deletedMerged = mergePlaces(es, deleted, placesToMerge, info.deleted, info.edited);
+						if (deletedMerged != null) {
+							groupPlacesToMerge.remove(deletedMerged);
+							info.mergedPlacesCnt++;
 						}
 					}
-				} else {
-					info.similarPlacesCnt++;
-					EnumSet<MatchType> es = closedPlaces.size() == 1 ? EnumSet.allOf(MatchType.class)
-							: EnumSet.range(MatchType.NAME_MATCH, MatchType.OTHER_NAME_MATCH);
-					OpObject deletedMerged = mergePlaces(es, deleted, placesToMerge, info.deleted, info.edited);
-					if (deletedMerged != null) {
-						groupPlacesToMerge.remove(deletedMerged);
-						info.mergedPlacesCnt++;
-					}
+				} catch (RuntimeException e) {
+					info(String.format(
+							"Error processing deleted object '%s': %s", deleted.getId().toString(), e.getMessage()));
+					throw e;
 				}
 			}
 
