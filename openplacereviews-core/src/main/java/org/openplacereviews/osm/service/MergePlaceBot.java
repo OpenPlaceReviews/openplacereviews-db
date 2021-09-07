@@ -680,10 +680,5 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         }
         return 4;
     }
-    
-    public static void main(String[] args) {
-    	String s1 = "مجنون قهوة";
-    	String s2 = "مجنون قهوة";
-    	System.out.println(s1.equals(s2));
-	}
+
 }
