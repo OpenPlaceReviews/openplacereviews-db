@@ -4,12 +4,7 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_IMG_REVIEW;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -308,6 +303,15 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 						res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
 						break changeKeys;
 					}
+				}
+				if (changeKey.contains("images")) {
+					OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+					Object imgReview = nObj.getFieldByExpr(F_IMG_REVIEW);
+					if (imgReview != null && ((List<?>) imgReview).isEmpty()) {
+						res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
+					}
+					break changeKeys;
+
 				}
 			}
 		}
