@@ -4,12 +4,7 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_IMG_REVIEW;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_OSM;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_SOURCE;
-import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_TAGS;
+import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -129,7 +124,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				CacheHolder<OprMapCollectionApiResult> holder = api.getCacheHolder(p);
 				if (holder != null && holder.value != null) {
 					OprMapCollectionApiResult r = holder.value;
-					addAlreadyReviewedPlaces(op, r);
+					addAlreadyReviewedPlaces(RequestFilter.valueOf(p.requestFilter), op, r);
 				}
 			}
 		}
@@ -149,7 +144,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					OpBlock fullBlock = blocksManager.getBlockchain().getFullBlockByRawHash(block.getRawHash());
 					List<OpOperation> opOperations = fullBlock.getOperations();
 					for (OpOperation opOperation : opOperations) {
-						addAlreadyReviewedPlaces(opOperation, res);
+						addAlreadyReviewedPlaces(filter, opOperation, res);
 					}
 				}
 			}
@@ -281,33 +276,47 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 
 	@SuppressWarnings("unchecked")
-	private void addAlreadyReviewedPlaces(OpOperation opOperation, OprMapCollectionApiResult res) {
+	private void addAlreadyReviewedPlaces(RequestFilter filter, OpOperation opOperation, OprMapCollectionApiResult res) {
 		// place was merged / deleted
 		for (List<String> opObject : opOperation.getDeleted()) {
 			res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
 		}
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
-			changeKeys: for (var changeKey : change.keySet()) {
-				//
-				// "deleted": {
-		        // 		"set": "2021-02-08T17:18:40.393+0000"
-		        // }
-				// place was permanently closed
-				if(changeKey.equals(PlaceOpObjectHelper.F_DELETED_PLACE)) {
-					res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
-					break changeKeys;
-				}
-				// place was merged / deleted
-				//	"change": {
-				//	"source.osm": {
-				//		"append": {
-				if (changeKey.equals("source.osm")) {
-					Map<String, ?> changeFields = ((Map<String, ?>) change.get(changeKey));
-					if (changeFields.containsKey("append") || changeFields.containsKey("appendmany")) {
+			changeKeys:
+			for (var changeKey : change.keySet()) {
+				if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
+					//
+					// "deleted": {
+					// 		"set": "2021-02-08T17:18:40.393+0000"
+					// }
+					// place was permanently closed
+					if (changeKey.equals(PlaceOpObjectHelper.F_DELETED_PLACE)) {
 						res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
 						break changeKeys;
 					}
+					// place was merged / deleted
+					//	"change": {
+					//	"source.osm": {
+					//		"append": {
+					if (changeKey.equals("source.osm")) {
+						Map<String, ?> changeFields = ((Map<String, ?>) change.get(changeKey));
+						if (changeFields.containsKey("append") || changeFields.containsKey("appendmany")) {
+							res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
+							break changeKeys;
+						}
+					}
+				} else if (filter == RequestFilter.REVIEW_IMAGES) {
+					if (changeKey.contains("images")) {
+						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+						Object imgReview = nObj.getFieldByExpr(F_IMG_REVIEW);
+						if (imgReview != null && ((List<?>) imgReview).isEmpty()) {
+							res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
+						}
+						break changeKeys;
+					}
+				} else {
+					throw new UnsupportedOperationException();
 				}
 			}
 		}
