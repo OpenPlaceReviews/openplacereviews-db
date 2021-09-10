@@ -97,6 +97,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     	List<List<String>> deleted = new ArrayList<>();
 		List<OpObject> edited = new ArrayList<>();
 		List<OpObject> closed = new ArrayList<>();
+		LocalDate mergeDate;
 		int mergedGroupSize;
 		int closedPlaces;
 		int similarPlacesCnt;
@@ -142,6 +143,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				params.put(END_DATE, new String[] { end.toString() });
 				params.put(FILTER, new String[] { REQUEST_FILTER });
 				OprMapCollectionApiResult res = getReport(apiEndpoint, params);
+				info.mergeDate = dt;
 				mergeAndClosePlaces(res, info);
 				int cnt = addOperations(info.deleted, info.edited, info.closed);
 				info(String.format(
@@ -167,6 +169,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		List<OpObject> closedPlaces = new ArrayList<>();
 		List<OpObject> groupPlacesToMerge = new ArrayList<>();
 		Set<String> closedPlacesSet = new TreeSet<>();
+		Set<String> mergedPlacesByDataReportSet = new TreeSet<>();
 		for (List<Feature> mergeGroup : mergeGroups) {
 			groupPlacesToMerge.clear();
 			closedPlaces.clear();
@@ -203,9 +206,15 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 					if (placesToMerge.isEmpty()) {
 						if (wasDeletedMoreThanTenDaysAgo(deleted)
 								&& (closedPlacesSet.isEmpty() || !closedPlacesSet.contains(deleted.getId().toString()))) {
-							if (closeDeletedPlace(deleted, info.closed)) {
-								info.closedPlacesCnt++;
-								closedPlacesSet.add(deleted.getId().toString());
+							OprMapCollectionApiResult resDataRepost = getDataReport(deleted.getId().get(0));
+							if (resDataRepost != null && resDataRepost.geo.features() != null) {
+								if (closeDeletedPlace(deleted, resDataRepost, info.closed)) {
+									info.closedPlacesCnt++;
+									closedPlacesSet.add(deleted.getId().toString());
+								} else if (info.mergeDate.getMonth().getValue() <= LocalDate.now().getMonth().getValue() -1
+										&& mergePlacesByDataReport(deleted, resDataRepost.geo.features(), info.deleted, info.edited, mergedPlacesByDataReportSet)) {
+									info.mergedPlacesCnt++;
+								}
 							}
 						}
 					} else {
@@ -228,9 +237,31 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		}
 	}
 
-	private boolean closeDeletedPlace(OpObject deleted, List<OpObject> edited) {
-		OprMapCollectionApiResult res = getDataReport(deleted.getId().get(0));
-		if (res != null && res.geo.features() != null && !hasSimilarClosebyActivePlaces(res.geo.features(), deleted)) {
+	private boolean mergePlacesByDataReport(OpObject deletedObj, List<Feature> dataReportFeatures, List<List<String>> deleted,
+	                                        List<OpObject> edited, Set<String> mergedPlacesByDataReportSet) {
+		List<OpObject> placesToMerge = new ArrayList<>();
+
+		for (Feature feature : dataReportFeatures) {
+			OpObject obj = getCurrentObject(feature);
+			if (obj != null && (mergedPlacesByDataReportSet.isEmpty() || !mergedPlacesByDataReportSet.contains(obj.getId().toString()))) {
+				Map<String, Object> mainOsm = getMainOsmFromList(obj);
+				if (mainOsm != null && !mainOsm.containsKey(F_DELETED_OSM)) {
+					placesToMerge.add(obj);
+				}
+			}
+		}
+		if (!placesToMerge.isEmpty()) {
+			OpObject deletedMerged = mergePlaces(EnumSet.allOf(MatchType.class), deletedObj, placesToMerge, deleted, edited);
+			if (deletedMerged != null) {
+				mergedPlacesByDataReportSet.add(deletedMerged.getId().toString());
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean closeDeletedPlace(OpObject deleted, OprMapCollectionApiResult resDataRepost, List<OpObject> edited) {
+		if (!hasSimilarClosebyActivePlaces(resDataRepost.geo.features(), deleted)) {
 			if (TRACE) {
 				info(String.format("Close %s - %s", deleted.getId(), getMainOsmFromList(deleted)));
 			}
