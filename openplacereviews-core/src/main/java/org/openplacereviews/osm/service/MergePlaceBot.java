@@ -202,7 +202,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 					}
 					if (placesToMerge.isEmpty()) {
 						if (wasDeletedMoreThanTenDaysAgo(deleted)
-								&& !closedPlacesSet.contains(deleted.getId().toString())) {
+								&& (closedPlacesSet.isEmpty() || !closedPlacesSet.contains(deleted.getId().toString()))) {
 							if (closeDeletedPlace(deleted, info.closed)) {
 								info.closedPlacesCnt++;
 								closedPlacesSet.add(deleted.getId().toString());
@@ -411,8 +411,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     }
 
     private OprMapCollectionApiResult getReport(PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint, Map<String, String[]> params) {
-        OprMapCollectionApiResult collection = (OprMapCollectionApiResult) apiEndpoint.getContentObject(params);
-        return collection;
+        return (OprMapCollectionApiResult) apiEndpoint.getContentObject(params);
     }
 
     protected OpObject mergePlaces(EnumSet<MatchType> matchTypes, OpObject oldObj, List<OpObject> placesToMerge, List<List<String>> deleted, List<OpObject> edited) {
@@ -451,8 +450,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     }
     
     protected boolean match(MatchType mt, Map<String, String> oldOsmTags, Map<String, String> newOsmTags) {
-    	String oldName = (String) oldOsmTags.get(PLACE_NAME);
-    	String newName = (String) newOsmTags.get(PLACE_NAME);
+    	String oldName = oldOsmTags.get(PLACE_NAME);
+    	String newName = newOsmTags.get(PLACE_NAME);
 		if (mt == MatchType.OTHER_TAGS_MATCH) {
 			if (equalsNotEmptyStringValue(oldOsmTags.get(WIKIDATA), newOsmTags.get(WIKIDATA))) {
 				return true;
@@ -669,13 +668,13 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         int wordMainLength = wordMain.length();
         int wordSubLength = wordSub.length();
         int resLength = Math.min(wordMainLength, wordSubLength);
-        if (resLength < 3) {
+        if (resLength <= 4) {
             return 1;
         }
-        if (resLength <= 5) {
+        if (resLength <= 6) {
             return 2;
         }
-        if (resLength <= 7) {
+        if (resLength <= 8) {
             return 3;
         }
         return 4;
