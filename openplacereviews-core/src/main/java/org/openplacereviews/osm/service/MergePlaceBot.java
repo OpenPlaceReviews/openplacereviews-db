@@ -58,7 +58,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String OLD_NAME = "old_name";
 	private static final String TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.[SSSZ][SSSSZ]";
     
-    public static final int MONTHS_TO_CHECK = 2;
+    public static final int MONTHS_TO_CHECK = 9;
     public boolean TRACE = true;
 
     @Autowired
