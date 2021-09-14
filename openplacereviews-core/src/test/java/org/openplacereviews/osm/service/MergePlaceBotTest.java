@@ -13,7 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.util.JsonFormatter;
-import org.openplacereviews.osm.service.MergePlaceBot.MatchType;
+import org.openplacereviews.osm.util.MergeUtil;
 
 public class MergePlaceBotTest {
 
@@ -43,7 +43,7 @@ public class MergePlaceBotTest {
 			lst.add(places[i]);
 			System.out.println(places[i]);
 			System.out.println(places[i+1]);
-			assertTrue(bot.mergePlaces(EnumSet.allOf(MatchType.class), places[i + 1], lst, new ArrayList<>(), new ArrayList<>()) != null);
+			assertTrue(bot.mergePlaces(EnumSet.allOf(MergeUtil.MatchType.class), places[i + 1], lst, new ArrayList<>(), new ArrayList<>()) != null);
 		}
 	}
 
@@ -54,7 +54,7 @@ public class MergePlaceBotTest {
 			List<OpObject> edited = new ArrayList<>();
 			List<OpObject> lst = new ArrayList<>();
 			lst.add(places[i]);
-			bot.mergePlaces(EnumSet.allOf(MatchType.class), places[i + 1], lst,
+			bot.mergePlaces(EnumSet.allOf(MergeUtil.MatchType.class), places[i + 1], lst,
 					deleted, edited);
 
 			assertFalse(deleted.isEmpty());
@@ -66,7 +66,7 @@ public class MergePlaceBotTest {
 		for (int i = 0; i < placesNotMerge.length; i += 2) {
 			List<OpObject> lst = new ArrayList<>();
 			lst.add(places[i]);
-			assertFalse(bot.mergePlaces(EnumSet.allOf(MatchType.class), places[i + 1],
+			assertFalse(bot.mergePlaces(EnumSet.allOf(MergeUtil.MatchType.class), places[i + 1],
 					lst, new ArrayList<>(), new ArrayList<>()) == null);
 		}
 	}
