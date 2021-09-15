@@ -101,7 +101,10 @@ public class MergeUtil {
 		}
 		int currentGroupBeginIndex = 0;
 		for (int i = 1; i < list.size() - 1; i++) {
-			if (isDeleted(list, i) && !isDeleted(list, i - 1)) {
+			Point currentPoint = (Point) list.get(i).geometry();
+			if (isDeleted(list, i)
+					&& (!isDeleted(list, i - 1)
+					|| (isDeleted(list, i - 1) && getDistance(currentPoint.lat(), currentPoint.lon(), list.get(i - 1)) > 150))) {
 				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
 				currentGroupBeginIndex = i;
 			}
