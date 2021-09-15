@@ -438,6 +438,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 			return null;
 		}
 		Map<String, Object> main = null;
+		Collections.reverse(osmList);
 		for (Map<String, Object> m : osmList) {
 			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(PlaceOpObjectHelper.F_OSM_VALUE)) {
 				if (!m.containsKey(F_DELETED_OSM)) {
