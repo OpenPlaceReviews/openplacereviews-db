@@ -9,7 +9,6 @@ import org.openplacereviews.opendb.ops.OpObject;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.PublicDataManager;
 import org.openplacereviews.opendb.util.OUtils;
-import org.openplacereviews.osm.model.OsmMapUtils;
 
 import java.text.Collator;
 import java.util.*;
@@ -18,6 +17,7 @@ import static org.openplacereviews.api.BaseOprPlaceDataProvider.OPR_ID;
 import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.model.OsmMapUtils.getDistance;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 public class MergeUtil {
@@ -31,6 +31,7 @@ public class MergeUtil {
 	private static final String OLD_NAME = "old_name";
 	private static final String GEO = "geo";
 	private static final String TILE_ID = "tileid";
+	private static final int SIMILAR_PLACE_DISTANCE = 150;
 
 	public enum MatchType {
 		NAME_MATCH(true),
@@ -101,19 +102,17 @@ public class MergeUtil {
 		}
 		int currentGroupBeginIndex = 0;
 		for (int i = 1; i < list.size() - 1; i++) {
-			if (isDeleted(list, i) && !isDeleted(list, i - 1)) {
+			Point currentPoint = (Point) list.get(i).geometry();
+			Point prevPoint = (Point) list.get(i - 1).geometry();
+			if (isDeleted(list, i)
+					&& (!isDeleted(list, i - 1)
+					|| (isDeleted(list, i - 1) && getDistance(currentPoint.lat(), currentPoint.lon(), prevPoint.lat(), prevPoint.lon()) > SIMILAR_PLACE_DISTANCE))) {
 				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
 				currentGroupBeginIndex = i;
 			}
 		}
 		mergeGroups.add(list.subList(currentGroupBeginIndex, list.size()));
 		return mergeGroups;
-	}
-
-	public static double getDistance(double latCurrent, double lonCurrent, Feature feature) {
-		Point featurePoint = (Point) feature.geometry();
-		return OsmMapUtils.getDistance(latCurrent, lonCurrent,
-				featurePoint.lat(), featurePoint.lon());
 	}
 
 	public static boolean equalsNotEmptyStringValue(String s1, String s2) {

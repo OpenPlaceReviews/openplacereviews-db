@@ -4,6 +4,7 @@ import static org.openplacereviews.opendb.ops.OpObject.F_CHANGE;
 import static org.openplacereviews.osm.model.Entity.ATTR_ID;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.model.OsmMapUtils.getDistance;
 import static org.openplacereviews.osm.util.MergeUtil.*;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
@@ -23,7 +24,6 @@ import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.PublicDataManager;
 import org.openplacereviews.opendb.service.PublicDataManager.CacheHolder;
 import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
-import org.openplacereviews.osm.model.OsmMapUtils;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 
 import com.github.filosganga.geogson.model.Feature;
@@ -70,6 +70,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	
 	protected static final String COLOR_GREEN = "green";
 	protected static final String COLOR_RED = "red";
+	private static final int SIMILAR_PLACE_DISTANCE_FOR_DATA_PLACES = 150;
 
 	@Override
 	public OprMapCollectionApiResult getContent(MapCollectionParameters params) {
@@ -186,9 +187,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 							Point currentPoint = (Point) delF.geometry();
 							if (resDataReport != null && resDataReport.geo.features() != null) {
 								for (Feature feature : resDataReport.geo.features()) {
+									Point dataPoint = (Point) feature.geometry();
 									if (!feature.properties().containsKey(PLACE_DELETED)
 											&& !feature.properties().containsKey(PLACE_DELETED_OSM)
-											&& getDistance(currentPoint.lat(), currentPoint.lon(), feature) <= 150
+											&& getDistance(currentPoint.lat(), currentPoint.lon(), dataPoint.lat(), dataPoint.lon()) <= SIMILAR_PLACE_DISTANCE_FOR_DATA_PLACES
 											&& hasSimilarNameByFeatures(feature, delF)) {
 										addObject(fDataReport, getCurrentObject(feature, blocksManager), OBJ_EDITED, COLOR_GREEN);
 									}
@@ -367,7 +369,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		for (int i = 0; i < features.size(); i++) {
 			if (!groupFound) {
 				Point currentPoint = (Point) features.get(i).geometry();
-				if (OsmMapUtils.getDistance(currentPoint.lat(), currentPoint.lon(), mPoint.lat(), mPoint.lon()) < 150
+				if (getDistance(currentPoint.lat(), currentPoint.lon(), mPoint.lat(), mPoint.lon()) < 150
 						&& features.get(i).properties().containsKey(F_DELETED_PLACE)) {
 					groupFound = true;
 					start = i;
@@ -399,7 +401,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		while (it.hasNext()) {
 			Feature featureToFind = it.next();
 			Point pntToFind = (Point) featureToFind.geometry();
-			if (OsmMapUtils.getDistance(point.lat(), point.lon(), pntToFind.lat(), pntToFind.lon()) < 150) {
+			if (getDistance(point.lat(), point.lon(), pntToFind.lat(), pntToFind.lon()) < 150) {
 				merged.add(0, featureToFind);
 				it.remove();
 			}

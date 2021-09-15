@@ -315,26 +315,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     	return totalCnt;
     }
 
-	private List<List<Feature>> getMergeGroups(List<Feature> list) {
-		List<List<Feature>> mergeGroups = new ArrayList<>();
-		if (list == null) {
-			return mergeGroups;
-		}
-		int currentGroupBeginIndex = 0;
-		for (int i = 1; i < list.size() - 1; i++) {
-			if (isDeleted(list, i) && !isDeleted(list, i - 1)) {
-				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
-				currentGroupBeginIndex = i;
-			}
-		}
-		mergeGroups.add(list.subList(currentGroupBeginIndex, list.size()));
-		return mergeGroups;
-	}
-
-    private boolean isDeleted(List<Feature> list, int i) {
-        return list.get(i).properties().containsKey(F_DELETED_OSM);
-    }
-
     private int addOperations(List<List<String>> deleted, List<OpObject> edited, List<OpObject> closed) throws FailedVerificationException {
         int batch = 0;
         int cnt = 0;
