@@ -189,7 +189,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 									if (!feature.properties().containsKey(PLACE_DELETED)
 											&& !feature.properties().containsKey(PLACE_DELETED_OSM)
 											&& getDistance(currentPoint.lat(), currentPoint.lon(), feature) <= 150
-											&& hasSimilarNameByFeatures(feature, delF, blocksManager)) {
+											&& hasSimilarNameByFeatures(feature, delF)) {
 										addObject(fDataReport, getCurrentObject(feature, blocksManager), OBJ_EDITED, COLOR_GREEN);
 									}
 								}
