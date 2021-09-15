@@ -25,6 +25,7 @@ import org.openplacereviews.opendb.service.PublicDataManager;
 import org.openplacereviews.opendb.service.PublicDataManager.CacheHolder;
 import org.openplacereviews.opendb.service.PublicDataManager.PublicAPIEndpoint;
 import org.openplacereviews.osm.model.OsmMapUtils;
+import org.openplacereviews.osm.util.MergeUtil;
 import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 
 import com.github.filosganga.geogson.model.Feature;
@@ -158,13 +159,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			}
 		}
 
-		combineGeoJsonResults(date, filter, res, createdObjectsByTile, deletedObjectsByTile);
+		combineGeoJsonResults(date, filter, res, createdObjectsByTile, deletedObjectsByTile, placeIdsAdded);
 		LOGGER.info(String.format("Get history %s - %s finished.", date, nextDate));
 	}
 
 
 	private void combineGeoJsonResults(Date date, RequestFilter filter, OprMapCollectionApiResult res,
-			Map<String, List<Feature>> createdObjectsByTile, Map<String, List<Feature>> deletedObjectsByTile) {
+			Map<String, List<Feature>> createdObjectsByTile, Map<String, List<Feature>> deletedObjectsByTile, Set<String> placeIdsAdded) {
 		Period pd = Period.between(LocalDate.now(), date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
 		if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
 			Set<String> tiles = createdObjectsByTile.keySet();
@@ -181,27 +182,33 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					List<Feature> merged = new ArrayList<>();
 					Feature fdel = deletedPoints.poll();
 					Point pdel = (Point) fdel.geometry();
+					// add created points near deleted point
 					findNearestPointAndDelete(createdPoints, merged, pdel);
-					boolean noCreatedPoints = merged.size() == 0;
-					// group id could be set later
-					merged.add(0, fdel);
-					// find other deleted points within distance of 150m
-					findNearestPointAndDelete(deletedPoints, merged, pdel);
-					if (pd.getMonths() > 1 && noCreatedPoints) {
+					// add current objects in case they are missing (1 month later)
+					if (pd.getMonths() > 1) {
 						OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(fdel), dataManager);
 						if (resDataReport != null && resDataReport.geo.features() != null) {
 							for (Feature feature : resDataReport.geo.features()) {
-								if (!feature.properties().containsKey(PLACE_DELETED)
+								String fdid = generateStringId(MergeUtil.getPlaceId(feature));
+								if (!placeIdsAdded.contains(fdid)
+										&& !feature.properties().containsKey(PLACE_DELETED)
 										&& !feature.properties().containsKey(PLACE_DELETED_OSM)
 										&& getDistance(pdel.lat(), pdel.lon(), feature) <= 150
 										&& hasSimilarNameByFeatures(feature, fdel)) {
 									OpObject obj = getCurrentObject(feature, blocksManager);
-									merged.add(addFeature(obj, OBJ_EDITED, COLOR_GREEN));
-									res.alreadyReviewedPlaceIds.remove(generateStringId(obj));
+									merged.add(addFeature(obj, OBJ_EDITED, COLOR_GREEN));									
+									placeIdsAdded.add(fdid);
 								}
 							}
 						}
+						
 					}
+					
+					// group id could be set later
+					merged.add(0, fdel);
+					// find other deleted points within distance of 150m
+					findNearestPointAndDelete(deletedPoints, merged, pdel);
+					
 					
 					// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
 					// probably later we could have new list empty

@@ -225,7 +225,7 @@ public class MergeUtil {
 		return list.get(i).properties().containsKey(F_DELETED_OSM);
 	}
 
-	private static List<String> getPlaceId(Feature feature) {
+	public static List<String> getPlaceId(Feature feature) {
 		return new ArrayList<>(Arrays.asList(getOprGenId(feature).split(COMMA)));
 	}
 
