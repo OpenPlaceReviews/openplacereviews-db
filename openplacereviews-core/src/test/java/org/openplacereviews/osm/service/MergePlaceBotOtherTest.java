@@ -79,7 +79,7 @@ public class MergePlaceBotOtherTest {
 				obj.setFieldByExpr("source.osm", Collections.singletonList(osm));
 				return obj;
 			}
-		}).when(bot).getCurrentObject(any());
+		}).when(bot).getCurrentObjectInBot(any());
         bot.TRACE = false;
         
         MergeInfo info = new MergeInfo();
