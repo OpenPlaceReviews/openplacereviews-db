@@ -30,6 +30,7 @@ import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.LatLon;
 import org.openplacereviews.osm.model.OsmMapUtils;
 import org.openplacereviews.osm.util.MergeUtil;
+import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.github.filosganga.geogson.model.Feature;
@@ -312,6 +313,26 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     @Override
     public int total() {
     	return totalCnt;
+    }
+
+	private List<List<Feature>> getMergeGroups(List<Feature> list) {
+		List<List<Feature>> mergeGroups = new ArrayList<>();
+		if (list == null) {
+			return mergeGroups;
+		}
+		int currentGroupBeginIndex = 0;
+		for (int i = 1; i < list.size() - 1; i++) {
+			if (isDeleted(list, i) && !isDeleted(list, i - 1)) {
+				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
+				currentGroupBeginIndex = i;
+			}
+		}
+		mergeGroups.add(list.subList(currentGroupBeginIndex, list.size()));
+		return mergeGroups;
+	}
+
+    private boolean isDeleted(List<Feature> list, int i) {
+        return list.get(i).properties().containsKey(F_DELETED_OSM);
     }
 
     private int addOperations(List<List<String>> deleted, List<OpObject> edited, List<OpObject> closed) throws FailedVerificationException {
