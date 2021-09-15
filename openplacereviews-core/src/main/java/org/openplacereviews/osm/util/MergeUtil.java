@@ -16,6 +16,8 @@ import java.util.*;
 
 import static org.openplacereviews.api.BaseOprPlaceDataProvider.OPR_ID;
 import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
+import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
+import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 public class MergeUtil {
@@ -192,6 +194,29 @@ public class MergeUtil {
 
 	public static String getTileIdByFeature(Feature feature) {
 		return feature.properties().get(OPR_ID).toString().replace("\"", "").split(",")[0];
+	}
+
+	public static Map<String, Object> getMainOsmFromList(OpObject o) {
+		if (o == null) {
+			return null;
+		}
+		List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
+		if (osmList == null) {
+			return null;
+		}
+		Map<String, Object> main = null;
+		Collections.reverse(osmList);
+		for (Map<String, Object> m : osmList) {
+			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(PlaceOpObjectHelper.F_OSM_VALUE)) {
+				if (!m.containsKey(F_DELETED_OSM)) {
+					return m;
+				}
+				if (main == null) {
+					main = m;
+				}
+			}
+		}
+		return main;
 	}
 
 	private static boolean isDeleted(List<Feature> list, int i) {

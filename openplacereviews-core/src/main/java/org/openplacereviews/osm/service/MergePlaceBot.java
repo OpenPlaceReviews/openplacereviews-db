@@ -428,30 +428,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		}
 		return null;
 	}
-	
-	private Map<String, Object> getMainOsmFromList(OpObject o) {
-		if (o == null) {
-			return null;
-		}
-		List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
-		if (osmList == null) {
-			return null;
-		}
-		Map<String, Object> main = null;
-		Collections.reverse(osmList);
-		for (Map<String, Object> m : osmList) {
-			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(PlaceOpObjectHelper.F_OSM_VALUE)) {
-				if (!m.containsKey(F_DELETED_OSM)) {
-					return m;
-				}
-				if (main == null) {
-					main = m;
-				}
-			}
-		}
-		return main;
-	}
-
 
     protected List<String> getPlaceId(Feature feature) {
         return new ArrayList<>(Arrays.asList(getOprGenId(feature).split(COMMA)));
