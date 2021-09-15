@@ -186,9 +186,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 							Point currentPoint = (Point) delF.geometry();
 							if (resDataReport != null && resDataReport.geo.features() != null) {
 								for (Feature feature : resDataReport.geo.features()) {
+									Point dataPoint = (Point) delF.geometry();
 									if (!feature.properties().containsKey(PLACE_DELETED)
 											&& !feature.properties().containsKey(PLACE_DELETED_OSM)
-											&& getDistance(currentPoint.lat(), currentPoint.lon(), feature) <= 150
+											&& getDistance(currentPoint.lat(), currentPoint.lon(), dataPoint.lat(), dataPoint.lon()) <= 150
 											&& hasSimilarNameByFeatures(feature, delF)) {
 										addObject(fDataReport, getCurrentObject(feature, blocksManager), OBJ_EDITED, COLOR_GREEN);
 									}

@@ -31,6 +31,7 @@ public class MergeUtil {
 	private static final String OLD_NAME = "old_name";
 	private static final String GEO = "geo";
 	private static final String TILE_ID = "tileid";
+	private static final int SIMILAR_PLACE_DISTANCE = 150;
 
 	public enum MatchType {
 		NAME_MATCH(true),
@@ -102,9 +103,10 @@ public class MergeUtil {
 		int currentGroupBeginIndex = 0;
 		for (int i = 1; i < list.size() - 1; i++) {
 			Point currentPoint = (Point) list.get(i).geometry();
+			Point prevPoint = (Point) list.get(i).geometry();
 			if (isDeleted(list, i)
 					&& (!isDeleted(list, i - 1)
-					|| (isDeleted(list, i - 1) && getDistance(currentPoint.lat(), currentPoint.lon(), list.get(i - 1)) > 150))) {
+					|| (isDeleted(list, i - 1) && getDistance(currentPoint.lat(), currentPoint.lon(), prevPoint.lat(), prevPoint.lon()) > SIMILAR_PLACE_DISTANCE))) {
 				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
 				currentGroupBeginIndex = i;
 			}
@@ -113,10 +115,8 @@ public class MergeUtil {
 		return mergeGroups;
 	}
 
-	public static double getDistance(double latCurrent, double lonCurrent, Feature feature) {
-		Point featurePoint = (Point) feature.geometry();
-		return OsmMapUtils.getDistance(latCurrent, lonCurrent,
-				featurePoint.lat(), featurePoint.lon());
+	public static double getDistance(double lat1, double lon1, double lat2, double lon2) {
+		return OsmMapUtils.getDistance(lat1, lon1, lat2, lon2);
 	}
 
 	public static boolean equalsNotEmptyStringValue(String s1, String s2) {
