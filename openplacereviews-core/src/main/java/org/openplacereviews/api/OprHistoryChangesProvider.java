@@ -9,6 +9,7 @@ import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.ZoneId;
 import java.util.*;
 
@@ -157,60 +158,14 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			}
 		}
 
-		combineGeoJsonResults(filter, res, createdObjectsByTile, deletedObjectsByTile);
-		addDataReportPlaces(date, res);
+		combineGeoJsonResults(date, filter, res, createdObjectsByTile, deletedObjectsByTile);
 		LOGGER.info(String.format("Get history %s - %s finished.", date, nextDate));
 	}
 
-	private void addDataReportPlaces(Date date, OprMapCollectionApiResult res) {
-		if (date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().getMonthValue() <= LocalDate.now().getMonthValue() - 1) {
-			List<Feature> features = res.geo.features();
-			Map<String, List<Feature>> fDataReport = new TreeMap<>();
-			List<List<Feature>> mergeGroups = getMergeGroups(features);
-			for (List<Feature> mergeGroup : mergeGroups) {
-				for (Feature f : mergeGroup) {
-					List<Feature> closedPlaces = new ArrayList<>();
-					List<Feature> groupPlacesToMerge = new ArrayList<>();
-					if (res.alreadyReviewedPlaceIds.contains(getOprGenId(f))) {
-						continue;
-					}
-					if (f.properties().containsKey(F_DELETED_OSM)) {
-						closedPlaces.add(f);
-					} else {
-						groupPlacesToMerge.add(f);
-					}
 
-					if (groupPlacesToMerge.isEmpty()) {
-						for (Feature delF : closedPlaces) {
-							OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(delF), dataManager);
-							Point currentPoint = (Point) delF.geometry();
-							if (resDataReport != null && resDataReport.geo.features() != null) {
-								for (Feature feature : resDataReport.geo.features()) {
-									if (!feature.properties().containsKey(PLACE_DELETED)
-											&& !feature.properties().containsKey(PLACE_DELETED_OSM)
-											&& getDistance(currentPoint.lat(), currentPoint.lon(), feature) <= 150
-											&& hasSimilarNameByFeatures(feature, delF)) {
-										addObject(fDataReport, getCurrentObject(feature, blocksManager), OBJ_EDITED, COLOR_GREEN);
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-			if (!fDataReport.isEmpty()) {
-				Set<String> tiles = fDataReport.keySet();
-				for (String tileId : tiles) {
-					List<Feature> fList = fDataReport.get(tileId);
-					addMergedPlaces(res.geo.features(), fList);
-				}
-			}
-		}
-	}
-
-	private void combineGeoJsonResults(RequestFilter filter, OprMapCollectionApiResult res,
+	private void combineGeoJsonResults(Date date, RequestFilter filter, OprMapCollectionApiResult res,
 			Map<String, List<Feature>> createdObjectsByTile, Map<String, List<Feature>> deletedObjectsByTile) {
+		Period pd = Period.between(LocalDate.now(), date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
 		if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
 			Set<String> tiles = createdObjectsByTile.keySet();
 			for (String tileId : tiles) {
@@ -231,9 +186,26 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					merged.add(0, fdel);
 					// find other deleted points within distance of 150m
 					findNearestPointAndDelete(deletedPoints, merged, pdel);
+					if (pd.getMonths() > 1 && createdPoints.size() == 0) {
+						OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(fdel), dataManager);
+						if (resDataReport != null && resDataReport.geo.features() != null) {
+							for (Feature feature : resDataReport.geo.features()) {
+								if (!feature.properties().containsKey(PLACE_DELETED)
+										&& !feature.properties().containsKey(PLACE_DELETED_OSM)
+										&& getDistance(pdel.lat(), pdel.lon(), feature) <= 150
+										&& hasSimilarNameByFeatures(feature, fdel)) {
+									Feature f = addFeature(getCurrentObject(feature, blocksManager), OBJ_EDITED,
+											COLOR_GREEN);
+									createdPoints.add(f);
+								}
+							}
+						}
+					}
+					
 					// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
 					// probably later we could have new list empty
 					addMergedPlaces(res.geo.features(), merged);
+					
 				}
 			}
 		} else if (filter == RequestFilter.REVIEW_IMAGES) {
@@ -408,7 +380,15 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	
 	private void addObject(Map<String, List<Feature>> objects, OpObject opObject,
 			String status, String color) {
+		Feature f = addFeature(opObject, status, color);
+		if (f == null) {
+			add(objects, opObject.getId().get(0), f);
+		}
+	}
+
+	private Feature addFeature(OpObject opObject, String status, String color) {
 		Map<String, Object> osm = getMainOsmFromList(opObject);
+		Feature f  = null;
 		if (osm != null) {
 			ImmutableMap.Builder<String, JsonElement> bld = ImmutableMap.builder();
 			bld.put(TITLE, new JsonPrimitive(status + " " + getTitle(osm)));
@@ -424,9 +404,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			}
 			generateFieldsFromOsmSource(osm, bld);
 			bld.put(OPR_ID, new JsonPrimitive(generateStringId(opObject)));
-			Feature f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
-			add(objects, opObject.getId().get(0), f);
+			f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
+			
 		}
+		return f;
 	}
 
 

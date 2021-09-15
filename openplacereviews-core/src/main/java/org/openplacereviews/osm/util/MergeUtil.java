@@ -43,43 +43,45 @@ public class MergeUtil {
 		MatchType(boolean allow2PlacesMerge) {
 			this.allow2PlacesMerge = allow2PlacesMerge;
 		}
-	}
-
-	public static boolean match(MatchType mt, Map<String, String> oldOsmTags, Map<String, String> newOsmTags) {
-		String oldName = oldOsmTags.get(PLACE_NAME);
-		String newName = newOsmTags.get(PLACE_NAME);
-		if (mt == MatchType.OTHER_TAGS_MATCH) {
-			if (equalsNotEmptyStringValue(oldOsmTags.get(WIKIDATA), newOsmTags.get(WIKIDATA))) {
-				return true;
-			}
-			if (equalsNotEmptyStringValue(oldOsmTags.get(WEBSITE), newOsmTags.get(WEBSITE))) {
-				return true;
-			}
-		} else if (mt == MatchType.NAME_MATCH) {
-			return checkNames(oldName, newName);
-		} else if (mt == MatchType.OTHER_NAME_MATCH) {
-			List<String> otherNames = getOtherPlaceName(newOsmTags);
-			List<String> otherOldNames = getOtherPlaceName(oldOsmTags);
-			for (String name : otherNames) {
-				for (String name2 : otherOldNames) {
-					if (checkNames(name2, name)) {
-						return true;
+		
+		public boolean match(Map<String, String> oldOsmTags, Map<String, String> newOsmTags) {
+			String oldName = oldOsmTags.get(PLACE_NAME);
+			String newName = newOsmTags.get(PLACE_NAME);
+			if (this == MatchType.OTHER_TAGS_MATCH) {
+				if (equalsNotEmptyStringValue(oldOsmTags.get(WIKIDATA), newOsmTags.get(WIKIDATA))) {
+					return true;
+				}
+				if (equalsNotEmptyStringValue(oldOsmTags.get(WEBSITE), newOsmTags.get(WEBSITE))) {
+					return true;
+				}
+			} else if (this == MatchType.NAME_MATCH) {
+				return checkNames(oldName, newName);
+			} else if (this == MatchType.OTHER_NAME_MATCH) {
+				List<String> otherNames = getOtherPlaceName(newOsmTags);
+				List<String> otherOldNames = getOtherPlaceName(oldOsmTags);
+				for (String name : otherNames) {
+					for (String name2 : otherOldNames) {
+						if (checkNames(name2, name)) {
+							return true;
+						}
 					}
 				}
+			} else if (this == MatchType.EMPTY_NAME_MATCH) {
+				// all names null
+				if (OUtils.isEmpty(oldName) && OUtils.isEmpty(newName)) {
+					return true;
+				}
+				// if name appeared
+				if (OUtils.isEmpty(oldName)) {
+					return true;
+				}
 			}
-		} else if (mt == MatchType.EMPTY_NAME_MATCH) {
-			// all names null
-			if (OUtils.isEmpty(oldName) && OUtils.isEmpty(newName)) {
-				return true;
-			}
-			// if name appeared
-			if (OUtils.isEmpty(oldName)) {
-				return true;
-			}
+			return false;
 		}
-		return false;
+
 	}
 
+	
 	public static OprMapCollectionApiResult getDataReport(String tileId, PublicDataManager dataManager) {
 		PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint = dataManager.getEndpoint(GEO);
 		if (apiEndpoint != null) {
@@ -133,6 +135,7 @@ public class MergeUtil {
 		return otherNames;
 	}
 
+	@SuppressWarnings("unchecked")
 	public static boolean hasSimilarNameByFeatures(Feature feature, Feature currentFeature) {
 		Map<String, String> objByTileTags = new HashMap<>();
 		Map<String, String> currentObjTags = new HashMap<>();
@@ -146,7 +149,7 @@ public class MergeUtil {
 		}
 
 		for (MatchType mt : EnumSet.allOf(MatchType.class)) {
-			if (match(mt, currentObjTags, objByTileTags)) {
+			if (mt.match(currentObjTags, objByTileTags)) {
 				return true;
 			}
 		}

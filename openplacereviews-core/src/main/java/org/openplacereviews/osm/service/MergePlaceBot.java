@@ -30,7 +30,6 @@ import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.LatLon;
 import org.openplacereviews.osm.model.OsmMapUtils;
 import org.openplacereviews.osm.util.MergeUtil;
-import org.openplacereviews.osm.util.PlaceOpObjectHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.github.filosganga.geogson.model.Feature;
@@ -256,7 +255,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		Map<String, String> placeToMergeTags = getMainOsmTags(objToMerge);
 		if (oldOsmTags != null && placeToMergeTags != null) {
 			for (MatchType mt : EnumSet.allOf(MatchType.class)) {
-				if (match(mt, oldOsmTags, placeToMergeTags)) {
+				if (mt.match(oldOsmTags, placeToMergeTags)) {
 					return true;
 				}
 			}
@@ -315,26 +314,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     	return totalCnt;
     }
 
-	private List<List<Feature>> getMergeGroups(List<Feature> list) {
-		List<List<Feature>> mergeGroups = new ArrayList<>();
-		if (list == null) {
-			return mergeGroups;
-		}
-		int currentGroupBeginIndex = 0;
-		for (int i = 1; i < list.size() - 1; i++) {
-			if (isDeleted(list, i) && !isDeleted(list, i - 1)) {
-				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
-				currentGroupBeginIndex = i;
-			}
-		}
-		mergeGroups.add(list.subList(currentGroupBeginIndex, list.size()));
-		return mergeGroups;
-	}
-
-    private boolean isDeleted(List<Feature> list, int i) {
-        return list.get(i).properties().containsKey(F_DELETED_OSM);
-    }
-
     private int addOperations(List<List<String>> deleted, List<OpObject> edited, List<OpObject> closed) throws FailedVerificationException {
         int batch = 0;
         int cnt = 0;
@@ -385,7 +364,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		for (MergeUtil.MatchType mt : matchTypes) {
 			int matched = -1;
 			for (int i = 0; i < placesToMerge.size(); i++) {
-				if (match(mt, oldOsmTags, placesToMergeTags.get(i))) {
+				if (mt.match(oldOsmTags, placesToMergeTags.get(i))) {
 					if (matched >= 0) {
 						// 2 places match
 						if (mt.allow2PlacesMerge) {
