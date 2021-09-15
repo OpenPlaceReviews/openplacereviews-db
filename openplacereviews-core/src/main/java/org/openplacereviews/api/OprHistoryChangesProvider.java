@@ -182,11 +182,12 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					Feature fdel = deletedPoints.poll();
 					Point pdel = (Point) fdel.geometry();
 					findNearestPointAndDelete(createdPoints, merged, pdel);
+					boolean noCreatedPoints = merged.size() == 0;
 					// group id could be set later
 					merged.add(0, fdel);
 					// find other deleted points within distance of 150m
 					findNearestPointAndDelete(deletedPoints, merged, pdel);
-					if (pd.getMonths() > 1 && createdPoints.size() == 0) {
+					if (pd.getMonths() > 1 && noCreatedPoints) {
 						OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(fdel), dataManager);
 						if (resDataReport != null && resDataReport.geo.features() != null) {
 							for (Feature feature : resDataReport.geo.features()) {
@@ -196,7 +197,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 										&& hasSimilarNameByFeatures(feature, fdel)) {
 									Feature f = addFeature(getCurrentObject(feature, blocksManager), OBJ_EDITED,
 											COLOR_GREEN);
-									createdPoints.add(f);
+									merged.add(f);
 								}
 							}
 						}
@@ -381,7 +382,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	private void addObject(Map<String, List<Feature>> objects, OpObject opObject,
 			String status, String color) {
 		Feature f = addFeature(opObject, status, color);
-		if (f == null) {
+		if (f != null) {
 			add(objects, opObject.getId().get(0), f);
 		}
 	}
@@ -405,7 +406,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			generateFieldsFromOsmSource(osm, bld);
 			bld.put(OPR_ID, new JsonPrimitive(generateStringId(opObject)));
 			f = new Feature(generatePoint(osm), bld.build(), Optional.absent());
-			
 		}
 		return f;
 	}
