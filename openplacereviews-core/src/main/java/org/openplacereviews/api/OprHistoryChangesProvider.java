@@ -184,33 +184,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					Feature fdel = deletedPoints.poll();
 					Point pdel = (Point) fdel.geometry();
 					// add created points near deleted point
-					findNearestPointAndDelete(createdPoints, merged, pdel);
+					findNearestPointAndDelete("created", createdPoints, merged, pdel, pd, placeIdsAdded);
 					// add current objects in case they are missing (1 month later)
-					if (Math.abs(pd.getMonths()) > 1) {
-						OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(fdel), dataManager);
-						if (resDataReport != null && resDataReport.geo.features() != null) {
-							for (Feature feature : resDataReport.geo.features()) {
-								String fdid = generateStringId(MergeUtil.getPlaceId(feature));
-								if (!placeIdsAdded.contains(fdid)
-										&& !feature.properties().containsKey(PLACE_DELETED)
-										&& !feature.properties().containsKey(PLACE_DELETED_OSM)
-										&& getDistance(pdel.lat(), pdel.lon(), feature) <= 150
-										&& hasSimilarNameByFeatures(feature, fdel)) {
-									OpObject obj = getCurrentObject(feature, blocksManager);
-									merged.add(addFeature(obj, OBJ_EDITED, COLOR_GREEN));									
-									placeIdsAdded.add(fdid);
-								}
-							}
-						}
-						
-					}
-					
+					addDataPlaces(pdel, fdel, pd, placeIdsAdded, merged);
 					// group id could be set later
 					merged.add(0, fdel);
 					// find other deleted points within distance of 150m
-					findNearestPointAndDelete(deletedPoints, merged, pdel);
-					
-					
+					findNearestPointAndDelete("deleted", deletedPoints, merged, pdel, pd, placeIdsAdded);
 					// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
 					// probably later we could have new list empty
 					addMergedPlaces(res.geo.features(), merged);
@@ -222,6 +202,26 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			for (String tileId : tiles) {
 				List<Feature> cList = createdObjectsByTile.get(tileId);
 				res.geo.features().addAll(cList);
+			}
+		}
+	}
+
+	private void addDataPlaces(Point pdel, Feature fdel, Period pd, Set<String> placeIdsAdded, List<Feature> merged) {
+		if (Math.abs(pd.getMonths()) > 1) {
+			OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(fdel), dataManager);
+			if (resDataReport != null && resDataReport.geo.features() != null) {
+				for (Feature feature : resDataReport.geo.features()) {
+					String fdid = generateStringId(MergeUtil.getPlaceId(feature));
+					if (!placeIdsAdded.contains(fdid)
+							&& !feature.properties().containsKey(PLACE_DELETED)
+							&& !feature.properties().containsKey(PLACE_DELETED_OSM)
+							&& getDistance(pdel.lat(), pdel.lon(), feature) <= 150
+							&& hasSimilarNameByFeatures(feature, fdel)) {
+						OpObject obj = getCurrentObject(feature, blocksManager);
+						merged.add(addFeature(obj, OBJ_EDITED, COLOR_GREEN));
+						placeIdsAdded.add(fdid);
+					}
+				}
 			}
 		}
 	}
@@ -375,13 +375,16 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 	}
 
-	private void findNearestPointAndDelete(LinkedList<Feature> list, List<Feature> merged, Point point) {
+	private void findNearestPointAndDelete(String type, LinkedList<Feature> list, List<Feature> merged, Point point, Period pd, Set<String> placeIdsAdded) {
 		Iterator<Feature> it = list.iterator();
 		while (it.hasNext()) {
 			Feature featureToFind = it.next();
 			Point pntToFind = (Point) featureToFind.geometry();
 			if (OsmMapUtils.getDistance(point.lat(), point.lon(), pntToFind.lat(), pntToFind.lon()) < 150) {
 				merged.add(0, featureToFind);
+				if (type.equals("deleted")) {
+					addDataPlaces((Point) featureToFind.geometry(), featureToFind, pd, placeIdsAdded, merged);
+				}
 				it.remove();
 			}
 		}
