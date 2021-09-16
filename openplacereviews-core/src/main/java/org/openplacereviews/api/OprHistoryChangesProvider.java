@@ -70,8 +70,9 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	public static final String OBJ_EDITED = "Edited";
 	public static final String OBJ_REMOVED = "Removed";
 	
-	protected static final String COLOR_GREEN = "green";
+	protected static final String COLOR_BlUE = "blue";
 	protected static final String COLOR_RED = "red";
+	protected static final String COLOR_GREEN = "green";
 
 	@Override
 	public OprMapCollectionApiResult getContent(MapCollectionParameters params) {
@@ -185,7 +186,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					// add created points near deleted point
 					findNearestPointAndDelete(createdPoints, merged, pdel);
 					// add current objects in case they are missing (1 month later)
-					if (pd.getMonths() > 1) {
+					if (Math.abs(pd.getMonths()) > 1 && !merged.isEmpty()) {
 						OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(fdel), dataManager);
 						if (resDataReport != null && resDataReport.geo.features() != null) {
 							for (Feature feature : resDataReport.geo.features()) {
@@ -233,7 +234,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		for (OpObject opObject : opOperation.getCreated()) {
 			if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
 				// add any place as a potential merge (the data could be outdated and will be checked later)
-				addObject(createdObjects, opObject, OBJ_CREATED, COLOR_GREEN);
+				addObject(createdObjects, opObject, OBJ_CREATED, COLOR_BlUE);
 			}
 		}
 		for (List<String> opObject : opOperation.getDeleted()) {
@@ -258,7 +259,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 						boolean newObject = placeIdsAdded.add(generateStringId(opObject.getId()));
 						if (nObj != null && newObject) {
-							addObject(createdObjects, nObj, OBJ_CREATED, COLOR_GREEN);
+							addObject(createdObjects, nObj, OBJ_CREATED, COLOR_BlUE);
 						}
 						break changeKeys;
 					}	
