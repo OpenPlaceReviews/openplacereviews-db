@@ -74,6 +74,9 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	protected static final String COLOR_RED = "red";
 	protected static final String COLOR_GREEN = "green";
 
+	protected static final String CREATED_POINTS = "created";
+	protected static final String DELETED_POINTS = "deleted";
+
 	@Override
 	public OprMapCollectionApiResult getContent(MapCollectionParameters params) {
 		OprMapCollectionApiResult fc = new OprMapCollectionApiResult();
@@ -184,13 +187,13 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					Feature fdel = deletedPoints.poll();
 					Point pdel = (Point) fdel.geometry();
 					// add created points near deleted point
-					findNearestPointAndDelete("created", createdPoints, merged, pdel, pd, placeIdsAdded);
+					findNearestPointAndDelete(CREATED_POINTS, createdPoints, merged, pdel, pd, placeIdsAdded);
 					// add current objects in case they are missing (1 month later)
 					addDataPlaces(pdel, fdel, pd, placeIdsAdded, merged);
 					// group id could be set later
 					merged.add(0, fdel);
 					// find other deleted points within distance of 150m
-					findNearestPointAndDelete("deleted", deletedPoints, merged, pdel, pd, placeIdsAdded);
+					findNearestPointAndDelete(DELETED_POINTS, deletedPoints, merged, pdel, pd, placeIdsAdded);
 					// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
 					// probably later we could have new list empty
 					addMergedPlaces(res.geo.features(), merged);
@@ -382,7 +385,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			Point pntToFind = (Point) featureToFind.geometry();
 			if (OsmMapUtils.getDistance(point.lat(), point.lon(), pntToFind.lat(), pntToFind.lon()) < 150) {
 				merged.add(0, featureToFind);
-				if (type.equals("deleted")) {
+				if (type.equals(DELETED_POINTS)) {
 					addDataPlaces((Point) featureToFind.geometry(), featureToFind, pd, placeIdsAdded, merged);
 				}
 				it.remove();
