@@ -186,7 +186,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					// add created points near deleted point
 					findNearestPointAndDelete(createdPoints, merged, pdel);
 					// add current objects in case they are missing (1 month later)
-					if (Math.abs(pd.getMonths()) > 1 && !merged.isEmpty()) {
+					if (Math.abs(pd.getMonths()) > 1 && merged.isEmpty()) {
 						OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(fdel), dataManager);
 						if (resDataReport != null && resDataReport.geo.features() != null) {
 							for (Feature feature : resDataReport.geo.features()) {
