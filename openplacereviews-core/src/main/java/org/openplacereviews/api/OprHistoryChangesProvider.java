@@ -185,32 +185,17 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					Point pdel = (Point) fdel.geometry();
 					// add created points near deleted point
 					findNearestPointAndDelete(createdPoints, merged, pdel);
-					// add current objects in case they are missing (1 month later)
-					if (Math.abs(pd.getMonths()) > 1) {
-						OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(fdel), dataManager);
-						if (resDataReport != null && resDataReport.geo.features() != null) {
-							for (Feature feature : resDataReport.geo.features()) {
-								String fdid = generateStringId(MergeUtil.getPlaceId(feature));
-								if (!placeIdsAdded.contains(fdid)
-										&& !feature.properties().containsKey(PLACE_DELETED)
-										&& !feature.properties().containsKey(PLACE_DELETED_OSM)
-										&& getDistance(pdel.lat(), pdel.lon(), feature) <= 150
-										&& hasSimilarNameByFeatures(feature, fdel)) {
-									OpObject obj = getCurrentObject(feature, blocksManager);
-									merged.add(addFeature(obj, OBJ_EDITED, COLOR_GREEN));									
-									placeIdsAdded.add(fdid);
-								}
-							}
-						}
-						
-					}
-					
+					int addedPoints = merged.size();
 					// group id could be set later
 					merged.add(0, fdel);
 					// find other deleted points within distance of 150m
 					findNearestPointAndDelete(deletedPoints, merged, pdel);
 					
-					
+					// add current objects in case they are missing (1 month later)
+					if (Math.abs(pd.getMonths()) > 1) {
+						addCurrentDataObjects(placeIdsAdded, merged, merged.size() - addedPoints);
+						
+					}
 					// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
 					// probably later we could have new list empty
 					addMergedPlaces(res.geo.features(), merged);
@@ -222,6 +207,30 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			for (String tileId : tiles) {
 				List<Feature> cList = createdObjectsByTile.get(tileId);
 				res.geo.features().addAll(cList);
+			}
+		}
+	}
+
+
+	private void addCurrentDataObjects(Set<String> placeIdsAdded, List<Feature> merged, int sz) {
+		OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(merged.get(0)), dataManager);
+		if (resDataReport != null && resDataReport.geo.features() != null) {
+			// int sz = merged.size();
+			for(int i = 0; i < sz ; i++) {
+				Feature fdel = merged.get(0);
+				Point pdel = (Point) fdel.geometry();
+				for (Feature feature : resDataReport.geo.features()) {
+					String fdid = generateStringId(MergeUtil.getPlaceId(feature));
+					if (!placeIdsAdded.contains(fdid)
+							&& !feature.properties().containsKey(PLACE_DELETED)
+							&& !feature.properties().containsKey(PLACE_DELETED_OSM)
+							&& getDistance(pdel.lat(), pdel.lon(), feature) <= 150
+							&& hasSimilarNameByFeatures(feature, fdel)) {
+						OpObject obj = getCurrentObject(feature, blocksManager);
+						merged.add(addFeature(obj, OBJ_EDITED, COLOR_GREEN));
+						placeIdsAdded.add(fdid);
+					}
+				}
 			}
 		}
 	}
