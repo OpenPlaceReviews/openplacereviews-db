@@ -346,6 +346,15 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 	private void addMergedPlaces(List<Feature> features, List<Feature> newMergedGroup) {
 		Point mPoint = (Point) newMergedGroup.get(0).geometry();
+		List<Feature> deletedFeatures = new ArrayList<>();
+		List<Feature> createdFeatures = new ArrayList<>();
+		for (Feature mf : newMergedGroup) {
+			if (mf.properties().containsKey(F_DELETED_PLACE)) {
+				deletedFeatures.add(mf);
+			} else {
+				createdFeatures.add(mf);
+			}
+		}
 		int start = -1;
 		boolean groupFound = false;
 		for (int i = 0; i < features.size(); i++) {
@@ -358,15 +367,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				}
 			} else {
 				if (!features.get(i).properties().containsKey(F_DELETED_PLACE)) {
-					List<Feature> deletedFeatures = new ArrayList<>();
-					List<Feature> createdFeatures = new ArrayList<>();
-					for (Feature mf : newMergedGroup) {
-						if (mf.properties().containsKey(F_DELETED_PLACE)) {
-							deletedFeatures.add(mf);
-						} else {
-							createdFeatures.add(mf);
-						}
-					}
 					features.addAll(start, deletedFeatures);
 					features.addAll(i + deletedFeatures.size(), createdFeatures);
 					break;
@@ -374,7 +374,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			}
 		}
 		if (!groupFound) {
-			features.addAll(newMergedGroup);
+			features.addAll(deletedFeatures);
+			features.addAll(createdFeatures);
 		}
 	}
 
