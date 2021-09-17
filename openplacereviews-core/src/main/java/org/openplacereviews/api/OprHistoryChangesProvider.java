@@ -213,10 +213,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 
 	private void addCurrentDataObjects(Set<String> placeIdsAdded, List<Feature> merged, int sz) {
-			// int sz = merged.size();
-			for(int i = 0; i < sz ; i++) {
-				OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(merged.get(i)), dataManager);
-				if (resDataReport != null && resDataReport.geo.features() != null) {
+		// int sz = merged.size();
+		for (int i = 0; i < sz; i++) {
+			OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(merged.get(i)), dataManager);
+			if (resDataReport != null && resDataReport.geo.features() != null) {
 				Feature fdel = merged.get(i);
 				Point pdel = (Point) fdel.geometry();
 				for (Feature feature : resDataReport.geo.features()) {
