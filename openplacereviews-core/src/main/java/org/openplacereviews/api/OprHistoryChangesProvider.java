@@ -227,7 +227,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 							&& getDistance(pdel.lat(), pdel.lon(), feature) <= 150
 							&& hasSimilarNameByFeatures(feature, fdel)) {
 						OpObject obj = getCurrentObject(feature, blocksManager);
-						merged.add(addFeature(obj, OBJ_EDITED, COLOR_GREEN));
+						Feature newF = addFeature(obj, OBJ_EDITED, COLOR_GREEN);
+						if(newF != null) {
+							merged.add(newF);
+						}
 						placeIdsAdded.add(fdid);
 					}
 				}
