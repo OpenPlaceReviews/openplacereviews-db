@@ -216,8 +216,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(merged.get(0)), dataManager);
 		if (resDataReport != null && resDataReport.geo.features() != null) {
 			// int sz = merged.size();
-			for(int i = 0; i < sz ; i++) {
-				Feature fdel = merged.get(0);
+			for(int i = 0; i < sz; i++) {
+				Feature fdel = merged.get(i);
 				Point pdel = (Point) fdel.geometry();
 				for (Feature feature : resDataReport.geo.features()) {
 					String fdid = generateStringId(MergeUtil.getPlaceId(feature));
