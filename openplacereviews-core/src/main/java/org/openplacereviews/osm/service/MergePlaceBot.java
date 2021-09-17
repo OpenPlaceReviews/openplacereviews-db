@@ -299,7 +299,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 	private LatLon getLatLon(OpObject o) {
 		Map<String, Object> mp = getMainOsmFromList(o);
 		if(mp != null && mp.containsKey(ATTR_LATITUDE) && mp.containsKey(ATTR_LONGITUDE)) {
-			return new LatLon((double) mp.get(ATTR_LATITUDE), (double) mp.get(ATTR_LONGITUDE));
+			return new LatLon(((Number) mp.get(ATTR_LATITUDE)).doubleValue(), ((Number) mp.get(ATTR_LONGITUDE)).doubleValue());
 		}
 		return null;
 	}
