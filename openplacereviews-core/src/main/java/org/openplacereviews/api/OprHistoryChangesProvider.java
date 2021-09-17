@@ -192,7 +192,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					findNearestPointAndDelete(deletedPoints, merged, pdel);
 					
 					// add current objects in case they are missing (1 month later)
-					if (Math.abs(pd.getMonths()) > 1) {
+					if (Math.abs(pd.getMonths()) >= 1) {
 						addCurrentDataObjects(placeIdsAdded, merged, merged.size() - addedPoints);
 						
 					}
@@ -213,11 +213,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 
 	private void addCurrentDataObjects(Set<String> placeIdsAdded, List<Feature> merged, int sz) {
-		OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(merged.get(0)), dataManager);
-		if (resDataReport != null && resDataReport.geo.features() != null) {
 			// int sz = merged.size();
 			for(int i = 0; i < sz ; i++) {
-				Feature fdel = merged.get(0);
+				OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(merged.get(i)), dataManager);
+				if (resDataReport != null && resDataReport.geo.features() != null) {
+				Feature fdel = merged.get(i);
 				Point pdel = (Point) fdel.geometry();
 				for (Feature feature : resDataReport.geo.features()) {
 					String fdid = generateStringId(MergeUtil.getPlaceId(feature));
@@ -285,11 +285,14 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 						if (nObj != null) {
 							Map<String, Object> osm = getMainOsmFromList(nObj);
 							boolean allOsmRefsDeleted = osm != null && osm.containsKey(PlaceOpObjectHelper.F_DELETED_OSM);
-							// double check place is not reviewed yet
-							boolean newObject = placeIdsAdded.add(generateStringId(opObject.getId()));
-							if (osm != null && allOsmRefsDeleted && nObj.getField(null, F_DELETED_PLACE) == null && newObject) {
-								addObject(deletedObjects, nObj, OBJ_REMOVED, COLOR_RED);
-								break changeKeys;
+							if (osm != null && allOsmRefsDeleted && nObj.getField(null, F_DELETED_PLACE) == null) {
+								// double check place is not reviewed yet
+								// check only places with allOsmRefsDeleted
+								boolean newObject = placeIdsAdded.add(generateStringId(opObject.getId()));
+								if (newObject) {
+									addObject(deletedObjects, nObj, OBJ_REMOVED, COLOR_RED);
+									break changeKeys;
+								}
 							}
 						}
 					}
