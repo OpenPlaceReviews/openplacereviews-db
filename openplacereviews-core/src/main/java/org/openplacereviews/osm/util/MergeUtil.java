@@ -135,25 +135,32 @@ public class MergeUtil {
 		return otherNames;
 	}
 
-	@SuppressWarnings("unchecked")
-	public static boolean hasSimilarNameByFeatures(Feature feature, Feature currentFeature) {
-		Map<String, String> objByTileTags = new HashMap<>();
-		Map<String, String> currentObjTags = new HashMap<>();
-		Map<String, Object> osmTagsF = new Gson().fromJson(feature.properties().get(F_TAGS).toString(), HashMap.class);
-		for (Map.Entry<String, Object> entry : osmTagsF.entrySet()) {
-			objByTileTags.put(entry.getKey(), entry.getValue().toString());
-		}
-		Map<String, Object> osmTagsCurr = new Gson().fromJson(currentFeature.properties().get(F_TAGS).toString(), HashMap.class);
-		for (Map.Entry<String, Object> entry : osmTagsCurr.entrySet()) {
-			currentObjTags.put(entry.getKey(), entry.getValue().toString());
-		}
-
+	public static boolean hasSimilarNameByFeatures(Feature feature1, Feature feature2) {
+		Map<String, String> tags1 = getFeatureOsmTags(feature1);
+		Map<String, String> tags2 = getFeatureOsmTags(feature2);
 		for (MatchType mt : EnumSet.allOf(MatchType.class)) {
-			if (mt.match(currentObjTags, objByTileTags)) {
+			if (mt.match(tags1, tags2)) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static Map<String, String> getFeatureOsmTags(Feature feature1) {
+		Map<String, String> tags = new HashMap<>();
+		Map<String, Object> osmTags = new Gson().fromJson(feature1.properties().get(F_TAGS).toString(), Map.class);
+		for (Map.Entry<String, Object> entry : osmTags.entrySet()) {
+			String value = entry.getValue().toString();
+			// different report have different results
+			if (entry.getValue() instanceof Map) {
+				value = (String) ((Map) entry.getValue()).get("value");
+			}
+			if (value != null && value.length() > 0) {
+				tags.put(entry.getKey(), value);
+			}
+		}
+		return tags;
 	}
 
 	public static boolean checkNames(String oldName, String newName) {
@@ -196,7 +203,7 @@ public class MergeUtil {
 	}
 
 	public static String getTileIdByFeature(Feature feature) {
-		return feature.properties().get(OPR_ID).toString().replace("\"", "").split(",")[0];
+		return MergeUtil.getPlaceId(feature).get(0);
 	}
 
 	public static Map<String, Object> getMainOsmFromList(OpObject o) {
