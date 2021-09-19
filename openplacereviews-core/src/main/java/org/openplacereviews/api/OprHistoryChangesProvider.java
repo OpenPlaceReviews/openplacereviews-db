@@ -73,6 +73,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	protected static final String COLOR_BlUE = "blue";
 	protected static final String COLOR_RED = "red";
 	protected static final String COLOR_GREEN = "green";
+	
+	private static final String TEST_ID = "8FVXQ4,ltrhho";
 
 	@Override
 	public OprMapCollectionApiResult getContent(MapCollectionParameters params) {
@@ -167,30 +169,30 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 
 	private void combineGeoJsonResults(boolean fullCheck, RequestFilter filter, OprMapCollectionApiResult res,
-			Map<String, List<Feature>> createdObjectsByTile, Map<String, List<Feature>> deletedObjectsByTile, Set<String> placeIdsAdded) {
+			Map<String, List<Feature>> createdObjectsByTile, Map<String, List<Feature>> reviewClosedPlacesByTile, Set<String> placeIdsAdded) {
 		
 		if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
 			Set<String> tiles = createdObjectsByTile.keySet();
 			for (String tileId : tiles) {
-				List<Feature> delList = deletedObjectsByTile.get(tileId);
+				List<Feature> revList = reviewClosedPlacesByTile.get(tileId);
 				List<Feature> cList = createdObjectsByTile.get(tileId);
-				if (delList == null) {
+				if (revList == null) {
 					continue;
 				}
 				// make linked list for quick delete in the middle
-				LinkedList<Feature> deletedPoints = new LinkedList<>(delList);
-				LinkedList<Feature> createdPoints = new LinkedList<>(cList == null ? Collections.emptyList() : cList);
-				while (!deletedPoints.isEmpty()) {
+				LinkedList<Feature> closedPlaces = new LinkedList<>(revList);
+				LinkedList<Feature> createdPlaces = new LinkedList<>(cList == null ? Collections.emptyList() : cList);
+				while (!closedPlaces.isEmpty()) {
 					List<Feature> merged = new ArrayList<>();
-					Feature fdel = deletedPoints.poll();
+					Feature fdel = closedPlaces.poll();
 					Point pdel = (Point) fdel.geometry();
 					// add created points near deleted point
-					findNearestPointAndDelete(createdPoints, merged, pdel);
+					findNearestPointAndDelete(createdPlaces, merged, pdel);
 					int addedPoints = merged.size();
 					// group id could be set later
 					merged.add(0, fdel);
 					// find other deleted points within distance of 150m
-					findNearestPointAndDelete(deletedPoints, merged, pdel);
+					findNearestPointAndDelete(closedPlaces, merged, pdel);
 					
 					// add current objects in case they are missing (1 month later)
 					if (fullCheck) {
@@ -247,7 +249,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		for (OpObject opObject : opOperation.getCreated()) {
 			if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
 				String strid = generateStringId(opObject);
-				if (!res.alreadyDeletedPlaceIds.contains(strid)) {
+				if (!res.alreadyDeletedPlaceIds.contains(strid) && !placeIdsAdded.contains(strid)) {
 					// add any place as a potential merge (the data could be outdated and will be checked later)
 					addObject(createdObjects, opObject, OBJ_CREATED, COLOR_BlUE);
 					placeIdsAdded.add(strid);
@@ -263,8 +265,12 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
+			String objId = generateStringId(opObject);
+			if (objId.equals(TEST_ID)) {
+				System.out.println("TEST ID: " + TEST_ID);
+			}
 			// skip already reviewed place ids
-			if (res.alreadyReviewedPlaceIds.contains(generateStringId(opObject))) {
+			if (res.alreadyReviewedPlaceIds.contains(objId)) {
 				// only possible if there we collected in before loop
 				if (!SKIP_INADVANCE_REV_CLOSED_PLACES_REPORT) {
 					throw new IllegalStateException();
@@ -275,7 +281,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				if (filter == RequestFilter.REVIEW_IMAGES) {
 					if (changeKey.startsWith(F_IMG_REVIEW)) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-						boolean newObject = placeIdsAdded.add(generateStringId(opObject.getId()));
+						boolean newObject = placeIdsAdded.add(objId);
 						if (nObj != null && newObject) {
 							addObject(createdObjects, nObj, OBJ_CREATED, COLOR_BlUE);
 						}
@@ -292,7 +298,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					if (ind != -1) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
 						if (isObjectNeedsToBeReviewedAsClosed(nObj)) {
-							boolean newObject = placeIdsAdded.add(generateStringId(opObject.getId()));
+							boolean newObject = placeIdsAdded.add(objId);
 							if (newObject) {
 								addObject(reviewClosedObjects, nObj, OBJ_REMOVED, COLOR_RED);
 								break changeKeys;
