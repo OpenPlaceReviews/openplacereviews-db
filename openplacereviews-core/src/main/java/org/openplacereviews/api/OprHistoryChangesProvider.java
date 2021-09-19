@@ -73,6 +73,8 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	protected static final String COLOR_BlUE = "blue";
 	protected static final String COLOR_RED = "red";
 	protected static final String COLOR_GREEN = "green";
+	private static final Object TEST_OSM_ID = "8FVXQ4,a6ppkb";
+	private static final Object TEST_OSM_ID_REV = "8FVXQ4,ltrhho";
 	
 	@Override
 	public OprMapCollectionApiResult getContent(MapCollectionParameters params) {
@@ -184,6 +186,9 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					List<Feature> merged = new ArrayList<>();
 					Feature fdel = closedPlaces.poll();
 					Point pdel = (Point) fdel.geometry();
+					if (MergeUtil.getOprGenId(fdel).equals(TEST_OSM_ID_REV)) {
+						System.out.println("DEBUG: " + TEST_OSM_ID_REV);
+					}
 					// add created points near deleted point
 					findNearestPointAndDelete(createdPlaces, merged, pdel);
 					int addedPoints = merged.size();
@@ -247,6 +252,9 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		for (OpObject opObject : opOperation.getCreated()) {
 			if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
 				String strid = generateStringId(opObject);
+				if (strid.equals(TEST_OSM_ID)) {
+					System.out.println("DEBUG: " + TEST_OSM_ID);
+				}
 				if (!res.alreadyDeletedPlaceIds.contains(strid) && !placeIdsAdded.contains(strid)) {
 					// add any place as a potential merge (the data could be outdated and will be checked later)
 					addObject(createdObjects, opObject, OBJ_CREATED, COLOR_BlUE);
@@ -265,6 +273,9 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 			String objId = generateStringId(opObject);
 			// skip already reviewed place ids
+			if (objId.equals(TEST_OSM_ID)) {
+				System.out.println("DEBUG: " + TEST_OSM_ID);
+			}
 			if (res.alreadyReviewedPlaceIds.contains(objId)) {
 				// only possible if there we collected in before loop
 				if (!SKIP_INADVANCE_REV_CLOSED_PLACES_REPORT) {
