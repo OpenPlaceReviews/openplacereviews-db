@@ -199,7 +199,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					}
 					// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
 					// probably later we could have new list empty
-					addMergedPlaces(res.geo.features(), merged);
+					res.geo.features().addAll(merged);
 					
 				}
 			}
@@ -379,40 +379,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 
-
-	private void addMergedPlaces(List<Feature> features, List<Feature> newMergedGroup) {
-		Point mPoint = (Point) newMergedGroup.get(0).geometry();
-		int start = -1;
-		boolean groupFound = false;
-		for (int i = 0; i < features.size(); i++) {
-			if (!groupFound) {
-				Point currentPoint = (Point) features.get(i).geometry();
-				if (OsmMapUtils.getDistance(currentPoint.lat(), currentPoint.lon(), mPoint.lat(), mPoint.lon()) < 150
-						&& features.get(i).properties().containsKey(F_DELETED_PLACE)) {
-					groupFound = true;
-					start = i;
-				}
-			} else {
-				if (!features.get(i).properties().containsKey(F_DELETED_PLACE)) {
-					List<Feature> deletedFeatures = new ArrayList<>();
-					List<Feature> createdFeatures = new ArrayList<>();
-					for (Feature mf : newMergedGroup) {
-						if (mf.properties().containsKey(F_DELETED_PLACE)) {
-							deletedFeatures.add(mf);
-						} else {
-							createdFeatures.add(mf);
-						}
-					}
-					features.addAll(start, deletedFeatures);
-					features.addAll(i + deletedFeatures.size(), createdFeatures);
-					break;
-				}
-			}
-		}
-		if (!groupFound) {
-			features.addAll(newMergedGroup);
-		}
-	}
 
 	private void findNearestPointAndDelete(LinkedList<Feature> list, List<Feature> merged, Point point) {
 		Iterator<Feature> it = list.iterator();
