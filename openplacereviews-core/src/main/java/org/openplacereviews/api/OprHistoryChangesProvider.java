@@ -74,8 +74,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	protected static final String COLOR_RED = "red";
 	protected static final String COLOR_GREEN = "green";
 	
-	private static final String TEST_ID = "8FVXQ4,ltrhho";
-
 	@Override
 	public OprMapCollectionApiResult getContent(MapCollectionParameters params) {
 		OprMapCollectionApiResult fc = new OprMapCollectionApiResult();
@@ -172,7 +170,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			Map<String, List<Feature>> createdObjectsByTile, Map<String, List<Feature>> reviewClosedPlacesByTile, Set<String> placeIdsAdded) {
 		
 		if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
-			Set<String> tiles = createdObjectsByTile.keySet();
+			Set<String> tiles = reviewClosedPlacesByTile.keySet();
 			for (String tileId : tiles) {
 				List<Feature> revList = reviewClosedPlacesByTile.get(tileId);
 				List<Feature> cList = createdObjectsByTile.get(tileId);
@@ -266,9 +264,6 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
 			String objId = generateStringId(opObject);
-			if (objId.equals(TEST_ID)) {
-				System.out.println("TEST ID: " + TEST_ID);
-			}
 			// skip already reviewed place ids
 			if (res.alreadyReviewedPlaceIds.contains(objId)) {
 				// only possible if there we collected in before loop
