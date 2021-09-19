@@ -145,8 +145,9 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 		}
 		Set<String> placeIdsAdded = new TreeSet<>();
 		Map<String, List<Feature>> createdObjectsByTile = new TreeMap<>();
-		Map<String, List<Feature>> deletedObjectsByTile = new TreeMap<>();
-		
+		Map<String, List<Feature>> reviewClosedObjectsByTile = new TreeMap<>();
+		Period pd = Period.between(LocalDate.now(), date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+		boolean fullCheck = Math.abs(pd.getMonths()) >= 1;
 		
 		for (OpBlock block : blocksByDate) {
 			OpBlockChain blc = blocksManager.getBlockchain();
@@ -155,19 +156,19 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			LOGGER.info(String.format("Get history %s - %s block %d (%d)...", date, nextDate, block.getBlockId(), opOperations.size()));
 			for (OpOperation opOperation : opOperations) {
 				if (opOperation.getType().equals(OPR_PLACE)) {
-					filterObjects(filter, opOperation, placeIdsAdded, createdObjectsByTile, deletedObjectsByTile, res);
+					filterObjects(filter, opOperation, placeIdsAdded, createdObjectsByTile, reviewClosedObjectsByTile, res);
 				}
 			}
 		}
 
-		combineGeoJsonResults(date, filter, res, createdObjectsByTile, deletedObjectsByTile, placeIdsAdded);
+		combineGeoJsonResults(fullCheck, filter, res, createdObjectsByTile, reviewClosedObjectsByTile, placeIdsAdded);
 		LOGGER.info(String.format("Get history %s - %s finished.", date, nextDate));
 	}
 
 
-	private void combineGeoJsonResults(Date date, RequestFilter filter, OprMapCollectionApiResult res,
+	private void combineGeoJsonResults(boolean fullCheck, RequestFilter filter, OprMapCollectionApiResult res,
 			Map<String, List<Feature>> createdObjectsByTile, Map<String, List<Feature>> deletedObjectsByTile, Set<String> placeIdsAdded) {
-		Period pd = Period.between(LocalDate.now(), date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+		
 		if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
 			Set<String> tiles = createdObjectsByTile.keySet();
 			for (String tileId : tiles) {
@@ -192,7 +193,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					findNearestPointAndDelete(deletedPoints, merged, pdel);
 					
 					// add current objects in case they are missing (1 month later)
-					if (Math.abs(pd.getMonths()) >= 1) {
+					if (fullCheck) {
 						addCurrentDataObjects(placeIdsAdded, merged, merged.size() - addedPoints);
 						
 					}
@@ -228,10 +229,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 							&& hasSimilarNameByFeatures(feature, fdel)) {
 						OpObject obj = getCurrentObject(feature, blocksManager);
 						Feature newF = addFeature(obj, OBJ_EDITED, COLOR_GREEN);
-						if(newF != null) {
+						if (newF != null) {
 							merged.add(newF);
+							placeIdsAdded.add(fdid);
 						}
-						placeIdsAdded.add(fdid);
 					}
 				}
 			}
@@ -241,18 +242,23 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 
 
 	private void filterObjects(RequestFilter filter, OpOperation opOperation,
-			Set<String> placeIdsAdded, Map<String, List<Feature>> createdObjects, Map<String, List<Feature>> deletedObjects, OprMapCollectionApiResult res) {
+			Set<String> placeIdsAdded, Map<String, List<Feature>> createdObjects, Map<String, List<Feature>> reviewClosedObjects, OprMapCollectionApiResult res) {
 
 		for (OpObject opObject : opOperation.getCreated()) {
 			if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
-				// add any place as a potential merge (the data could be outdated and will be checked later)
-				addObject(createdObjects, opObject, OBJ_CREATED, COLOR_BlUE);
+				String strid = generateStringId(opObject);
+				if (!res.alreadyDeletedPlaceIds.contains(strid)) {
+					// add any place as a potential merge (the data could be outdated and will be checked later)
+					addObject(createdObjects, opObject, OBJ_CREATED, COLOR_BlUE);
+					placeIdsAdded.add(strid);
+				}
 			}
 		}
 		for (List<String> opObject : opOperation.getDeleted()) {
 			if (filter == RequestFilter.REVIEW_CLOSED_PLACES) {
 				res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
 			}
+			res.alreadyDeletedPlaceIds.add(generateStringId(opObject));
 		}
 		
 		for (OpObject opObject : opOperation.getEdited()) {
@@ -285,17 +291,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					int ind = getOsmSourceIndexDeleted(changeKey);
 					if (ind != -1) {
 						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
-						if (nObj != null) {
-							Map<String, Object> osm = getMainOsmFromList(nObj);
-							boolean allOsmRefsDeleted = osm != null && osm.containsKey(PlaceOpObjectHelper.F_DELETED_OSM);
-							if (osm != null && allOsmRefsDeleted && nObj.getField(null, F_DELETED_PLACE) == null) {
-								// double check place is not reviewed yet
-								// check only places with allOsmRefsDeleted
-								boolean newObject = placeIdsAdded.add(generateStringId(opObject.getId()));
-								if (newObject) {
-									addObject(deletedObjects, nObj, OBJ_REMOVED, COLOR_RED);
-									break changeKeys;
-								}
+						if (isObjectNeedsToBeReviewedAsClosed(nObj)) {
+							boolean newObject = placeIdsAdded.add(generateStringId(opObject.getId()));
+							if (newObject) {
+								addObject(reviewClosedObjects, nObj, OBJ_REMOVED, COLOR_RED);
+								break changeKeys;
 							}
 						}
 					}
@@ -308,11 +308,26 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 
+	private boolean isObjectNeedsToBeReviewedAsClosed(OpObject nObj) {
+		if (nObj != null) {
+			Map<String, Object> osm = getMainOsmFromList(nObj);
+			boolean allOsmRefsDeleted = osm != null && osm.containsKey(PlaceOpObjectHelper.F_DELETED_OSM);
+			// double check place is not reviewed yet
+			// check only places with allOsmRefsDeleted
+			if (osm != null && allOsmRefsDeleted && nObj.getField(null, F_DELETED_PLACE) == null) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+
 	@SuppressWarnings("unchecked")
 	private void addAlreadyReviewedPlaces(RequestFilter filter, OpOperation opOperation, OprMapCollectionApiResult res) {
 		// place was merged / deleted
 		for (List<String> opObject : opOperation.getDeleted()) {
 			res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
+			res.alreadyDeletedPlaceIds.add(generateStringId(opObject));
 		}
 		for (OpObject opObject : opOperation.getEdited()) {
 			Map<String, Object> change = opObject.getStringObjMap(F_CHANGE);
@@ -325,7 +340,10 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					// }
 					// place was permanently closed
 					if (changeKey.equals(PlaceOpObjectHelper.F_DELETED_PLACE)) {
-						res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
+						OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+						if (!isObjectNeedsToBeReviewedAsClosed(nObj)) {
+							res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
+						}
 						break changeKeys;
 					}
 					// place was merged / deleted
@@ -335,7 +353,11 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					if (changeKey.equals("source.osm")) {
 						Map<String, ?> changeFields = ((Map<String, ?>) change.get(changeKey));
 						if (changeFields.containsKey("append") || changeFields.containsKey("appendmany")) {
-							res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
+							// potentially slow but it's a guaranteed mechanism 
+							OpObject nObj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, opObject.getId());
+							if (!isObjectNeedsToBeReviewedAsClosed(nObj)) {
+								res.alreadyReviewedPlaceIds.add(generateStringId(opObject));
+							}
 							break changeKeys;
 						}
 					}
@@ -354,6 +376,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 			}
 		}
 	}
+
 
 
 	private void addMergedPlaces(List<Feature> features, List<Feature> newMergedGroup) {
