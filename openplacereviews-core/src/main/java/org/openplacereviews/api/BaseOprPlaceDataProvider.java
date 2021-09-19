@@ -269,7 +269,7 @@ public abstract class BaseOprPlaceDataProvider
 					put(obj, CHANGESET, sourceObj);
 					put(obj, ATTR_LATITUDE, sourceObj);
 					put(obj, ATTR_LONGITUDE, sourceObj);
-					put(obj, F_DELETED_PLACE, sourceObj);
+					put(obj, F_DELETED_OSM, sourceObj);
 					Map<String, Object> tagsValue = (Map<String, Object>) sourceObj.get(TAGS);
 					if (tagsValue != null) {
 						JsonObject tagsObj = new JsonObject();
@@ -278,7 +278,7 @@ public abstract class BaseOprPlaceDataProvider
 							Entry<String, Object> e = it.next();
 							tagsObj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
 							// for now specify main tags from 1st source
-							if (mainTagKeys.add(e.getKey())) {
+							if (!sourceObj.containsKey(F_DELETED_OSM) && mainTagKeys.add(e.getKey())) {
 								JsonObject val = new JsonObject();
 								val.add("value", new JsonPrimitive(e.getValue().toString()));
 								val.add("source", new JsonPrimitive(tp));
