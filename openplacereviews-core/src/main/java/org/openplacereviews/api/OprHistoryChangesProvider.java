@@ -231,7 +231,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 							&& !feature.properties().containsKey(PLACE_DELETED)
 							&& !feature.properties().containsKey(PLACE_DELETED_OSM)
 							&& getDistance(pdel.lat(), pdel.lon(), feature) <= 150
-							&& hasSimilarNameByFeatures(feature, fdel)) {
+							&& hasSimilarNameByFeatures(fdel, feature)) {
 						OpObject obj = getCurrentObject(feature, blocksManager);
 						Feature newF = addFeature(obj, OBJ_EDITED, COLOR_GREEN);
 						if (newF != null) {

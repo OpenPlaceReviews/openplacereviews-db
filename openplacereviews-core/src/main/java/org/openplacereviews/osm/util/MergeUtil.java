@@ -135,11 +135,11 @@ public class MergeUtil {
 		return otherNames;
 	}
 
-	public static boolean hasSimilarNameByFeatures(Feature feature1, Feature feature2) {
-		Map<String, String> tags1 = getFeatureOsmTags(feature1);
-		Map<String, String> tags2 = getFeatureOsmTags(feature2);
+	public static boolean hasSimilarNameByFeatures(Feature oldFeature, Feature newFeature) {
+		Map<String, String> oldTags = getFeatureOsmTags(oldFeature);
+		Map<String, String> newTags = getFeatureOsmTags(newFeature);
 		for (MatchType mt : EnumSet.allOf(MatchType.class)) {
-			if (mt.match(tags1, tags2)) {
+			if (mt.match(oldTags, newTags)) {
 				return true;
 			}
 		}
