@@ -193,8 +193,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 					
 					// add current objects in case they are missing (1 month later)
 					if (Math.abs(pd.getMonths()) >= 1) {
-						addCurrentDataObjects(placeIdsAdded, merged, merged.size() - addedPoints);
-						
+						addCurrentDataObjects(merged, merged.size() - addedPoints);
 					}
 					// ! always make sure that groups are following [deleted, deleted, ..., deleted, new, ..., new] - new could not be empty
 					// probably later we could have new list empty
@@ -212,7 +211,7 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 	}
 
 
-	private void addCurrentDataObjects(Set<String> placeIdsAdded, List<Feature> merged, int sz) {
+	private void addCurrentDataObjects(List<Feature> merged, int sz) {
 		// int sz = merged.size();
 		for (int i = 0; i < sz; i++) {
 			OprMapCollectionApiResult resDataReport = getDataReport(getTileIdByFeature(merged.get(i)), dataManager);
@@ -220,18 +219,15 @@ public class OprHistoryChangesProvider extends BaseOprPlaceDataProvider {
 				Feature fdel = merged.get(i);
 				Point pdel = (Point) fdel.geometry();
 				for (Feature feature : resDataReport.geo.features()) {
-					String fdid = generateStringId(MergeUtil.getPlaceId(feature));
-					if (!placeIdsAdded.contains(fdid)
-							&& !feature.properties().containsKey(PLACE_DELETED)
+					if (!feature.properties().containsKey(PLACE_DELETED)
 							&& !feature.properties().containsKey(PLACE_DELETED_OSM)
 							&& getDistance(pdel.lat(), pdel.lon(), feature) <= 150
 							&& hasSimilarNameByFeatures(feature, fdel)) {
 						OpObject obj = getCurrentObject(feature, blocksManager);
 						Feature newF = addFeature(obj, OBJ_EDITED, COLOR_GREEN);
-						if(newF != null) {
+						if (newF != null) {
 							merged.add(newF);
 						}
-						placeIdsAdded.add(fdid);
 					}
 				}
 			}
