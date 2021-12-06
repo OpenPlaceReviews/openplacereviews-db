@@ -1,0 +1,171 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"76H3X2",
+					"uqbg6o"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111168845"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.name": {
+						"set": "Río Bravo"
+					},
+					"source.osm[0].tags.phone": {
+						"set": "+5214813818202"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-14T00:02:44Z"
+					},
+					"source.osm[0].version": {
+						"set": "2"
+					},
+					"source.osm[1].changeset": {
+						"set": "54639221"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-14T00:56:24.909+0000"
+					},
+					"source.osm[1].tags.name": {
+						"set": "Restaurante mariscos Río Bravo"
+					},
+					"source.osm[1].tags.phone": {
+						"set": "4813818202"
+					},
+					"source.osm[1].timestamp": {
+						"set": "017-12-14T23:59:47Z"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "54639221",
+					"source.osm[0].deleted": "2021-09-14T00:56:24.909+0000",
+					"source.osm[0].tags.name": "Restaurante mariscos Río Bravo",
+					"source.osm[0].tags.phone": "4813818202",
+					"source.osm[0].timestamp": "2017-12-14T23:59:47Z",
+					"source.osm[0].version": "1",
+					"source.osm[1].changeset": "111168845",
+					"source.osm[1].tags.name": "Río Bravo",
+					"source.osm[1].tags.phone": "+5214813818202",
+					"source.osm[1].timestamp": "2021-09-14T00:02:44Z",
+					"source.osm[1].version": "2"
+				}
+			},
+			{
+				"id": [
+					"8FPPXP",
+					"vnmzsv"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111205254"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].id": {
+						"set": 740005677
+					},
+					"source.osm[0].lat": {
+						"set": 44.9627447
+					},
+					"source.osm[0].lon": {
+						"set": 14.7473942
+					},
+					"source.osm[0].tags.addr:housenumber": {
+						"set": "54b"
+					},
+					"source.osm[0].tags.addr:street": {
+						"set": "Emila Geistlicha"
+					},
+					"source.osm[0].tags.building": {
+						"set": "hotel"
+					},
+					"source.osm[0].tags.building:levels": {
+						"set": "2"
+					},
+					"source.osm[0].tags.internet_access": {
+						"set": "wlan"
+					},
+					"source.osm[0].tags.internet_access:fee": {
+						"set": "no"
+					},
+					"source.osm[0].tags.roof:levels": {
+						"set": "1"
+					},
+					"source.osm[0].tags.wheelchair": {
+						"set": "yes"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-14T16:39:30Z"
+					},
+					"source.osm[0].type": {
+						"set": "way"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "5"
+					},
+					"source.osm[1].changeset": {
+						"set": "76364423"
+					},
+					"source.osm[1].id": {
+						"set": 1426914506
+					},
+					"source.osm[1].lat": {
+						"set": 44.9627558
+					},
+					"source.osm[1].lon": {
+						"set": 14.7473398
+					},
+					"source.osm[1].tags.addr:housenumber": "delete",
+					"source.osm[1].tags.addr:street": "delete",
+					"source.osm[1].tags.building": "delete",
+					"source.osm[1].tags.building:levels": "delete",
+					"source.osm[1].tags.internet_access": "delete",
+					"source.osm[1].tags.internet_access:fee": "delete",
+					"source.osm[1].tags.roof:levels": "delete",
+					"source.osm[1].tags.wheelchair": "delete",
+					"source.osm[1].timestamp": {
+						"set": "2019-10-29T20:27:02Z"
+					},
+					"source.osm[1].type": {
+						"set": "node"
+					},
+					"source.osm[1].version": {
+						"set": "2"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-14T13:14:03.714+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "76364423",
+					"source.osm[0].deleted": "2021-09-14T13:14:03.714+0000",
+					"source.osm[0].id": 1426914506,
+					"source.osm[0].lat": 44.9627558,
+					"source.osm[0].lon": 14.7473398,
+					"source.osm[0].timestamp": "2019-10-29T20:27:02Z",
+					"source.osm[0].type": "node",
+					"source.osm[0].version": "2",
+					"source.osm[1].changeset": "111205254",
+					"source.osm[1].id": 740005677,
+					"source.osm[1].lat": 44.9627447,
+					"source.osm[1].lon": 14.7473942,
+					"source.osm[1].tags.addr:housenumber": "54b",
+					"source.osm[1].tags.addr:street": "Emila Geistlicha",
+					"source.osm[1].tags.building": "hotel",
+					"source.osm[1].tags.building:levels": "2",
+					"source.osm[1].tags.internet_access": "wlan",
+					"source.osm[1].tags.internet_access:fee": "no",
+					"source.osm[1].tags.roof:levels": "1",
+					"source.osm[1].tags.wheelchair": "yes",
+					"source.osm[1].timestamp": "2021-09-14T16:39:30Z",
+					"source.osm[1].type": "way",
+					"source.osm[1].version": "5"
+				}
+			}
+		]
+	}
+]

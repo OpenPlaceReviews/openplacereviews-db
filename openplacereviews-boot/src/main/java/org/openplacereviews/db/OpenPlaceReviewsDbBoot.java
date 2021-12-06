@@ -88,7 +88,7 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 						BlocksManager.BOOT_STD_VALIDATION, "opr-osm", 
 						"opr-0-" + usr + "-bot");
 		blocksManager.setBootstrapList(bootstrapList);
-		blocksManager.addPatchOperation(12763, "place_id_76H3X2_uqbg6o");
+		blocksManager.addPatchOperation(12763, "block_12763");
 		settingsManager.registerTableMapping("obj_opr_places", 2, "opr.place");
 
 		addOsmIdIndex();
