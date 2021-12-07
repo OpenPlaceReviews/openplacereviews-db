@@ -1,0 +1,127 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"76VVWF",
+					"mxxkqs"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111187363"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].id": {
+						"set": 9066205585
+					},
+					"source.osm[0].lat": {
+						"set": 27.944199
+					},
+					"source.osm[0].lon": {
+						"set": -82.5234588
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-14T10:11:23Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "3"
+					},
+					"source.osm[1].changeset": {
+						"set": "107901103"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-06T08:12:14.282+0000"
+					},
+					"source.osm[1].id": {
+						"set": 8863104331
+					},
+					"source.osm[1].lat": {
+						"set": 27.9442075
+					},
+					"source.osm[1].lon": {
+						"set": -82.5235057
+					},
+					"source.osm[1].timestamp": {
+						"set": "2021-07-13T10:35:46Z"
+					},
+					"source.osm[1].version": {
+						"set": "7"
+					},
+					"source.osm[2].changeset": {
+						"set": "106894839"
+					},
+					"source.osm[2].deleted": {
+						"set": "2021-06-24T13:17:14.683+0000"
+					},
+					"source.osm[2].id": {
+						"set": 8838835841
+					},
+					"source.osm[2].lat": {
+						"set": 27.9444087
+					},
+					"source.osm[2].lon": {
+						"set": -82.5234703
+					},
+					"source.osm[2].timestamp": {
+						"set": "2021-06-24T11:06:00Z"
+					},
+					"source.osm[2].version": {
+						"set": "2"
+					},
+					"source.osm[3].changeset": {
+						"set": "105214900"
+					},
+					"source.osm[3].id": {
+						"set": 8760638012
+					},
+					"source.osm[3].lat": {
+						"set": 27.9441985
+					},
+					"source.osm[3].lon": {
+						"set": -82.5234867
+					},
+					"source.osm[3].timestamp": {
+						"set": "2021-05-24T09:57:02Z"
+					},
+					"source.osm[3].version": {
+						"set": "1"
+					},
+					"source.osm[3].deleted": {
+						"set": "2021-06-10T09:05:23.315+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "105214900",
+					"source.osm[0].deleted": "2021-06-10T09:05:23.315+0000",
+					"source.osm[0].id": 8760638012,
+					"source.osm[0].lat": 27.9441985,
+					"source.osm[0].lon": -82.5234867,
+					"source.osm[0].timestamp": "2021-05-24T09:57:02Z",
+					"source.osm[0].version": "1",
+					"source.osm[1].changeset": "106894839",
+					"source.osm[1].deleted": "2021-06-24T13:17:14.683+0000",
+					"source.osm[1].id": 8838835841,
+					"source.osm[1].lat": 27.9444087,
+					"source.osm[1].lon": -82.5234703,
+					"source.osm[1].timestamp": "2021-06-24T11:06:00Z",
+					"source.osm[1].version": "2",
+					"source.osm[2].changeset": "107901103",
+					"source.osm[2].deleted": "2021-09-06T08:12:14.282+0000",
+					"source.osm[2].id": 8863104331,
+					"source.osm[2].lat": 27.9442075,
+					"source.osm[2].lon": -82.5235057,
+					"source.osm[2].timestamp": "2021-07-13T10:35:46Z",
+					"source.osm[2].version": "7",
+					"source.osm[3].changeset": "111187363",
+					"source.osm[3].id": 9066205585,
+					"source.osm[3].lat": 27.944199,
+					"source.osm[3].lon": -82.5234588,
+					"source.osm[3].timestamp": "2021-09-14T10:11:23Z",
+					"source.osm[3].version": "3"
+				}
+			}
+		]
+	}
+]
