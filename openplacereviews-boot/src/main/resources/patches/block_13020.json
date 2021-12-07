@@ -1,0 +1,99 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"9F2PV3",
+					"427sui"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111181241"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].id": {
+						"set": 983138249
+					},
+					"source.osm[0].lat": {
+						"set": 50.89933940474166
+					},
+					"source.osm[0].lon": {
+						"set": 14.080826524783554
+					},
+					"source.osm[0].tags.building": "delete",
+					"source.osm[0].tags.name": {
+						"set": "Berggaststätte \\\"Pfaffenstein\\\""
+					},
+					"source.osm[0].tags.cuisine": {
+						"set": "regional"
+					},
+					"source.osm[0].tags.diet:vegetarian": {
+						"set": "only"
+					},
+					"source.osm[0].tags.outdoor_seating": {
+						"set": "yes"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-14T08:17:47Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "1"
+					},
+					"source.osm[1].changeset": {
+						"set": "79209826"
+					},
+					"source.osm[1].id": {
+						"set": 103846773
+					},
+					"source.osm[1].lat": {
+						"set": 50.89929927598005
+					},
+					"source.osm[1].lon": {
+						"set": 14.080822147241008
+					},
+					"source.osm[1].tags.cuisine": "delete",
+					"source.osm[1].tags.diet:vegetarian": "delete",
+					"source.osm[1].tags.name": {
+						"set": "Berggaststätte \\\"Pfaffenstein\\\""
+					},
+					"source.osm[1].tags.outdoor_seating": "delete",
+					"source.osm[1].tags.building": {
+						"set": "yes"
+					},
+					"source.osm[1].timestamp": {
+						"set": "2020-01-05T11:09:12Z"
+					},
+					"source.osm[1].version": {
+						"set": "12"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-14T09:07:00.291+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "79209826",
+					"source.osm[0].deleted": "2021-09-14T09:07:00.291+0000",
+					"source.osm[0].id": 103846773,
+					"source.osm[0].lat": 50.89929927598005,
+					"source.osm[0].lon": 14.080822147241008,
+					"source.osm[0].tags.building": "yes",
+					"source.osm[0].tags.name": "Berggaststätte \\\\\\\"Pfaffenstein\\\\\\\"",
+					"source.osm[0].timestamp": "2020-01-05T11:09:12Z",
+					"source.osm[0].version": "12",
+					"source.osm[1].changeset": "111181241",
+					"source.osm[1].id": 983138249,
+					"source.osm[1].lat": 50.89933940474166,
+					"source.osm[1].lon": 14.080826524783554,
+					"source.osm[1].tags.cuisine": "regional",
+					"source.osm[1].tags.diet:vegetarian": "only",
+					"source.osm[1].tags.name": "Berggaststätte \\\\\\\"Pfaffenstein\\\\\\\"",
+					"source.osm[1].tags.outdoor_seating": "yes",
+					"source.osm[1].timestamp": "2021-09-14T08:17:47Z",
+					"source.osm[1].version": "1"
+				}
+			}
+		]
+	}
+]
