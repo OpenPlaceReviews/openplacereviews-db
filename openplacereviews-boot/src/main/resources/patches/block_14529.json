@@ -1,0 +1,63 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"9F25J3",
+					"zdrmpw"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "109665500"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.addr:housenumber": {
+						"set": "8"
+					},
+					"source.osm[0].tags.name": {
+						"set": "Tao Bento"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-08-14T10:53:01Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "5"
+					},
+					"source.osm[1].changeset": {
+						"set": "59748070"
+					},
+					"source.osm[1].tags.addr:housenumber": {
+						"set": "10"
+					},
+					"source.osm[1].tags.name": {
+						"set": "SoGood"
+					},
+					"source.osm[1].timestamp": {
+						"set": "2018-06-11T16:44:45Z"
+					},
+					"source.osm[1].version": {
+						"set": "4"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-08-14T20:58:41.351+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "59748070",
+					"source.osm[0].deleted": "2021-08-14T20:58:41.351+0000",
+					"source.osm[0].tags.addr:housenumber": "10",
+					"source.osm[0].tags.name": "SoGood",
+					"source.osm[0].timestamp": "2018-06-11T16:44:45Z",
+					"source.osm[0].version": "4",
+					"source.osm[1].changeset": "109665500",
+					"source.osm[1].tags.addr:housenumber": "8",
+					"source.osm[1].tags.name": "Tao Bento",
+					"source.osm[1].timestamp": "2021-08-14T10:53:01Z",
+					"source.osm[1].version": "5"
+				}
+			}
+		]
+	}
+]
