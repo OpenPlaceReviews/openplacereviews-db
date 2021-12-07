@@ -1,0 +1,45 @@
+[
+	{
+		"id": [
+			"8FV29M",
+			"6unsca"
+		],
+		"source": {
+			"osm": [
+				{
+					"changeset": "109445619",
+					"id": 3478262149,
+					"lat": 47.3899214,
+					"lon": 0.6946943,
+					"osm_tag": "amenity",
+					"osm_value": "restaurant",
+					"tags": {
+						"amenity": "restaurant",
+						"cuisine": "berber",
+						"name": "Hot Dogs Family"
+					},
+					"timestamp": "2021-08-10T07:35:42Z",
+					"type": "node",
+					"version": "4"
+				},
+				{
+					"changeset": "38267387",
+					"deleted": "2021-08-10T08:17:54.949+0000",
+					"id": 3478262149,
+					"lat": 47.3899214,
+					"lon": 0.6946943,
+					"osm_tag": "amenity",
+					"osm_value": "restaurant",
+					"tags": {
+						"amenity": "restaurant",
+						"cuisine": "berber"
+					},
+					"timestamp": "2016-04-03T13:53:40Z",
+					"type": "node",
+					"version": "3"
+				}
+			]
+		},
+		"version": 1
+	}
+]
