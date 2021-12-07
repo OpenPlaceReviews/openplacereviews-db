@@ -91,6 +91,7 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 		blocksManager.addPatchOperation(12763, "block_12763");
 		blocksManager.addPatchOperation(12767, "block_12767");
 		blocksManager.addPatchOperation(12774, "block_12774");
+		blocksManager.addPatchOperation(12780, "block_12780");
 		settingsManager.registerTableMapping("obj_opr_places", 2, "opr.place");
 
 		addOsmIdIndex();
