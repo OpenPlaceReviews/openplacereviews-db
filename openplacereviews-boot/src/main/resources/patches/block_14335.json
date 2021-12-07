@@ -1,0 +1,93 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"87G8Q2",
+					"akhleh"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111164354"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.brand": {
+						"set": "Dig"
+					},
+					"source.osm[0].tags.brand:wikipedia": {
+						"set": "en:Dig"
+					},
+					"source.osm[0].tags.addr:city": {
+						"set": "New York"
+					},
+					"source.osm[0].tags.addr:housenumber": {
+						"set": "1297"
+					},
+					"source.osm[0].tags.addr:postcode": {
+						"set": "10128"
+					},
+					"source.osm[0].tags.addr:state": {
+						"set": "NY"
+					},
+					"source.osm[0].tags.opening_hours": {
+						"set": "Mo-Su 11:00-22:00"
+					},
+					"source.osm[0].tags.phone": {
+						"set": "+1-212-253-6176"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-13T20:41:35Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "4"
+					},
+					"source.osm[2].changeset": {
+						"set": "81567715"
+					},
+					"source.osm[2].tags.addr:city": "delete",
+					"source.osm[2].tags.addr:housenumber": "delete",
+					"source.osm[2].tags.addr:postcode": "delete",
+					"source.osm[2].tags.addr:state": "delete",
+					"source.osm[2].tags.brand": {
+						"set": "Dig Inn"
+					},
+					"source.osm[2].tags.brand:wikipedia": {
+						"set": "en:Dig Inn"
+					},
+					"source.osm[2].tags.opening_hours": "delete",
+					"source.osm[2].tags.phone": "delete",
+					"source.osm[2].timestamp": {
+						"set": "2020-02-28T00:38:05Z"
+					},
+					"source.osm[2].version": {
+						"set": "2"
+					},
+					"source.osm[2].deleted": {
+						"set": "2021-08-31T17:25:00.611+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "81567715",
+					"source.osm[0].deleted": "2021-08-31T17:25:00.611+0000",
+					"source.osm[0].tags.brand": "Dig Inn",
+					"source.osm[0].tags.brand:wikipedia": "en:Dig Inn",
+					"source.osm[0].timestamp": "2020-02-28T00:38:05Z",
+					"source.osm[0].version": "2",
+					"source.osm[2].changeset": "111164354",
+					"source.osm[2].tags.addr:city": "New York",
+					"source.osm[2].tags.addr:housenumber": "1297",
+					"source.osm[2].tags.addr:postcode": "10128",
+					"source.osm[2].tags.addr:state": "NY",
+					"source.osm[2].tags.brand": "Dig",
+					"source.osm[2].tags.brand:wikipedia": "en:Dig",
+					"source.osm[2].tags.opening_hours": "Mo-Su 11:00-22:00",
+					"source.osm[2].tags.phone": "+1-212-253-6176",
+					"source.osm[2].timestamp": "2021-09-13T20:41:35Z",
+					"source.osm[2].version": "4"
+				}
+			}
+		]
+	}
+]
