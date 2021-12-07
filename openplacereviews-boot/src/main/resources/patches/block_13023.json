@@ -1,0 +1,107 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8H46J2",
+					"i5so3d"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "109909586"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].id": {
+						"set": 9019009531
+					},
+					"source.osm[0].lat": {
+						"set": 32.6093583
+					},
+					"source.osm[0].lon": {
+						"set": 44.0344629
+					},
+					"source.osm[0].osm_tag": {
+						"set": "amenity"
+					},
+					"source.osm[0].osm_value": {
+						"set": "cafe"
+					},
+					"source.osm[0].tags.name": {
+						"set": "مقهى حسن هادي حبيب"
+					},
+					"source.osm[0].tags.tourism": "delete",
+					"source.osm[0].tags.addr:housenumber": {
+						"set": "93"
+					},
+					"source.osm[0].tags.addr:street": {
+						"set": "شارع القبلة (حضرة العباس)"
+					},
+					"source.osm[0].tags.amenity": {
+						"set": "cafe"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-08-19T06:02:57Z"
+					},
+					"version": "increment",
+					"source.osm[1].changeset": {
+						"set": "53757656"
+					},
+					"source.osm[1].id": {
+						"set": 5227393521
+					},
+					"source.osm[1].lat": {
+						"set": 32.6093089
+					},
+					"source.osm[1].lon": {
+						"set": 44.0346327
+					},
+					"source.osm[1].osm_tag": {
+						"set": "tourism"
+					},
+					"source.osm[1].osm_value": {
+						"set": "guest_house"
+					},
+					"source.osm[1].tags.addr:housenumber": "delete",
+					"source.osm[1].tags.addr:street": "delete",
+					"source.osm[1].tags.amenity": "delete",
+					"source.osm[1].tags.name": {
+						"set": "حسينية أهالي الناصرية"
+					},
+					"source.osm[1].tags.tourism": {
+						"set": "guest_house"
+					},
+					"source.osm[1].timestamp": {
+						"set": "2017-11-14T03:20:05Z"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-08-27T13:48:11.872+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "53757656",
+					"source.osm[0].deleted": "2021-08-27T13:48:11.872+0000",
+					"source.osm[0].id": 5227393521,
+					"source.osm[0].lat": 32.6093089,
+					"source.osm[0].lon": 44.0346327,
+					"source.osm[0].osm_tag": "tourism",
+					"source.osm[0].osm_value": "guest_house",
+					"source.osm[0].tags.name": "حسينية أهالي الناصرية",
+					"source.osm[0].tags.tourism": "guest_house",
+					"source.osm[0].timestamp": "2017-11-14T03:20:05Z",
+					"source.osm[1].changeset": "109909586",
+					"source.osm[1].id": 9019009531,
+					"source.osm[1].lat": 32.6093583,
+					"source.osm[1].lon": 44.0344629,
+					"source.osm[1].osm_tag": "amenity",
+					"source.osm[1].osm_value": "cafe",
+					"source.osm[1].tags.addr:housenumber": "93",
+					"source.osm[1].tags.addr:street": "شارع القبلة (حضرة العباس)",
+					"source.osm[1].tags.amenity": "cafe",
+					"source.osm[1].tags.name": "مقهى حسن هادي حبيب",
+					"source.osm[1].timestamp": "2021-08-19T06:02:57Z"
+				}
+			}
+		]
+	}
+]
