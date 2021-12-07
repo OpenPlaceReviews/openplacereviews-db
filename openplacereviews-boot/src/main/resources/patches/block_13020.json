@@ -79,7 +79,7 @@
 					"source.osm[0].lat": 50.89929927598005,
 					"source.osm[0].lon": 14.080822147241008,
 					"source.osm[0].tags.building": "yes",
-					"source.osm[0].tags.name": "Berggaststätte \\\\\\\"Pfaffenstein\\\\\\\"",
+					"source.osm[0].tags.name": "Berggaststätte \\\"Pfaffenstein\\\"",
 					"source.osm[0].timestamp": "2020-01-05T11:09:12Z",
 					"source.osm[0].version": "12",
 					"source.osm[1].changeset": "111181241",
@@ -88,7 +88,7 @@
 					"source.osm[1].lon": 14.080826524783554,
 					"source.osm[1].tags.cuisine": "regional",
 					"source.osm[1].tags.diet:vegetarian": "only",
-					"source.osm[1].tags.name": "Berggaststätte \\\\\\\"Pfaffenstein\\\\\\\"",
+					"source.osm[1].tags.name": "Berggaststätte \\\"Pfaffenstein\\\"",
 					"source.osm[1].tags.outdoor_seating": "yes",
 					"source.osm[1].timestamp": "2021-09-14T08:17:47Z",
 					"source.osm[1].version": "1"
