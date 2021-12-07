@@ -1,0 +1,107 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8Q336F",
+					"gsi6ce"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "108962465"
+					},
+					"source.osm[0].deleted": {
+						"set": "2021-09-15T03:01:09.393+0000"
+					},
+					"source.osm[0].id": {
+						"set": 4849292722
+					},
+					"source.osm[0].lat": {
+						"set": 31.2376028
+					},
+					"source.osm[0].lon": {
+						"set": 121.4683399
+					},
+					"source.osm[0].tags.brand:en": "delete",
+					"source.osm[0].tags.brand:zh": "delete",
+					"source.osm[0].tags.brand:zh-hans": "delete",
+					"source.osm[0].tags.name": {
+						"set": "麦当劳"
+					},
+					"source.osm[0].tags.name:en": {
+						"set": "McDonald's"
+					},
+					"source.osm[0].tags.name:zh": {
+						"set": "麦当劳"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-08-01T05:49:47Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "4"
+					},
+					"source.osm[1].changeset": {
+						"set": "101857647"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-08-01T06:30:53.591+0000"
+					},
+					"source.osm[1].id": {
+						"set": 7099702415
+					},
+					"source.osm[1].lat": {
+						"set": 31.2379786
+					},
+					"source.osm[1].lon": {
+						"set": 121.4688847
+					},
+					"source.osm[1].tags.name": {
+						"set": "McDonald's"
+					},
+					"source.osm[1].tags.name:en": "delete",
+					"source.osm[1].tags.name:zh": "delete",
+					"source.osm[1].tags.brand:en": {
+						"set": "McDonald's"
+					},
+					"source.osm[1].tags.brand:zh": {
+						"set": "麦当劳"
+					},
+					"source.osm[1].tags.brand:zh-hans": {
+						"set": "麦当劳"
+					},
+					"source.osm[1].timestamp": {
+						"set": "2021-03-27T23:45:47Z"
+					},
+					"source.osm[1].version": {
+						"set": "3"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "101857647",
+					"source.osm[0].deleted": "2021-08-01T06:30:53.591+0000",
+					"source.osm[0].id": 7099702415,
+					"source.osm[0].lat": 31.2379786,
+					"source.osm[0].lon": 121.4688847,
+					"source.osm[0].tags.brand:en": "McDonald's",
+					"source.osm[0].tags.brand:zh": "麦当劳",
+					"source.osm[0].tags.brand:zh-hans": "麦当劳",
+					"source.osm[0].tags.name": "McDonald's",
+					"source.osm[0].timestamp": "2021-03-27T23:45:47Z",
+					"source.osm[0].version": "3",
+					"source.osm[1].changeset": "108962465",
+					"source.osm[1].deleted": "2021-09-15T03:01:09.393+0000",
+					"source.osm[1].id": 4849292722,
+					"source.osm[1].lat": 31.2376028,
+					"source.osm[1].lon": 121.4683399,
+					"source.osm[1].tags.name": "麦当劳",
+					"source.osm[1].tags.name:en": "McDonald's",
+					"source.osm[1].tags.name:zh": "麦当劳",
+					"source.osm[1].timestamp": "2021-08-01T05:49:47Z",
+					"source.osm[1].version": "4"
+				}
+			}
+		]
+	}
+]
