@@ -1,0 +1,78 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"9GPF4G",
+					"66zbs8"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111165592"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].osm_value": {
+						"set": "fast_food"
+					},
+					"source.osm[0].tags.amenity": {
+						"set": "fast_food"
+					},
+					"source.osm[0].tags.brand:wikidata": {
+						"set": "Q1628625"
+					},
+					"source.osm[0].tags.brand:wikipedia": {
+						"set": "en:Kotipizza"
+					},
+					"source.osm[0].tags.takeaway": {
+						"set": "yes"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-13T21:08:40Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "3"
+					},
+					"source.osm[1].changeset": {
+						"set": "83661558"
+					},
+					"source.osm[1].osm_value": {
+						"set": "restaurant"
+					},
+					"source.osm[1].tags.amenity": {
+						"set": "restaurant"
+					},
+					"source.osm[1].tags.brand:wikidata": "delete",
+					"source.osm[1].tags.brand:wikipedia": "delete",
+					"source.osm[1].tags.takeaway": "delete",
+					"source.osm[1].timestamp": {
+						"set": "2020-04-16T17:43:24Z"
+					},
+					"source.osm[1].version": {
+						"set": "2"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-13T21:53:05.241+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "83661558",
+					"source.osm[0].deleted": "2021-09-13T21:53:05.241+0000",
+					"source.osm[0].osm_value": "restaurant",
+					"source.osm[0].tags.amenity": "restaurant",
+					"source.osm[0].timestamp": "2020-04-16T17:43:24Z",
+					"source.osm[0].version": "2",
+					"source.osm[1].changeset": "111165592",
+					"source.osm[1].osm_value": "fast_food",
+					"source.osm[1].tags.amenity": "fast_food",
+					"source.osm[1].tags.brand:wikidata": "Q1628625",
+					"source.osm[1].tags.brand:wikipedia": "en:Kotipizza",
+					"source.osm[1].tags.takeaway": "yes",
+					"source.osm[1].timestamp": "2021-09-13T21:08:40Z",
+					"source.osm[1].version": "3"
+				}
+			}
+		]
+	}
+]
