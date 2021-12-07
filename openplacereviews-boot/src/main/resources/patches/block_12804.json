@@ -1,0 +1,57 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8CGV6W",
+					"2lmmhu"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111197941"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.name": {
+						"set": "Bar Piscina"
+					},
+					"source.osm[0].tags.opening_hours": {
+						"set": "Jul-Aug PH,Mo-Su 10:00-20:00"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-14T13:49:34Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "3"
+					},
+					"source.osm[1].changeset": {
+						"set": "104183781"
+					},
+					"source.osm[1].tags.name": "delete",
+					"source.osm[1].tags.opening_hours": "delete",
+					"source.osm[1].timestamp": {
+						"set": "2021-05-05T12:03:24Z"
+					},
+					"source.osm[1].version": {
+						"set": "1"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-14T14:14:07.334+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "104183781",
+					"source.osm[0].deleted": "2021-09-14T14:14:07.334+0000",
+					"source.osm[0].timestamp": "2021-05-05T12:03:24Z",
+					"source.osm[0].version": "1",
+					"source.osm[1].changeset": "111197941",
+					"source.osm[1].tags.name": "Bar Piscina",
+					"source.osm[1].tags.opening_hours": "Jul-Aug PH,Mo-Su 10:00-20:00",
+					"source.osm[1].timestamp": "2021-09-14T13:49:34Z",
+					"source.osm[1].version": "3"
+				}
+			}
+		]
+	}
+]
