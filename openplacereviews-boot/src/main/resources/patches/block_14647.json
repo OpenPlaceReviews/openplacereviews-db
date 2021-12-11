@@ -1,0 +1,56 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8GG4JX",
+					"zqgpgg"
+				],
+				"change": {
+					"source.osm[0].lat": {
+						"set": 40.628365447383075
+					},
+					"source.osm[0].lon": {
+						"set": 22.953503572325214
+					},
+					"source.osm[1].lat": {
+						"set": 40.628365749976346
+					},
+					"source.osm[1].lon": {
+						"set": 22.953503449996607
+					}
+				},
+				"current": {
+					"source.osm[0].lat": 40.628365749976346,
+					"source.osm[0].lon": 22.953503449996607,
+					"source.osm[1].lat": 40.628365447383075,
+					"source.osm[1].lon": 22.953503572325214
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"76H3X2",
+					"uqbg6o"
+				],
+				"change": {
+					"source.osm[1].timestamp": {
+						"set": "2017-12-14T23:59:47Z"
+					},
+					"source.osm[1].version": {
+						"set": "1"
+					}
+				},
+				"current": {
+					"source.osm[1].timestamp": "017-12-14T23:59:47Z",
+					"source.osm[1].version": "2"
+				}
+			}
+		]
+	}
+]
