@@ -52,6 +52,9 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 	
 	@Value("${opendb.mgmt.user}")
 	public String opendbMgmtUser;
+	
+	@Value("${opendb.patch-version}")
+	public String patchVersion;
 
 
 	 
@@ -88,26 +91,29 @@ public class OpenPlaceReviewsDbBoot extends OpenDBServer implements ApplicationR
 						BlocksManager.BOOT_STD_VALIDATION, "opr-osm", 
 						"opr-0-" + usr + "-bot");
 		blocksManager.setBootstrapList(bootstrapList);
-		blocksManager.addPatchOperation(12763, "block_12763");
-		blocksManager.addPatchOperation(12767, "block_12767");
-		blocksManager.addPatchOperation(12774, "block_12774");
-		blocksManager.addPatchOperation(12780, "block_12780");
-		blocksManager.addPatchOperation(12802, "block_12802");
-		blocksManager.addPatchOperation(12804, "block_12804");
-		blocksManager.addPatchOperation(12890, "block_12890");
-		blocksManager.addPatchOperation(12945, "block_12945");
-		blocksManager.addPatchOperation(13020, "block_13020");
-		blocksManager.addPatchOperation(13023, "block_13023");
-		blocksManager.addPatchOperation(13170, "block_13170");
-		blocksManager.addPatchOperation(13550, "block_13550");
-		blocksManager.addPatchOperation(13998, "block_13998");
-		blocksManager.addPatchOperation(14209, "block_14209");
-		blocksManager.addPatchOperation(14335, "block_14335");
-		blocksManager.addPatchOperation(14529, "block_14529");
-		blocksManager.addPatchOperation(14586, "block_14586");
-		blocksManager.addPatchOperation(14629, "block_14629");
-		blocksManager.addPatchOperation(14646, "block_14646");
-		blocksManager.addPatchOperation(14647, "block_14647");
+		if ("replication:1".equals(patchVersion)) {
+			// this should be changed, so we should not apply patch version for main server branch
+			blocksManager.addPatchOperation(12763, "block_12763");
+			blocksManager.addPatchOperation(12767, "block_12767");
+			blocksManager.addPatchOperation(12774, "block_12774");
+			blocksManager.addPatchOperation(12780, "block_12780");
+			blocksManager.addPatchOperation(12802, "block_12802");
+			blocksManager.addPatchOperation(12804, "block_12804");
+			blocksManager.addPatchOperation(12890, "block_12890");
+			blocksManager.addPatchOperation(12945, "block_12945");
+			blocksManager.addPatchOperation(13020, "block_13020");
+			blocksManager.addPatchOperation(13023, "block_13023");
+			blocksManager.addPatchOperation(13170, "block_13170");
+			blocksManager.addPatchOperation(13550, "block_13550");
+			blocksManager.addPatchOperation(13998, "block_13998");
+			blocksManager.addPatchOperation(14209, "block_14209");
+			blocksManager.addPatchOperation(14335, "block_14335");
+			blocksManager.addPatchOperation(14529, "block_14529");
+			blocksManager.addPatchOperation(14586, "block_14586");
+			blocksManager.addPatchOperation(14629, "block_14629");
+			blocksManager.addPatchOperation(14646, "block_14646");
+			blocksManager.addPatchOperation(14647, "block_14647");
+		}
 		settingsManager.registerTableMapping("obj_opr_places", 2, "opr.place");
 
 		addOsmIdIndex();
