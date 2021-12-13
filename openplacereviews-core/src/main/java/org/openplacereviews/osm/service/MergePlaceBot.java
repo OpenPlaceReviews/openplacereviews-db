@@ -36,7 +36,8 @@ import com.github.filosganga.geogson.model.Feature;
 
 public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
-    private static final int SIMILAR_PLACE_DISTANCE = 100;
+    private static final int DAYS_TO_TRY_PERMANENTLY_CLOSED = 10;
+	private static final int SIMILAR_PLACE_DISTANCE = 100;
     private static final String IMAGES = "images";
     private static final String SOURCE = "source";
     private static final String SET = "set";
@@ -180,7 +181,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
 					}
 					if (placesToMerge.isEmpty()) {
-						if (wasDeletedMoreThanTenDaysAgo(deleted)
+						if (wasDeletedMoreThanDaysAgo(deleted)
 								&& (closedPlacesSet.isEmpty() || !closedPlacesSet.contains(deleted.getId().toString()))) {
 							if (closeDeletedPlace(deleted, info.closed)) {
 								info.closedPlacesCnt++;
@@ -276,11 +277,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		return null;
 	}
 
-	private boolean wasDeletedMoreThanTenDaysAgo(OpObject deleted) {
+	private boolean wasDeletedMoreThanDaysAgo(OpObject deleted) {
 		LocalDate dateToday = LocalDate.now();
 		LocalDate dateDeleted = getDeletedDate(deleted);
 		if (dateDeleted != null) {
-			return Duration.between(dateDeleted.atStartOfDay(), dateToday.atStartOfDay()).toDays() >= 10;
+			return Duration.between(dateDeleted.atStartOfDay(), dateToday.atStartOfDay()).toDays() >= DAYS_TO_TRY_PERMANENTLY_CLOSED;
 		} else {
 			return false;
 		}
