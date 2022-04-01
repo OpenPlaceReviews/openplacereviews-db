@@ -28,10 +28,35 @@
       			"values" : ["hotel","motel","hostel","apartment","guest_house"],
             	"type" : ["node", "way"]
           },
-          "attraction": {
-            "key": "historic",
-            "values": ["ruins"],
-            "type": ["node", "way"]
+          "travel" : {
+                "key" : "tourism",
+                "values" : ["camp_site","camp_pitch","caravan_site","picnic_site"],
+                "type" : ["node", "way"]
+          },
+          "nature" : {
+                "key" : "tourism",
+                "values" : ["zoo","aquarium","theme_park","viewpoint"],
+                "type" : ["node", "way"]
+          },
+          "art" : {
+                "key" : "tourism",
+                "values" : ["gallery","museum","artwork"],
+                "type" : ["node", "way"]
+          },
+          "attraction" : {
+                "key": "attraction",
+                "values": ["amusement_ride","animal","big_wheel","carousel","maze","roller_coaster","slide","summer_toboggan","swing_carousel","train","water_slide"],
+                "type": ["node", "way"]
+          },
+          "museum" : {
+               "key" : "museum",
+               "values" : ["art","gallery","transport","railway","aviation","aerospace","maritime","science","apis_mellifera","nature","technology","agriculture","paleontology","history","living_history","military","war","archaeological","open_air","local","children","ethnography","person","language","health"],
+               "type" : ["node", "way"]
+          },
+          "historic" : {
+               "key" : "historic",
+               "values" : ["memorial","monument","technical_monument","locomotive","ruins","rune_stone","stone","wreck","ship","mine"],
+               "type" : ["node", "way"]
           }
         }
       },
