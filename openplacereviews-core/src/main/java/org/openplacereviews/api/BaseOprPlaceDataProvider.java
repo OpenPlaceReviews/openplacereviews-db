@@ -3,6 +3,7 @@ package org.openplacereviews.api;
 import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.util.MergeUtil.getMainOsmFromList;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.*;
 
 import java.text.ParseException;
@@ -268,7 +269,7 @@ public abstract class BaseOprPlaceDataProvider
 					put(obj, CHANGESET, sourceObj);
 					put(obj, ATTR_LATITUDE, sourceObj);
 					put(obj, ATTR_LONGITUDE, sourceObj);
-					put(obj, F_DELETED_PLACE, sourceObj);
+					put(obj, F_DELETED_OSM, sourceObj);
 					Map<String, Object> tagsValue = (Map<String, Object>) sourceObj.get(TAGS);
 					if (tagsValue != null) {
 						JsonObject tagsObj = new JsonObject();
@@ -277,7 +278,7 @@ public abstract class BaseOprPlaceDataProvider
 							Entry<String, Object> e = it.next();
 							tagsObj.add(e.getKey(), new JsonPrimitive(e.getValue().toString()));
 							// for now specify main tags from 1st source
-							if (mainTagKeys.add(e.getKey())) {
+							if (!sourceObj.containsKey(F_DELETED_OSM) && mainTagKeys.add(e.getKey())) {
 								JsonObject val = new JsonObject();
 								val.add("value", new JsonPrimitive(e.getValue().toString()));
 								val.add("source", new JsonPrimitive(tp));
@@ -297,25 +298,6 @@ public abstract class BaseOprPlaceDataProvider
 			Feature f = new Feature(p, bld.build(), Optional.absent());
 			fc.features().add(f);
 		}
-	}
-
-	protected Map<String, Object> getMainOsmFromList(OpObject o) {
-		List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
-		if (osmList == null) {
-			return null;
-		}
-		Map<String, Object> main = null;
-		for (Map<String, Object> m : osmList) {
-			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(F_OSM_VALUE)) {
-				if(!m.containsKey(F_DELETED_OSM)) {
-					return m;
-				}
-				if (main == null) {
-					main = m;
-				}
-			}
-		}
-		return main;
 	}
 
 	@SuppressWarnings("unchecked")

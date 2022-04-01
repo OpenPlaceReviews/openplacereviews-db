@@ -1,0 +1,52 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8FXR5J",
+					"5wki0b"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "110178920"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.name": {
+						"set": "Na Zmrzlinu"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-08-24T14:50:52Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "5"
+					},
+					"source.osm[1].changeset": {
+						"set": "107344907"
+					},
+					"source.osm[1].tags.name": "delete",
+					"source.osm[1].timestamp": {
+						"set": "2021-07-03T09:01:08Z"
+					},
+					"source.osm[1].version": {
+						"set": "4"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-08-24T15:37:29.284+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "107344907",
+					"source.osm[0].deleted": "2021-08-24T15:37:29.284+0000",
+					"source.osm[0].timestamp": "2021-07-03T09:01:08Z",
+					"source.osm[0].version": "4",
+					"source.osm[1].changeset": "110178920",
+					"source.osm[1].tags.name": "Na Zmrzlinu",
+					"source.osm[1].timestamp": "2021-08-24T14:50:52Z",
+					"source.osm[1].version": "5"
+				}
+			}
+		]
+	}
+]

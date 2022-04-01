@@ -1,0 +1,55 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8FF5H9",
+					"facwtr"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "110382545"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.name": {
+						"set": "Hipotels Mediterraneo Hotel"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-08-28T14:25:30Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "6"
+					},
+					"source.osm[1].changeset": {
+						"set": "31359595"
+					},
+					"source.osm[1].tags.name": {
+						"set": "Blau Mediterraneo Hotel"
+					},
+					"source.osm[1].timestamp": {
+						"set": "2015-05-22T05:48:36Z"
+					},
+					"source.osm[1].version": {
+						"set": "5"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-08-28T15:03:18.265+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "31359595",
+					"source.osm[0].deleted": "2021-08-28T15:03:18.265+0000",
+					"source.osm[0].tags.name": "Blau Mediterraneo Hotel",
+					"source.osm[0].timestamp": "2015-05-22T05:48:36Z",
+					"source.osm[0].version": "5",
+					"source.osm[1].changeset": "110382545",
+					"source.osm[1].tags.name": "Hipotels Mediterraneo Hotel",
+					"source.osm[1].timestamp": "2021-08-28T14:25:30Z",
+					"source.osm[1].version": "6"
+				}
+			}
+		]
+	}
+]

@@ -1,0 +1,65 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8FRP4X",
+					"yigaoc"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111185321"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.name": {
+						"set": "Bistro & Kavarna Petra"
+					},
+					"source.osm[0].tags.bistro": {
+						"set": "&"
+					},
+					"source.osm[0].tags.kavarna": {
+						"set": "Petra"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-14T09:35:57Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "3"
+					},
+					"source.osm[1].changeset": {
+						"set": "23211026"
+					},
+					"source.osm[1].tags.bistro": "delete",
+					"source.osm[1].tags.kavarna": "delete",
+					"source.osm[1].tags.name": {
+						"set": "Okrepčevalnica Zarja"
+					},
+					"source.osm[1].timestamp": {
+						"set": "2014-06-27T10:52:27Z"
+					},
+					"source.osm[1].version": {
+						"set": "2"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-14T10:39:28.307+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "23211026",
+					"source.osm[0].deleted": "2021-09-14T10:39:28.307+0000",
+					"source.osm[0].tags.name": "Okrepčevalnica Zarja",
+					"source.osm[0].timestamp": "2014-06-27T10:52:27Z",
+					"source.osm[0].version": "2",
+					"source.osm[1].changeset": "111185321",
+					"source.osm[1].tags.bistro": "&",
+					"source.osm[1].tags.kavarna": "Petra",
+					"source.osm[1].tags.name": "Bistro & Kavarna Petra",
+					"source.osm[1].timestamp": "2021-09-14T09:35:57Z",
+					"source.osm[1].version": "3"
+				}
+			}
+		]
+	}
+]

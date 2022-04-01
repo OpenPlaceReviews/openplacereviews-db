@@ -21,6 +21,8 @@ public class OprMapCollectionApiResult {
 	
 	public Set<String> alreadyReviewedPlaceIds = new TreeSet<>();
 	
+	public Set<String> alreadyDeletedPlaceIds = new TreeSet<>();
+	
 	public Map<String, Object> parameters = new LinkedHashMap<>();
 	
 	public static class MapCollectionParameters {

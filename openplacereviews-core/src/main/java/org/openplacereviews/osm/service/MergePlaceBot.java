@@ -4,10 +4,12 @@ import static org.openplacereviews.api.BaseOprPlaceDataProvider.OPR_ID;
 import static org.openplacereviews.api.OprHistoryChangesProvider.OPR_PLACE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LATITUDE;
 import static org.openplacereviews.osm.model.Entity.ATTR_LONGITUDE;
+import static org.openplacereviews.osm.util.MergeUtil.*;
+import static org.openplacereviews.osm.util.MergeUtil.MatchType.NAME_MATCH;
+import static org.openplacereviews.osm.util.MergeUtil.MatchType.OTHER_NAME_MATCH;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_OSM;
 import static org.openplacereviews.osm.util.PlaceOpObjectHelper.F_DELETED_PLACE;
 
-import java.text.Collator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -15,8 +17,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import com.github.filosganga.geogson.model.Point;
-import org.apache.catalina.util.ParameterMap;
-import org.apache.commons.text.similarity.LevenshteinDistance;
+
+
 import org.openplacereviews.api.OprHistoryChangesProvider;
 import org.openplacereviews.api.OprMapCollectionApiResult;
 import org.openplacereviews.opendb.ops.OpObject;
@@ -24,11 +26,10 @@ import org.openplacereviews.opendb.ops.OpOperation;
 import org.openplacereviews.opendb.service.BlocksManager;
 import org.openplacereviews.opendb.service.PublicDataManager;
 import org.openplacereviews.opendb.service.bots.GenericMultiThreadBot;
-import org.openplacereviews.opendb.util.OUtils;
 import org.openplacereviews.opendb.util.exception.FailedVerificationException;
 import org.openplacereviews.osm.model.LatLon;
 import org.openplacereviews.osm.model.OsmMapUtils;
-import org.openplacereviews.osm.util.PlaceOpObjectHelper;
+import org.openplacereviews.osm.util.MergeUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.github.filosganga.geogson.model.Feature;
@@ -41,23 +42,15 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     private static final String SET = "set";
     private static final String APPEND = "append";
     private static final String APPEND_MANY = "appendmany";
-    private static final String PLACE_NAME = "name";
-    private static final String WIKIDATA = "wikidata";
-    private static final String WEBSITE = "website";
     private static final String REQUEST_FILTER = OprHistoryChangesProvider.RequestFilter.REVIEW_CLOSED_PLACES.name();
     private static final String START_DATE = "date";
     private static final String END_DATE = "date2";
-	private static final String TILE_ID = "tileid";
     private static final String FILTER = "requestFilter";
     private static final String HISTORY = "history";
-	private static final String GEO = "geo";
-    private static final String ALL_PUNCTUATION = "^\\p{Punct}+|\\p{Punct}+$";
-    private static final String SPACE = " ";
     private static final String COMMA = ",";
-    private static final String OLD_NAME = "old_name";
-	private static final String TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
+	private static final String TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.[SSSZ][SSSSZ]";
     
-    public static final int MONTHS_TO_CHECK = 6;
+    public static final int MONTHS_TO_CHECK = 9;
     public boolean TRACE = true;
 
     @Autowired
@@ -102,19 +95,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		int mergedPlacesCnt;
 		int closedPlacesCnt;
     }
-    
-    protected enum MatchType {
-    	NAME_MATCH(true),
-    	OTHER_TAGS_MATCH(true),
-    	OTHER_NAME_MATCH(true),
-    	EMPTY_NAME_MATCH(false);
-    	
-    	public final boolean allow2PlacesMerge;
-
-		private MatchType(boolean allow2PlacesMerge) {
-			this.allow2PlacesMerge = allow2PlacesMerge;
-    	}
-    }
 
     @Override
     public MergePlaceBot call() throws Exception {
@@ -145,7 +125,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				int cnt = addOperations(info.deleted, info.edited, info.closed);
 				info(String.format(
 						"Merge places has finished for %s - %s: place groups %d, closed places %d, found similar places %d - merged %d, perm closed %d operations %d", 
-						start.toString(), end.toString(), info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt, info.closedPlacesCnt, cnt));
+						start, end, info.mergedGroupSize, info.closedPlaces, info.similarPlacesCnt, info.mergedPlacesCnt, info.closedPlacesCnt, cnt));
 				progress++;
 			}
 			info("Merge places completed: " + new Date());
@@ -174,7 +154,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				if (res.alreadyReviewedPlaceIds.contains(getOprGenId(f))) {
 					continue;
 				}
-				OpObject obj = getCurrentObject(f);
+				OpObject obj = getCurrentObject(f, blocksManager);
 				Map<String, Object> mainOsm = getMainOsmFromList(obj);
 				if (mainOsm != null) {
 					boolean delOsm = mainOsm.containsKey(F_DELETED_OSM);
@@ -186,34 +166,41 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 				} 
 			}
 			for (OpObject deleted : closedPlaces) {
-				LatLon l = getLatLon(deleted);
-				info.closedPlaces++;
-				List<OpObject> placesToMerge = new ArrayList<>(groupPlacesToMerge);
-				Iterator<OpObject> it = placesToMerge.iterator();
-				while (it.hasNext()) {
-					OpObject o = it.next();
-					LatLon l2 = getLatLon(o);
-					if (l2 == null || OsmMapUtils.getDistance(l, l2) > SIMILAR_PLACE_DISTANCE) {
-						it.remove();
-					}
+				try {
+					LatLon l = getLatLon(deleted);
+					info.closedPlaces++;
+					List<OpObject> placesToMerge = new ArrayList<>(groupPlacesToMerge);
+					Iterator<OpObject> it = placesToMerge.iterator();
+					while (it.hasNext()) {
+						OpObject o = it.next();
+						LatLon l2 = getLatLon(o);
+						if (l2 == null || OsmMapUtils.getDistance(l, l2) > SIMILAR_PLACE_DISTANCE) {
+							it.remove();
+						}
 
-				}
-				if (placesToMerge.isEmpty()) {
-					if (wasDeletedMoreThanTenDaysAgo(deleted) && !closedPlacesSet.contains(deleted.getId().toString())) {
-						if (closeDeletedPlace(deleted, info.closed)) {
-							info.closedPlacesCnt++;
-							closedPlacesSet.add(deleted.getId().toString());
+					}
+					if (placesToMerge.isEmpty()) {
+						if (wasDeletedMoreThanTenDaysAgo(deleted)
+								&& (closedPlacesSet.isEmpty() || !closedPlacesSet.contains(deleted.getId().toString()))) {
+							if (closeDeletedPlace(deleted, info.closed)) {
+								info.closedPlacesCnt++;
+								closedPlacesSet.add(deleted.getId().toString());
+							}
+						}
+					} else {
+						info.similarPlacesCnt++;
+						EnumSet<MergeUtil.MatchType> es = closedPlaces.size() == 1 ? EnumSet.allOf(MergeUtil.MatchType.class)
+								: EnumSet.range(NAME_MATCH, OTHER_NAME_MATCH);
+						OpObject deletedMerged = mergePlaces(es, deleted, placesToMerge, info.deleted, info.edited);
+						if (deletedMerged != null) {
+							groupPlacesToMerge.remove(deletedMerged);
+							info.mergedPlacesCnt++;
 						}
 					}
-				} else {
-					info.similarPlacesCnt++;
-					EnumSet<MatchType> es = closedPlaces.size() == 1 ? EnumSet.allOf(MatchType.class)
-							: EnumSet.range(MatchType.NAME_MATCH, MatchType.OTHER_NAME_MATCH);
-					OpObject deletedMerged = mergePlaces(es, deleted, placesToMerge, info.deleted, info.edited);
-					if (deletedMerged != null) {
-						groupPlacesToMerge.remove(deletedMerged);
-						info.mergedPlacesCnt++;
-					}
+				} catch (RuntimeException e) {
+					info(String.format(
+							"Error processing deleted object '%s': %s", deleted.getId().toString(), e.getMessage()));
+					throw e;
 				}
 			}
 
@@ -221,8 +208,8 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 	}
 
 	private boolean closeDeletedPlace(OpObject deleted, List<OpObject> edited) {
-		OprMapCollectionApiResult res = getDataReport(deleted.getId().get(0));
-		if (res != null && res.geo.features() != null && !hasSimilarClosebyActivePlaces(res.geo.features(), deleted)) {
+		OprMapCollectionApiResult res = getDataReport(deleted.getId().get(0), dataManager);
+		if (res != null && res.geo.features() != null && !hasSimilarCloseByActivePlaces(res.geo.features(), deleted)) {
 			if (TRACE) {
 				info(String.format("Close %s - %s", deleted.getId(), getMainOsmFromList(deleted)));
 			}
@@ -235,7 +222,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 	}
 
 
-	private boolean hasSimilarClosebyActivePlaces(List<Feature> features, OpObject deleted) {
+	private boolean hasSimilarCloseByActivePlaces(List<Feature> features, OpObject deleted) {
 		LatLon latLonDeleted = getLatLon(deleted);
 		if (latLonDeleted != null) {
 			for (Feature feature : features) {
@@ -250,7 +237,7 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
 	private boolean isNonDeleted(Feature feature) {
 		if (!feature.properties().containsKey(F_DELETED_PLACE)) {
-			Map<String, Object> osm = getMainOsmFromList(getCurrentObject(feature));
+			Map<String, Object> osm = getMainOsmFromList(getCurrentObject(feature, blocksManager));
 			return osm != null && !osm.containsKey(F_DELETED_OSM);
 		}
 		return false;
@@ -264,11 +251,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 
 	private boolean hasSimilarName(Feature feature, OpObject deleted) {
 		Map<String, String> oldOsmTags = getMainOsmTags(deleted);
-		OpObject objToMerge = getCurrentObject(feature);
+		OpObject objToMerge = getCurrentObject(feature, blocksManager);
 		Map<String, String> placeToMergeTags = getMainOsmTags(objToMerge);
 		if (oldOsmTags != null && placeToMergeTags != null) {
 			for (MatchType mt : EnumSet.allOf(MatchType.class)) {
-				if (match(mt, oldOsmTags, placeToMergeTags)) {
+				if (mt.match(oldOsmTags, placeToMergeTags)) {
 					return true;
 				}
 			}
@@ -298,16 +285,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 			return false;
 		}
 	}
-
-	private OprMapCollectionApiResult getDataReport(String tileId) {
-		PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint = dataManager.getEndpoint(GEO);
-		if (apiEndpoint != null) {
-			Map<String, String[]> dataParams = new LinkedHashMap<>();
-			dataParams.put(TILE_ID, new String[]{tileId});
-			return getReport(apiEndpoint, dataParams);
-		}
-		return null;
-	}
 	
 	private void addObj(List<OpObject> ar, OpObject obj) {
 		for (OpObject o : ar) {
@@ -322,19 +299,11 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 	private LatLon getLatLon(OpObject o) {
 		Map<String, Object> mp = getMainOsmFromList(o);
 		if(mp != null && mp.containsKey(ATTR_LATITUDE) && mp.containsKey(ATTR_LONGITUDE)) {
-			return new LatLon((double) mp.get(ATTR_LATITUDE), (double) mp.get(ATTR_LONGITUDE));
+			return new LatLon(((Number) mp.get(ATTR_LATITUDE)).doubleValue(), ((Number) mp.get(ATTR_LONGITUDE)).doubleValue());
 		}
 		return null;
 	}
 
-	protected OpObject getCurrentObject(Feature newPlace) {
-		OpObject obj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(newPlace));
-		if (obj != null && obj.getField(null, F_DELETED_PLACE) != null) {
-			return null;
-		}
-		return obj;
-	}
-    
     @Override
     public int progress() {
     	return progress;
@@ -343,26 +312,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     @Override
     public int total() {
     	return totalCnt;
-    }
-
-	private List<List<Feature>> getMergeGroups(List<Feature> list) {
-		List<List<Feature>> mergeGroups = new ArrayList<>();
-		if (list == null) {
-			return mergeGroups;
-		}
-		int currentGroupBeginIndex = 0;
-		for (int i = 1; i < list.size() - 1; i++) {
-			if (isDeleted(list, i) && !isDeleted(list, i - 1)) {
-				mergeGroups.add(list.subList(currentGroupBeginIndex, i));
-				currentGroupBeginIndex = i;
-			}
-		}
-		mergeGroups.add(list.subList(currentGroupBeginIndex, list.size()));
-		return mergeGroups;
-	}
-
-    private boolean isDeleted(List<Feature> list, int i) {
-        return list.get(i).properties().containsKey(F_DELETED_OSM);
     }
 
     private int addOperations(List<List<String>> deleted, List<OpObject> edited, List<OpObject> closed) throws FailedVerificationException {
@@ -403,20 +352,19 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
     }
 
     private OprMapCollectionApiResult getReport(PublicDataManager.PublicAPIEndpoint<?, ?> apiEndpoint, Map<String, String[]> params) {
-        OprMapCollectionApiResult collection = (OprMapCollectionApiResult) apiEndpoint.getContentObject(params);
-        return collection;
+        return (OprMapCollectionApiResult) apiEndpoint.getContentObject(params);
     }
 
-    protected OpObject mergePlaces(EnumSet<MatchType> matchTypes, OpObject oldObj, List<OpObject> placesToMerge, List<List<String>> deleted, List<OpObject> edited) {
+    protected OpObject mergePlaces(EnumSet<MergeUtil.MatchType> matchTypes, OpObject oldObj, List<OpObject> placesToMerge, List<List<String>> deleted, List<OpObject> edited) {
     	List<Map<String, String>> placesToMergeTags = new ArrayList<>();
     	Map<String, String> oldOsmTags = getMainOsmTags(oldObj);
 		for (int i = 0; i < placesToMerge.size(); i++) {
 			placesToMergeTags.add(getMainOsmTags(placesToMerge.get(i)));
 		}
-		for (MatchType mt : matchTypes) {
+		for (MergeUtil.MatchType mt : matchTypes) {
 			int matched = -1;
 			for (int i = 0; i < placesToMerge.size(); i++) {
-				if (match(mt, oldOsmTags, placesToMergeTags.get(i))) {
+				if (mt.match(oldOsmTags, placesToMergeTags.get(i))) {
 					if (matched >= 0) {
 						// 2 places match
 						if (mt.allow2PlacesMerge) {
@@ -441,47 +389,14 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		// System.out.println("Not merge:" + oldOsmTags + " != " + placesToMergeTags);
 		return null;
     }
-    
-    protected boolean match(MatchType mt, Map<String, String> oldOsmTags, Map<String, String> newOsmTags) {
-    	String oldName = (String) oldOsmTags.get(PLACE_NAME);
-    	String newName = (String) newOsmTags.get(PLACE_NAME);
-		if (mt == MatchType.OTHER_TAGS_MATCH) {
-			if (equalsNotEmptyStringValue(oldOsmTags.get(WIKIDATA), newOsmTags.get(WIKIDATA))) {
-				return true;
-			}
-			if (equalsNotEmptyStringValue(oldOsmTags.get(WEBSITE), newOsmTags.get(WEBSITE))) {
-				return true;
-			}
-		} else if (mt == MatchType.NAME_MATCH) {
-    		return checkNames(oldName, newName);
-    	} else if(mt == MatchType.OTHER_NAME_MATCH) {
-    		List<String> otherNames = getOtherPlaceName(newOsmTags);
-    		List<String> otherOldNames = getOtherPlaceName(oldOsmTags);
-			for (String name : otherNames) {
-				for (String name2 : otherOldNames) {
-					if (checkNames(name2, name)) {
-						return true;
-					}
-				}
-			}
-		} else if (mt == MatchType.EMPTY_NAME_MATCH) {
-			// all names null
-			if (OUtils.isEmpty(oldName) && OUtils.isEmpty(newName)) {
-				return true;
-			}
-			// if name appeared
-			if (OUtils.isEmpty(oldName)) {
-				return true;
-			}
-		}
-		return false;
-	}
 
-	private boolean equalsNotEmptyStringValue(String s1, String s2) {
-		if (OUtils.isEmpty(s1) || OUtils.isEmpty(s2)) {
-			return false;
+    //for test
+	protected OpObject getCurrentObjectInBot(Feature newPlace) {
+		OpObject obj = blocksManager.getBlockchain().getObjectByName(OPR_PLACE, getPlaceId(newPlace));
+		if (obj != null && obj.getField(null, F_DELETED_PLACE) != null) {
+			return null;
 		}
-		return OUtils.equalsStringValue(s1, s2);
+		return obj;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -492,29 +407,6 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
 		}
 		return null;
 	}
-	
-	private Map<String, Object> getMainOsmFromList(OpObject o) {
-		if (o == null) {
-			return null;
-		}
-		List<Map<String, Object>> osmList = o.getField(null, "source", "osm");
-		if (osmList == null) {
-			return null;
-		}
-		Map<String, Object> main = null;
-		for (Map<String, Object> m : osmList) {
-			if (m.containsKey(ATTR_LATITUDE) && m.containsKey(ATTR_LONGITUDE) && m.containsKey(PlaceOpObjectHelper.F_OSM_VALUE)) {
-				if (!m.containsKey(F_DELETED_OSM)) {
-					return m;
-				}
-				if (main == null) {
-					main = m;
-				}
-			}
-		}
-		return main;
-	}
-
 
     protected List<String> getPlaceId(Feature feature) {
         return new ArrayList<>(Arrays.asList(getOprGenId(feature).split(COMMA)));
@@ -588,88 +480,4 @@ public class MergePlaceBot extends GenericMultiThreadBot<MergePlaceBot> {
         }
     }
 
-    private List<String> getOtherPlaceName(Map<String, String> tags) {
-        List<String> otherNames = new ArrayList<>();
-		for (Map.Entry<String, String> tag : tags.entrySet()) {
-			if (tag.getKey().startsWith(PLACE_NAME) || tag.getKey().equals(OLD_NAME)) {
-				otherNames.add((String) tag.getValue());
-			}
-		}
-        return otherNames;
-    }
-
-    private boolean checkNames(String oldName, String newName) {
-    	// empty name not equal
-		if (OUtils.isEmpty(oldName) || OUtils.isEmpty(newName)) {
-			return false;
-		}
-        Collator collator = Collator.getInstance();
-        collator.setStrength(Collator.PRIMARY);
-
-        String oldNameLower = oldName.toLowerCase();
-        String newNameLower = newName.toLowerCase();
-        //if names equal
-        if (collator.compare(oldNameLower, newNameLower) == 0) {
-            return true;
-        }
-
-        if (oldNameLower.replaceAll("\\s+", "")
-                .equals(newNameLower.replaceAll("\\s+", ""))) {
-            return true;
-        }
-
-        List<String> oldNameList = getWords(oldNameLower);
-        List<String> newNameList = getWords(newNameLower);
-        Collections.sort(oldNameList);
-        Collections.sort(newNameList);
-        //if names have the same words in different order
-        //or one of the names is part of another name
-        return oldNameList.equals(newNameList)
-                || isSubCollection(newNameList, oldNameList, collator)
-                || isSubCollection(oldNameList, newNameList, collator);
-    }
-
-    private List<String> getWords(String name) {
-        List<String> wordList = new ArrayList<>();
-        for (String word : name.split(SPACE)) {
-            String res = word.trim().replaceAll(ALL_PUNCTUATION, "");
-            if (!res.equals("")) {
-                wordList.add(res);
-            }
-        }
-        return wordList;
-    }
-
-
-    private boolean isSubCollection(List<String> mainList, List<String> subList, Collator collator) {
-        int matchedCount = 0;
-        for (String wordMain : mainList) {
-            for (String wordSub : subList) {
-                if (collator.compare(wordMain, wordSub) == 0
-                        || new LevenshteinDistance().apply(wordMain, wordSub) <= getMaxLevenshteinDistance(wordMain, wordSub)) {
-                    matchedCount++;
-                    if (matchedCount == subList.size()) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    private int getMaxLevenshteinDistance(String wordMain, String wordSub) {
-        int wordMainLength = wordMain.length();
-        int wordSubLength = wordSub.length();
-        int resLength = Math.min(wordMainLength, wordSubLength);
-        if (resLength < 3) {
-            return 1;
-        }
-        if (resLength <= 5) {
-            return 2;
-        }
-        if (resLength <= 7) {
-            return 3;
-        }
-        return 4;
-    }
 }

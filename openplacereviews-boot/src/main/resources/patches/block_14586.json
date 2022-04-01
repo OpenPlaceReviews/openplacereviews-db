@@ -1,0 +1,107 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8GG4JX",
+					"wnvabs"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111159994"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.name": {
+						"set": "simply falafel"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-13T18:42:40Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "3"
+					},
+					"source.osm[1].changeset": {
+						"set": "42542902"
+					},
+					"source.osm[1].tags.name": "delete",
+					"source.osm[1].timestamp": {
+						"set": "2016-09-30T15:14:53Z"
+					},
+					"source.osm[1].version": {
+						"set": "2"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-13T19:19:18.921+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "42542902",
+					"source.osm[0].deleted": "2021-09-13T19:19:18.921+0000",
+					"source.osm[0].timestamp": "2016-09-30T15:14:53Z",
+					"source.osm[0].version": "2",
+					"source.osm[1].changeset": "111159994",
+					"source.osm[1].tags.name": "simply falafel",
+					"source.osm[1].timestamp": "2021-09-13T18:42:40Z",
+					"source.osm[1].version": "3"
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8GG4JX",
+					"umfw24"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111160320"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.name": {
+						"set": "Titania"
+					},
+					"source.osm[0].tags.opening_hours:signed": {
+						"set": "no"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-13T18:46:19Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "3"
+					},
+					"source.osm[1].changeset": {
+						"set": "64390861"
+					},
+					"source.osm[1].tags.name": "delete",
+					"source.osm[1].tags.opening_hours:signed": "delete",
+					"source.osm[1].timestamp": {
+						"set": "2018-11-12T03:12:56Z"
+					},
+					"source.osm[1].version": {
+						"set": "1"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-13T19:19:21.111+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "64390861",
+					"source.osm[0].deleted": "2021-09-13T19:19:21.111+0000",
+					"source.osm[0].timestamp": "2018-11-12T03:12:56Z",
+					"source.osm[0].version": "1",
+					"source.osm[1].changeset": "111160320",
+					"source.osm[1].tags.name": "Titania",
+					"source.osm[1].tags.opening_hours:signed": "no",
+					"source.osm[1].timestamp": "2021-09-13T18:46:19Z",
+					"source.osm[1].version": "3"
+				}
+			}
+		]
+	}
+]

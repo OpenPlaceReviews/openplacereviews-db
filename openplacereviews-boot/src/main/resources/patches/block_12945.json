@@ -1,0 +1,83 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"87C4WJ",
+					"gcy45v"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111169302"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].tags.cuisine": {
+						"set": "pizza;pasta"
+					},
+					"source.osm[0].tags.name": {
+						"set": "Ledo Pizza"
+					},
+					"source.osm[0].tags.branch": {
+						"set": "Reston"
+					},
+					"source.osm[0].tags.brand": {
+						"set": "Ledo Pizza"
+					},
+					"source.osm[0].tags.brand:wikidata": {
+						"set": "Q6512734"
+					},
+					"source.osm[0].tags.brand:wikipedia": {
+						"set": "en:Ledo Pizza"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-14T00:43:15Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "4"
+					},
+					"source.osm[1].changeset": {
+						"set": "67407101"
+					},
+					"source.osm[1].tags.branch": "delete",
+					"source.osm[1].tags.brand": "delete",
+					"source.osm[1].tags.brand:wikidata": "delete",
+					"source.osm[1].tags.brand:wikipedia": "delete",
+					"source.osm[1].tags.cuisine": {
+						"set": "pizza"
+					},
+					"source.osm[1].tags.name": {
+						"set": "Ledo Pizza - Reston"
+					},
+					"source.osm[1].timestamp": {
+						"set": "2019-02-20T20:44:44Z"
+					},
+					"source.osm[1].version": {
+						"set": "3"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-14T01:26:38.493+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "67407101",
+					"source.osm[0].deleted": "2021-09-14T01:26:38.493+0000",
+					"source.osm[0].tags.cuisine": "pizza",
+					"source.osm[0].tags.name": "Ledo Pizza - Reston",
+					"source.osm[0].timestamp": "2019-02-20T20:44:44Z",
+					"source.osm[0].version": "3",
+					"source.osm[1].changeset": "111169302",
+					"source.osm[1].tags.branch": "Reston",
+					"source.osm[1].tags.brand": "Ledo Pizza",
+					"source.osm[1].tags.brand:wikidata": "Q6512734",
+					"source.osm[1].tags.brand:wikipedia": "en:Ledo Pizza",
+					"source.osm[1].tags.cuisine": "pizza;pasta",
+					"source.osm[1].tags.name": "Ledo Pizza",
+					"source.osm[1].timestamp": "2021-09-14T00:43:15Z",
+					"source.osm[1].version": "4"
+				}
+			}
+		]
+	}
+]

@@ -1,0 +1,89 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8CMV67",
+					"zczljq"
+				],
+				"change": {
+					"source.osm[0].changeset": {
+						"set": "111160024"
+					},
+					"source.osm[0].deleted": "delete",
+					"source.osm[0].lat": {
+						"set": 43.2129601
+					},
+					"source.osm[0].lon": {
+						"set": -2.7271009
+					},
+					"source.osm[0].tags.addr:street": {
+						"set": "Bideaur auzoa"
+					},
+					"source.osm[0].tags.name": {
+						"set": "jauregibarria jatetxea"
+					},
+					"source.osm[0].tags.addr:city": {
+						"set": "Amorebieta-Etxano"
+					},
+					"source.osm[0].tags.website": {
+						"set": "jauregibarria.com"
+					},
+					"source.osm[0].timestamp": {
+						"set": "2021-09-13T18:31:26Z"
+					},
+					"version": "increment",
+					"source.osm[0].version": {
+						"set": "3"
+					},
+					"source.osm[1].changeset": {
+						"set": "78040621"
+					},
+					"source.osm[1].lat": {
+						"set": 43.2128933
+					},
+					"source.osm[1].lon": {
+						"set": -2.7270209
+					},
+					"source.osm[1].tags.addr:city": "delete",
+					"source.osm[1].tags.addr:street": {
+						"set": "videau auzoa"
+					},
+					"source.osm[1].tags.name": {
+						"set": "jauregibarria jatetxeaa"
+					},
+					"source.osm[1].tags.website": "delete",
+					"source.osm[1].timestamp": {
+						"set": "2019-12-06T10:13:23Z"
+					},
+					"source.osm[1].version": {
+						"set": "2"
+					},
+					"source.osm[1].deleted": {
+						"set": "2021-09-13T19:19:22.637+0000"
+					}
+				},
+				"current": {
+					"source.osm[0].changeset": "78040621",
+					"source.osm[0].deleted": "2021-09-13T19:19:22.637+0000",
+					"source.osm[0].lat": 43.2128933,
+					"source.osm[0].lon": -2.7270209,
+					"source.osm[0].tags.addr:street": "videau auzoa",
+					"source.osm[0].tags.name": "jauregibarria jatetxeaa",
+					"source.osm[0].timestamp": "2019-12-06T10:13:23Z",
+					"source.osm[0].version": "2",
+					"source.osm[1].changeset": "111160024",
+					"source.osm[1].lat": 43.2129601,
+					"source.osm[1].lon": -2.7271009,
+					"source.osm[1].tags.addr:city": "Amorebieta-Etxano",
+					"source.osm[1].tags.addr:street": "Bideaur auzoa",
+					"source.osm[1].tags.name": "jauregibarria jatetxea",
+					"source.osm[1].tags.website": "jauregibarria.com",
+					"source.osm[1].timestamp": "2021-09-13T18:31:26Z",
+					"source.osm[1].version": "3"
+				}
+			}
+		]
+	}
+]

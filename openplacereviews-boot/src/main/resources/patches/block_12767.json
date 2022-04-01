@@ -1,0 +1,82 @@
+[{
+	"type": "opr.place",
+	"edit": [
+		{
+			"id": [
+				"4RJ768",
+				"b2pr1l"
+			],
+			"change": {
+				"source.osm[0].changeset": {
+					"set": "111167728"
+				},
+				"source.osm[0].deleted": "delete",
+				"source.osm[0].osm_value": {
+					"set": "restaurant"
+				},
+				"source.osm[0].tags.addr:suburb": {
+					"set": "Croydon"
+				},
+				"source.osm[0].tags.amenity": {
+					"set": "restaurant"
+				},
+				"source.osm[0].tags.cuisine": {
+					"set": "chicken;chips"
+				},
+				"source.osm[0].tags.takeaway": {
+					"set": "only"
+				},
+				"source.osm[0].timestamp": {
+					"set": "2021-09-13T22:41:24Z"
+				},
+				"version": "increment",
+				"source.osm[0].version": {
+					"set": "3"
+				},
+				"source.osm[1].changeset": {
+					"set": "111130260"
+				},
+				"source.osm[1].osm_value": {
+					"set": "fast_food"
+				},
+				"source.osm[1].tags.addr:suburb": {
+					"set": "Mooroolbark"
+				},
+				"source.osm[1].tags.amenity": {
+					"set": "fast_food"
+				},
+				"source.osm[1].tags.cuisine": {
+					"set": "chicken"
+				},
+				"source.osm[1].tags.takeaway": "delete",
+				"source.osm[1].timestamp": {
+					"set": "2021-09-13T08:20:22Z"
+				},
+				"source.osm[1].version": {
+					"set": "1"
+				},
+				"source.osm[1].deleted": {
+					"set": "2021-09-13T09:38:05.210+0000"
+				}
+			},
+			"current": {
+				"source.osm[0].changeset": "111130260",
+				"source.osm[0].deleted": "2021-09-13T09:38:05.210+0000",
+				"source.osm[0].osm_value": "fast_food",
+				"source.osm[0].tags.addr:suburb": "Mooroolbark",
+				"source.osm[0].tags.amenity": "fast_food",
+				"source.osm[0].tags.cuisine": "chicken",
+				"source.osm[0].timestamp": "2021-09-13T08:20:22Z",
+				"source.osm[0].version": "1",
+				"source.osm[1].changeset": "111167728",
+				"source.osm[1].osm_value": "restaurant",
+				"source.osm[1].tags.addr:suburb": "Croydon",
+				"source.osm[1].tags.amenity": "restaurant",
+				"source.osm[1].tags.cuisine": "chicken;chips",
+				"source.osm[1].tags.takeaway": "only",
+				"source.osm[1].timestamp": "2021-09-13T22:41:24Z",
+				"source.osm[1].version": "3"
+			}
+		}
+	]
+}]

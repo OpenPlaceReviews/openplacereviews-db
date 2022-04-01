@@ -1,0 +1,303 @@
+[
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"4RJ768",
+					"b2pr1l"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"76VVWF",
+					"mxxkqs"
+				],
+				"change": {
+					"version": {
+						"set": 2
+					}
+				},
+				"current": {
+					"version": 3
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"87C4WJ",
+					"gcy45v"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"87G8Q2",
+					"akhleh"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8CGV6W",
+					"2lmmhu"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8CMV67",
+					"zczljq"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8FF5H9",
+					"facwtr"
+				],
+				"change": {
+					"version": {
+						"set": 1
+					}
+				},
+				"current": {
+					"version": 2
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8FRP4X",
+					"yigaoc"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8FV29M",
+					"6unsca"
+				],
+				"change": {
+					"version": {
+						"set": 1
+					}
+				},
+				"current": {
+					"version": 2
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8FXR5J",
+					"5wki0b"
+				],
+				"change": {
+					"version": {
+						"set": 1
+					}
+				},
+				"current": {
+					"version": 2
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8GG4JX",
+					"umfw24"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8GG4JX",
+					"wnvabs"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8H46J2",
+					"i5so3d"
+				],
+				"change": {
+					"version": {
+						"set": 1
+					}
+				},
+				"current": {
+					"version": 2
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"8Q336F",
+					"gsi6ce"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"9F25J3",
+					"zdrmpw"
+				],
+				"change": {
+					"version": {
+						"set": 1
+					}
+				},
+				"current": {
+					"version": 2
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"9F2PV3",
+					"427sui"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	},
+	{
+		"type": "opr.place",
+		"edit": [
+			{
+				"id": [
+					"9GPF4G",
+					"66zbs8"
+				],
+				"change": {
+					"version": "delete"
+				},
+				"current": {
+					"version": 1
+				}
+			}
+		]
+	}
+]

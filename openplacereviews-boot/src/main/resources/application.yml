@@ -23,6 +23,7 @@ opendb:
   email:
     sendgrid-api: ${SENDGRID_API:}
   auth-opr-prefix: ${AUTH_OPR_PREFIX:oprw-}
+  patch-version: ${OPENDB_PATCHVERSION:}
 
 oauth:
   osm:
