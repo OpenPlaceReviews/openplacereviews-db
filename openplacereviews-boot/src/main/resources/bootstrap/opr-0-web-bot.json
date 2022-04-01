@@ -20,41 +20,26 @@
         "osm-tags" : {
           "food" : {
       			"key" : "amenity",
-      			"values" : ["cafe","bar","restaurant","biergarten","fast_food","food_court","ice_cream","pub"],
+      			"values" : ["cafe", "bar", "restaurant", "biergarten", "fast_food", "food_court", "ice_cream", "pub"],
       			"type" : ["node", "way"]
           },
           "hotel" : {
       			"key" : "tourism",
-      			"values" : ["hotel","motel","hostel","apartment","guest_house"],
-            	"type" : ["node", "way"]
+            "values" : ["hotel", "motel", "hostel", "apartment", "guest_house"],
+            "type" : ["node", "way"]
           },
           "travel" : {
-                "key" : "tourism",
-                "values" : ["camp_site","camp_pitch","caravan_site","picnic_site"],
-                "type" : ["node", "way"]
+            "key" : "tourism",
+            "values" : ["camp_site", "camp_pitch", "caravan_site", "picnic_site", "viewpoint"],
+            "type" : ["node", "way"]
           },
-          "nature" : {
-                "key" : "tourism",
-                "values" : ["zoo","aquarium","theme_park","viewpoint"],
-                "type" : ["node", "way"]
-          },
-          "art" : {
-                "key" : "tourism",
-                "values" : ["gallery","museum","artwork"],
-                "type" : ["node", "way"]
-          },
-          "attraction" : {
-                "key": "attraction",
-                "values": ["amusement_ride","animal","big_wheel","carousel","maze","roller_coaster","slide","summer_toboggan","swing_carousel","train","water_slide"],
-                "type": ["node", "way"]
-          },
-          "museum" : {
-               "key" : "museum",
-               "values" : ["art","gallery","transport","railway","aviation","aerospace","maritime","science","apis_mellifera","nature","technology","agriculture","paleontology","history","living_history","military","war","archaeological","open_air","local","children","ethnography","person","language","health"],
-               "type" : ["node", "way"]
+          "tourism" : {
+             "key" : "tourism",
+             "values" : ["zoo", "aquarium", "theme_park", "gallery", "museum", "artwork"],
+             "type" : ["node", "way"]
           },
           "historic" : {
-               "key" : "historic",
+            "key" : "historic",
                "values" : ["memorial","monument","technical_monument","locomotive","ruins","rune_stone","stone","wreck","ship","mine"],
                "type" : ["node", "way"]
           }
