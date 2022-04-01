@@ -20,13 +20,28 @@
         "osm-tags" : {
           "food" : {
       			"key" : "amenity",
-      			"values" : ["cafe","bar","restaurant","biergarten","fast_food","food_court","ice_cream","pub"],
+      			"values" : ["cafe", "bar", "restaurant", "biergarten", "fast_food", "food_court", "ice_cream", "pub"],
       			"type" : ["node", "way"]
           },
           "hotel" : {
       			"key" : "tourism",
-      			"values" : ["hotel","motel","hostel","apartment","guest_house"],
-            	"type" : ["node", "way"]
+            "values" : ["hotel", "motel", "hostel", "apartment", "guest_house"],
+            "type" : ["node", "way"]
+          },
+          "travel" : {
+            "key" : "tourism",
+            "values" : ["camp_site", "camp_pitch", "caravan_site", "picnic_site", "viewpoint"],
+            "type" : ["node", "way"]
+          },
+          "tourism" : {
+             "key" : "tourism",
+             "values" : ["zoo", "aquarium", "theme_park", "gallery", "museum", "artwork"],
+             "type" : ["node", "way"]
+          },
+          "historic" : {
+            "key" : "historic",
+               "values" : ["memorial","monument","technical_monument","locomotive","ruins","rune_stone","stone","wreck","ship","mine"],
+               "type" : ["node", "way"]
           }
         }
       },
