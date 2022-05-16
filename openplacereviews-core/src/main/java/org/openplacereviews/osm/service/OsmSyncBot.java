@@ -693,18 +693,20 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 					OpObject newObj = generateNewOprObject(obj, createOsmObject(key, obj));
 					addOp.addCreated(newObj);
 				} else {
-					TreeMap<String, Object> osmObj = createOsmObject(key, obj);
-					String matchId = generateMatchIdFromOpObject(osmObj);
-					String oldMatchId = generateMatchIdFromOpObject(po.osm);
-					if (!Objects.equals(matchId, oldMatchId)) {
+					if (!isEditDuplicate(editOp, po)) {
+						TreeMap<String, Object> osmObj = createOsmObject(key, obj);
+						String matchId = generateMatchIdFromOpObject(osmObj);
+						String oldMatchId = generateMatchIdFromOpObject(po.osm);
+						if (!Objects.equals(matchId, oldMatchId)) {
 //						LOGGER.info(String.format("Match id has changed [%s] != [%s]: %s", oldMatchId, matchId,
 //								osmObj));
-						OpObject newObj = generateNewOprObject(obj, osmObj);
-						addOp.addCreated(newObj);
-						// separate operation to delete old object
-						generateEditDeleteOsmIdsForPlace(editOp, po);
-					} else {
-						generateEditValuesForPlace(editOp, po, osmObj);
+							OpObject newObj = generateNewOprObject(obj, osmObj);
+							addOp.addCreated(newObj);
+							// separate operation to delete old object
+							generateEditDeleteOsmIdsForPlace(editOp, po);
+						} else {
+							generateEditValuesForPlace(editOp, po, osmObj);
+						}
 					}
 				}
 			} catch (RuntimeException e) {
@@ -714,6 +716,15 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				}
 				throw e;
 			}
+		}
+
+		private boolean isEditDuplicate(OpOperation editOp, PlaceObject currObject) {
+			for (OpObject existingObj : editOp.getEdited()) {
+				if (currObject.obj.getId() == existingObj.getId()) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		private void processDiffEntity(String key, OpOperation addOp, OpOperation editOp, DiffEntity diffEntity) throws FailedVerificationException, InterruptedException {
