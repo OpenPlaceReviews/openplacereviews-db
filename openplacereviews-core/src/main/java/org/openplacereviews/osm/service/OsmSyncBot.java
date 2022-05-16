@@ -718,9 +718,9 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 			}
 		}
 
-		private boolean isEditDuplicate(OpOperation editOp, PlaceObject currObject) {
+		private boolean isEditDuplicate(OpOperation editOp, PlaceObject currentObj) {
 			for (OpObject existingObj : editOp.getEdited()) {
-				if (currObject.obj.getId() == existingObj.getId()) {
+				if (currentObj.obj.getId() == existingObj.getId()) {
 					return true;
 				}
 			}
