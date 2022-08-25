@@ -42,6 +42,11 @@
             "key" : "historic",
                "values" : ["memorial","monument","technical_monument","locomotive","ruins","rune_stone","stone","wreck","ship","mine"],
                "type" : ["node", "way"]
+          },
+          "amenity": {
+            "key": "amenity",
+            "type": ["node","way"],
+            "values": ["arts_centre","cinema","clock","fountain","monastery","place_of_worship","planetarium","townhall"]
           }
         }
       },
