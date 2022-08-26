@@ -507,10 +507,10 @@ public class OsmSyncBot extends GenericMultiThreadBot<OsmSyncBot> {
 				sx = sy = 4;
 			}
 			if(bbox.width() >= 180) {
-				sx = 10 ;
+				sx = 36;
 			}
 			if(bbox.height() >= 90) {
-				sy = 4;
+				sy = 18;
 			}
 			double xd = bbox.width() / sx;
 			double yd = bbox.height() / sy;
